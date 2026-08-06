@@ -1,26 +1,20 @@
 import 'package:flutter/material.dart';
-import 'constants/app_colors.dart';
-import 'screens/responsive_home.dart';
+import 'screens/now_playing_screen.dart';
 
 void main() {
-  runApp(const FlightBookingApp());
+  runApp(const SpotifyActivityApp());
 }
 
-class FlightBookingApp extends StatelessWidget {
-  const FlightBookingApp({super.key});
+class SpotifyActivityApp extends StatelessWidget {
+  const SpotifyActivityApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flight Booking UI',
+      title: 'Spotify Now Playing Activity',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        primaryColor: AppColors.tealPrimary,
-        scaffoldBackgroundColor: AppColors.tealBackground,
-        fontFamily: 'Roboto',
-      ),
-      home: const ResponsiveHome(),
+      theme: ThemeData.dark(useMaterial3: true),
+      home: const NowPlayingScreen(),
     );
   }
 }
