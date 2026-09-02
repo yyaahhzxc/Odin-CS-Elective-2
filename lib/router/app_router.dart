@@ -34,8 +34,7 @@ class AppRouter {
           },
         ),
 
-        // Route: Product Detail Screen (Reached via Navigation 2.0)
-        // Uses a clean, natural horizontal slide transition (standard mobile navigation feel)
+        // Product details route with horizontal slide transition
         GoRoute(
           path: '/product/:id',
           pageBuilder: (context, state) {

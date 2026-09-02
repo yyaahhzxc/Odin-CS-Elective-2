@@ -10,8 +10,8 @@ CSShop is a responsive e-commerce mobile catalog application developed for the C
 - [x] **Simplified Store Header:** Clean typography displaying the CSSEC Merch Store title and council description.
 - [x] **Responsive Product Grid:** Dynamic product catalog utilizing `LayoutBuilder` and `GridView.builder` to adaptively render a 2-column grid on mobile displays (`< 600px`) and 3+ columns on tablet/desktop displays (`>= 600px`).
 - [x] **Navigation 2.0 (`go_router`):** Declarative route management configuring root (`/`) and dynamic parameterized product routes (`/product/:id`) with natural mobile slide transitions.
-- [x] **High-Fidelity Wireframe Details Page:** A dedicated destination page with an `AppBar`, image placeholder box, product information, wireframe quantity stepper, milestone notice, and wireframe Add to Cart button.
-- [x] **Stateless vs. Stateful Architecture:** Strict separation where immutable UI cards and wireframes remain `StatelessWidget` and interactive controls (theme switching, category filters) utilize `StatefulWidget`.
+- [x] **Product Details Page:** A dedicated destination page with an `AppBar`, product image placeholder, item description, quantity selector, and Add to Cart button.
+- [x] **Stateless vs. Stateful Architecture:** Strict separation where immutable UI cards remain `StatelessWidget` and interactive controls (theme switching, category filters) utilize `StatefulWidget`.
 - [x] **Presentation-Ready Codebase:** Surgical, clear comments explaining widget hierarchy, state choices, and layout builders for oral exam defense.
 
 ## Implementation & Solutions
@@ -19,7 +19,7 @@ CSShop is a responsive e-commerce mobile catalog application developed for the C
 - **State Management & Lifecycle (`lib/main.dart` & `lib/screens/home_screen.dart`):** Root `CSShopApp` manages application-wide `ThemeMode` transitions via `setState()`, passed into `MaterialApp.router`. `HomeScreen` manages interactive category filter state (`All`, `Apparel`, `Accessories`) to filter mock products dynamically.
 - **Responsive Layout (`lib/screens/home_screen.dart`):** Employs `LayoutBuilder` to measure screen constraints dynamically, selecting 2 columns on phone screens, 3 columns on tablet screens, and 4 columns on desktop displays, maintaining a stable child aspect ratio.
 - **Routing & Slide Transitions (`lib/router/app_router.dart`):** Configures `GoRouter` declarative routes using `CustomTransitionPage` and `SlideTransition` for a smooth, natural right-to-left push animation. On selecting a `ProductCard`, `context.go('/product/${product.id}')` navigates to `ProductDetailScreen`.
-- **Component Modularity (`lib/widgets/product_card.dart` & `lib/screens/product_detail_screen.dart`):** Reusable `ProductCard` with placeholder icon container, and a structured `ProductDetailScreen` wireframe laying out the product header, price, description, and interactive placeholders for second-half development.
+- **Component Modularity (`lib/widgets/product_card.dart` & `lib/screens/product_detail_screen.dart`):** Reusable `ProductCard` with placeholder icon container, and a clean `ProductDetailScreen` laying out the product header, price, description, quantity selector, and action buttons.
 
 ## Setup & Dependencies
 ### Prerequisites

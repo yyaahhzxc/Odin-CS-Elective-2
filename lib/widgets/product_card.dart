@@ -22,7 +22,7 @@ class ProductCard extends StatelessWidget {
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        // Navigation 2.0: Tapping navigates to the empty product details page
+        // Navigate to product details page
         onTap: () {
           context.go('/product/${product.id}');
         },
@@ -31,7 +31,7 @@ class ProductCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Placeholder icon box representing the product (before images are added in the second half)
+              // Product image placeholder
               Expanded(
                 child: Container(
                   width: double.infinity,

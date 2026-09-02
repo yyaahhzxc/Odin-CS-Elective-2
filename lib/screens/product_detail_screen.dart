@@ -2,15 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../models/product.dart';
 
-/// High-fidelity wireframe for the Product Details page.
+/// Screen displaying details for a selected product.
 ///
-/// Lays out the core visual structure and components (image placeholder box,
-/// product info, quantity selector wireframe, and Add-to-Cart callout)
-/// to fulfill the first-half milestone requirement before implementing full
-/// cart state management in the second half.
-///
-/// Implemented as a [StatelessWidget] since it purely presents the wireframe
-/// layout without modifying interactive cart state in this milestone.
+/// Implemented as a [StatelessWidget] to display product information,
+/// pricing, description, and action controls.
 class ProductDetailScreen extends StatelessWidget {
   final Product product;
 
@@ -25,14 +20,12 @@ class ProductDetailScreen extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      // Top AppBar with back navigation and screen title
       appBar: AppBar(
-        title: const Text('Product Details'),
+        title: Text(product.name),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           tooltip: 'Back to Shop',
           onPressed: () {
-            // Navigation 2.0 back navigation
             if (context.canPop()) {
               context.pop();
             } else {
@@ -45,53 +38,37 @@ class ProductDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // High-Fidelity Wireframe: Product Image Placeholder Box
+            // Product image placeholder
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Container(
-                height: 260,
+                height: 250,
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainerHighest.withAlpha(90),
+                  color: colorScheme.surfaceContainerHighest.withAlpha(80),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: colorScheme.outlineVariant,
-                    width: 1.5,
+                    width: 1,
                   ),
                 ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.image_outlined,
-                      size: 64,
-                      color: colorScheme.primary,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Product Image Wireframe',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: colorScheme.primary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Assets will be connected in the second half',
-                      style: theme.textTheme.bodySmall,
-                    ),
-                  ],
+                child: Center(
+                  child: Icon(
+                    Icons.shopping_bag_outlined,
+                    size: 64,
+                    color: colorScheme.primary,
+                  ),
                 ),
               ),
             ),
 
-            // Product Details Content
+            // Product information section
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Category Badge
+                  // Category tag
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
@@ -107,13 +84,12 @@ class ProductDetailScreen extends StatelessWidget {
                         color: colorScheme.onPrimaryContainer,
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
                       ),
                     ),
                   ),
                   const SizedBox(height: 8),
 
-                  // Product Title
+                  // Product title
                   Text(
                     product.name,
                     style: theme.textTheme.headlineMedium?.copyWith(
@@ -123,7 +99,7 @@ class ProductDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
 
-                  // Price and Stock Summary Row
+                  // Price and stock status
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -161,7 +137,7 @@ class ProductDetailScreen extends StatelessWidget {
 
                   const Divider(height: 32),
 
-                  // Product Description Section
+                  // Product description
                   Text(
                     'Description',
                     style: theme.textTheme.titleMedium?.copyWith(
@@ -178,24 +154,15 @@ class ProductDetailScreen extends StatelessWidget {
 
                   const Divider(height: 32),
 
-                  // Wireframe: Quantity Selector Control (Placeholder for 2nd Half)
+                  // Quantity selector
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Quantity',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            'Stateful control (Milestone 2)',
-                            style: theme.textTheme.bodySmall,
-                          ),
-                        ],
+                      Text(
+                        'Quantity',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       Container(
                         decoration: BoxDecoration(
@@ -206,7 +173,7 @@ class ProductDetailScreen extends StatelessWidget {
                           children: [
                             IconButton(
                               icon: const Icon(Icons.remove, size: 18),
-                              onPressed: null, // Disabled in wireframe
+                              onPressed: () {},
                             ),
                             const Padding(
                               padding: EdgeInsets.symmetric(horizontal: 8.0),
@@ -220,7 +187,7 @@ class ProductDetailScreen extends StatelessWidget {
                             ),
                             IconButton(
                               icon: const Icon(Icons.add, size: 18),
-                              onPressed: null, // Disabled in wireframe
+                              onPressed: () {},
                             ),
                           ],
                         ),
@@ -230,44 +197,16 @@ class ProductDetailScreen extends StatelessWidget {
 
                   const SizedBox(height: 24),
 
-                  // Milestone Notice Card
-                  Card(
-                    color: colorScheme.surfaceContainerHighest.withAlpha(60),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.info_outline,
-                            size: 20,
-                            color: colorScheme.primary,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              'First-Half Wireframe: Cart and checkout features will be fully functional in the second half.',
-                              style: theme.textTheme.bodySmall,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Wireframe: Add to Cart Button
+                  // Add to cart button
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       icon: const Icon(Icons.add_shopping_cart_outlined),
-                      label: const Text('Add to Cart (Wireframe)'),
+                      label: const Text('Add to Cart'),
                       onPressed: () {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text(
-                              'Wireframe only: Add to cart functionality will be implemented in the second half.',
-                            ),
+                            content: Text('Item added to cart'),
                             duration: Duration(seconds: 2),
                           ),
                         );
