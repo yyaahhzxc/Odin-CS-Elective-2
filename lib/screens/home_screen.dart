@@ -181,8 +181,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       crossAxisSpacing: 12, // horizontal gap between cards
                       mainAxisSpacing: 12, // vertical gap between cards
                       childAspectRatio: crossAxisCount == 2
-                          ? 0.68
-                          : (crossAxisCount == 3 ? 0.72 : 0.76), // width-to-height ratio tailored for 1:1 square image + product details
+                          ? 0.65
+                          : (crossAxisCount == 3 ? 0.70 : 0.75), // prevents overflow on mobile with square images
                     ),
                     itemBuilder: (context, index) {
                       // builds each individual product card widget

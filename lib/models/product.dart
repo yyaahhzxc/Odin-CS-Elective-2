@@ -50,7 +50,7 @@ class Product {
     required this.id,
     required this.name,
     required this.price,
-    required this.imagePath,
+    this.imagePath = '',
     this.images = const [],
     required this.category,
     required this.description,
@@ -65,6 +65,7 @@ class Product {
   /// Returns all images available for this product.
   List<String> get allImages {
     if (images.isNotEmpty) return images;
-    return [imagePath];
+    if (imagePath.isNotEmpty) return [imagePath];
+    return const [];
   }
 }
