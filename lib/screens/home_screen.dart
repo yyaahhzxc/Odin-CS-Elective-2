@@ -3,10 +3,11 @@ import '../data/product_data.dart';
 import '../models/product.dart';
 import '../widgets/product_card.dart';
 
-/// The Home Screen displays the product browsing catalog.
+/// home Screen displays the product browsing catalog
 ///
-/// Implemented as a [StatefulWidget] to manage the selected category filter
-/// ('All', 'Apparel', 'Accessories') when the user interacts with the filter chips.
+/// implemented as a [StatefulWidget] to manage the selected category filter
+/// ('All', 'Apparel', 'Accessories') when the user interacts with the filter chips
+
 class HomeScreen extends StatefulWidget {
   final VoidCallback onToggleTheme;
   final bool isDarkMode;
@@ -22,12 +23,12 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // Currently active category filter
+  // default category
   String _selectedCategory = 'All';
 
   final List<String> _categories = const ['All', 'Apparel', 'Accessories'];
 
-  /// Filters the product catalog based on the selected category filter.
+  /// for product filtering, states are all, apparel, and accessories
   List<Product> get _filteredProducts {
     if (_selectedCategory == 'All') {
       return mockProducts;
@@ -37,13 +38,14 @@ class _HomeScreenState extends State<HomeScreen> {
         .toList();
   }
 
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      // AppBar with the app title and light/dark theme toggle
+      // appbar, contains title on top left and theme toggle
       appBar: AppBar(
         title: const Text('CSShop'),
         actions: [
@@ -62,25 +64,27 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(width: 8),
         ],
       ),
+
+      // main body na part na jud like legit
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Simple Title and Description Header
+            /// hero section(?) i think ang tawag not sure
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'CSSEC Merch Store',
+                    'CSShop - The CSSEC Merch Store',
                     style: theme.textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Official merchandise store for the Computer Studies Student Executive Council.',
+                    'Official merchandise channel of the Computer Studies Student Executive Council for S.Y. 2026-2027',
                     style: theme.textTheme.bodyMedium,
                   ),
                 ],
@@ -154,7 +158,6 @@ class _HomeScreenState extends State<HomeScreen> {
             // Uses LayoutBuilder to adjust columns based on screen width:
             // - Phone (< 600px): 2 columns
             // - Tablet (600px - 900px): 3 columns
-            // - Desktop (>= 900px): 4 columns
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: LayoutBuilder(
@@ -168,17 +171,19 @@ class _HomeScreenState extends State<HomeScreen> {
                     crossAxisCount = 4;
                   }
 
+                  // GridView.builder renders the list of product cards in a responsive grid
                   return GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: _filteredProducts.length,
+                    shrinkWrap: true, // lets the grid take only the height it needs inside SingleChildScrollView
+                    physics: const NeverScrollableScrollPhysics(), // disables internal grid scrolling so the outer SingleChildScrollView handles scrolling
+                    itemCount: _filteredProducts.length, // total number of products to show
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: crossAxisCount,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                      childAspectRatio: 0.82,
+                      crossAxisCount: crossAxisCount, // number of columns (calculated above from screen width)
+                      crossAxisSpacing: 12, // horizontal gap between cards
+                      mainAxisSpacing: 12, // vertical gap between cards
+                      childAspectRatio: 0.82, // width-to-height ratio of each card
                     ),
                     itemBuilder: (context, index) {
+                      // builds each individual product card widget
                       final product = _filteredProducts[index];
                       return ProductCard(product: product);
                     },

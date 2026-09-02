@@ -10,6 +10,7 @@ class Product {
   final String description;
   final int soldCount;
   final int stock;
+  final List<String> variants;
 
   const Product({
     required this.id,
@@ -20,6 +21,7 @@ class Product {
     required this.description,
     required this.soldCount,
     required this.stock,
+    this.variants = const ['Standard', 'Violet', 'Black'],
   });
 
   /// Formatted Philippine Peso price string.

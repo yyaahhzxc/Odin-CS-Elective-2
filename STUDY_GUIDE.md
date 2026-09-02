@@ -130,13 +130,14 @@ When you type `flutter run` in your terminal, here is the chain reaction:
 
 ### `lib/screens/product_detail_screen.dart`
 - **What it does:** The destination page when you click any product.
-- **Why it is a `StatelessWidget`:** It receives the selected `product` and simply displays its details, quantity box, and Add to Cart button.
-- **Key Sections:**
+- **Why it is a `StatefulWidget`:** Because it handles user interaction: selecting different product variants (`_selectedVariantIndex`) and changing the quantity (`_quantity`).
+- **Key Features & Sections:**
   - `AppBar`: Has a back arrow (`context.pop()`) and the product name.
-  - Image placeholder container: A clean rounded box with an icon.
-  - Details: Shows category, title, price (₱), and stock badge.
-  - Stepper row: Quantity `[-] 1 [+]`.
-  - `ElevatedButton`: "Add to Cart" button that displays a SnackBar when clicked.
+  - **Square Image Area:** Uses `AspectRatio(aspectRatio: 1.0)` inside a `ConstrainedBox(maxWidth: 420)` so that whether on phone, tablet, or web, the main image preview is ALWAYS a perfect square (never stretched or distorted).
+  - **Thumbnail Pics Row:** A horizontal strip of thumbnail cards directly below the main image. Tapping any thumbnail switches the selected variant and highlights its border!
+  - **Variation Buttons:** A row of buttons under the details section (e.g. `[Violet]`, `[Black]`, `[White]`). Tapping either a button or a thumbnail updates both and changes the variant shown in the big square image!
+  - **Quantity Stepper:** `[-]` and `[+]` buttons that update the count live.
+  - **Add to Cart:** Shows a SnackBar confirming the selected variant and quantity.
 
 ---
 
@@ -144,9 +145,9 @@ When you type `flutter run` in your terminal, here is the chain reaction:
 
 Here are direct, simple answers to questions your instructor is likely to ask based on the grading rubrics:
 
-### Q1: "Why is `HomeScreen` a StatefulWidget, while `ProductCard` is a StatelessWidget?"
+### Q1: "Why are some widgets StatefulWidget while others are StatelessWidget?"
 > **Answer:**
-> *"Anything that changes based on user interaction needs to be a `StatefulWidget`. `HomeScreen` is stateful because it tracks which category chip the user selected ('All', 'Apparel', 'Accessories') and re-filters the list when tapped. On the other hand, `ProductCard` is a `StatelessWidget` because it only receives static product data and displays it without needing internal state changes."*
+> *"Anything that changes based on user interaction needs to be a `StatefulWidget`. `HomeScreen` is stateful because it tracks which category chip the user selected ('All', 'Apparel', 'Accessories'). `ProductDetailScreen` is stateful because it manages the active product variant selection and the quantity counter. In contrast, `ProductCard` is a `StatelessWidget` because it only receives static product data and displays it without needing internal state changes."*
 
 ### Q2: "How did you implement the Light and Dark mode toggle?"
 > **Answer:**

@@ -8,10 +8,10 @@ const List<Product> mockProducts = [
     price: 350.0,
     imagePath: 'assets/images/shirt.jpg',
     category: 'Apparel',
-    description:
-        'Official CS T-Shirt Merch for School Year 2026-2027.',
+    description: 'Official CS T-Shirt Merch for School Year 2026-2027.',
     soldCount: 142,
     stock: 50,
+    variants: ['Violet', 'Black', 'White'],
   ),
   Product(
     id: 'prod-002',
@@ -23,6 +23,7 @@ const List<Product> mockProducts = [
         'Heavyweight wool-blend varsity bomber jacket with custom CS embroidered chest patch and ribbed contrast trims.',
     soldCount: 88,
     stock: 25,
+    variants: ['Varsity Violet', 'Stealth Black'],
   ),
   Product(
     id: 'prod-003',
@@ -34,6 +35,7 @@ const List<Product> mockProducts = [
         'Breathable dry-fit jersey, designed to be worn for Palarong Atenista 2026. Includes custom naming and jersey number on the back.',
     soldCount: 95,
     stock: 30,
+    variants: ['Home Purple', 'Away White', 'Alternate Black'],
   ),
   Product(
     id: 'prod-004',
@@ -41,10 +43,10 @@ const List<Product> mockProducts = [
     price: 220.0,
     imagePath: 'assets/images/pins.jpg',
     category: 'Accessories',
-    description:
-        'pin idk.',
+    description: 'pin idk.',
     soldCount: 310,
     stock: 120,
+    variants: ['Chameleon Logo', 'Monitor Shield', 'Binary CS'],
   ),
   Product(
     id: 'prod-005',
@@ -52,10 +54,10 @@ const List<Product> mockProducts = [
     price: 120.0,
     imagePath: 'assets/images/stickers.jpg',
     category: 'Accessories',
-    description:
-        'stickerz.',
+    description: 'stickerz.',
     soldCount: 540,
     stock: 200,
+    variants: ['Holo Chameleon', 'Python Code', 'Ateneo Crest'],
   ),
   Product(
     id: 'prod-006',
@@ -63,9 +65,9 @@ const List<Product> mockProducts = [
     price: 150.0,
     imagePath: 'assets/images/keychain.jpg',
     category: 'Accessories',
-    description:
-        'keychain wieee',
+    description: 'keychain wieee',
     soldCount: 265,
     stock: 80,
+    variants: ['Purple Acrylic', 'Clear Charm'],
   ),
 ];

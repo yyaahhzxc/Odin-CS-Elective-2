@@ -11,8 +11,8 @@ void main() {
     // Verify that the store title renders cleanly
     expect(find.text('CSShop'), findsOneWidget);
 
-    // Verify that the CSSEC council header and products section render
-    expect(find.text('CSSEC Merch Store'), findsOneWidget);
+    // Verify that the title and products section render
+    expect(find.text('CSShop - The CSSEC Merch Store'), findsOneWidget);
     expect(find.text('Products'), findsOneWidget);
   });
 }
