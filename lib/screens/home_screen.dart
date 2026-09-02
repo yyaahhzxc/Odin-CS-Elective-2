@@ -2,13 +2,11 @@ import 'package:flutter/material.dart';
 import '../data/product_data.dart';
 import '../models/product.dart';
 import '../widgets/product_card.dart';
-import '../widgets/seller_header.dart';
 
-/// Main landing and product browsing screen of CSShop.
+/// The Home Screen displays the product browsing catalog.
 ///
-/// Manages user interaction for category filtering and theme toggling.
-/// Implemented as a [StatefulWidget] to maintain the currently selected
-/// category filter ('All', 'Apparel', 'Accessories') upon user interaction.
+/// Implemented as a [StatefulWidget] to manage the selected category filter
+/// ('All', 'Apparel', 'Accessories') when the user interacts with the filter chips.
 class HomeScreen extends StatefulWidget {
   final VoidCallback onToggleTheme;
   final bool isDarkMode;
@@ -24,12 +22,12 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // State tracking the currently selected product category
+  // Currently active category filter
   String _selectedCategory = 'All';
 
   final List<String> _categories = const ['All', 'Apparel', 'Accessories'];
 
-  /// Filters catalog products based on active category state.
+  /// Filters the product catalog based on the selected category filter.
   List<Product> get _filteredProducts {
     if (_selectedCategory == 'All') {
       return mockProducts;
@@ -45,30 +43,11 @@ class _HomeScreenState extends State<HomeScreen> {
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
+      // AppBar with the app title and light/dark theme toggle
       appBar: AppBar(
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                Icons.storefront_rounded,
-                size: 20,
-                color: colorScheme.primary,
-              ),
-            ),
-            const SizedBox(width: 10),
-            const Text(
-              'CSShop',
-              style: TextStyle(fontWeight: FontWeight.w800),
-            ),
-          ],
-        ),
+        title: const Text('CSShop'),
         actions: [
-          // Light / Dark Mode Toggle Action Button
+          // Light/Dark mode toggle button
           IconButton(
             icon: Icon(
               widget.isDarkMode
@@ -87,12 +66,30 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // CSSEC Council Seller Profile Banner
-            const SellerHeader(),
-
-            // Catalog Section Header & Category Filters
+            // Simple Title and Description Header
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'CSSEC Merch Store',
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Official merchandise store for the Computer Studies Student Executive Council.',
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+            ),
+
+            // Category Filter Section
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -101,9 +98,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       Text(
                         'Products',
-                        style: theme.textTheme.headlineMedium?.copyWith(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                       Text(
@@ -112,9 +108,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
 
-                  // Category Filter Chips
+                  // Horizontal category chips
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
@@ -128,25 +124,14 @@ class _HomeScreenState extends State<HomeScreen> {
                             labelStyle: TextStyle(
                               fontSize: 12,
                               fontWeight: isSelected
-                                  ? FontWeight.w700
-                                  : FontWeight.w500,
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
                               color: isSelected
                                   ? colorScheme.onPrimary
                                   : colorScheme.onSurface,
                             ),
                             selectedColor: colorScheme.primary,
-                            backgroundColor: theme.brightness == Brightness.light
-                                ? const Color(0xFFF1F5F9)
-                                : const Color(0xFF1E293B),
                             checkmarkColor: colorScheme.onPrimary,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                              side: BorderSide(
-                                color: isSelected
-                                    ? colorScheme.primary
-                                    : Colors.transparent,
-                              ),
-                            ),
                             onSelected: (selected) {
                               if (selected) {
                                 setState(() {
@@ -163,15 +148,17 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // Responsive Product Grid Layout
+            const SizedBox(height: 8),
+
+            // Responsive Product Grid
+            // Uses LayoutBuilder to adjust columns based on screen width:
+            // - Phone (< 600px): 2 columns
+            // - Tablet (600px - 900px): 3 columns
+            // - Desktop (>= 900px): 4 columns
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  // Responsiveness Rule:
-                  // Mobile (< 600px) -> 2 columns
-                  // Tablet / Wide (600px - 900px) -> 3 columns
-                  // Desktop / Large (>= 900px) -> 4 columns
                   final int crossAxisCount;
                   if (constraints.maxWidth < 600) {
                     crossAxisCount = 2;
@@ -181,10 +168,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     crossAxisCount = 4;
                   }
 
-                  // Responsive aspect ratio adjusting dynamically based on column width
-                  final double childAspectRatio =
-                      constraints.maxWidth < 600 ? 0.72 : 0.76;
-
                   return GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -193,7 +176,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       crossAxisCount: crossAxisCount,
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 12,
-                      childAspectRatio: childAspectRatio,
+                      childAspectRatio: 0.82,
                     ),
                     itemBuilder: (context, index) {
                       final product = _filteredProducts[index];
@@ -204,17 +187,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // Bottom Spacing & Council Footer Note
-            const SizedBox(height: 32),
-            Center(
-              child: Text(
-                'Ateneo de Davao CSSEC • 2026 Prelim Exam',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  fontSize: 11,
-                  color: theme.textTheme.bodySmall?.color?.withAlpha(150),
-                ),
-              ),
-            ),
             const SizedBox(height: 24),
           ],
         ),

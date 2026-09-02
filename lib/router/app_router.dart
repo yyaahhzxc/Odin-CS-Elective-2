@@ -6,8 +6,9 @@ import '../screens/product_detail_screen.dart';
 
 /// Navigation 2.0 router configuration utilizing [GoRouter].
 ///
-/// Sets up declarative URL-based routing for the entire application,
-/// fulfilling the Navigation 2.0 project requirement.
+/// Sets up declarative URL-based routing for the application,
+/// including a clean, native-feeling slide transition when navigating
+/// between the catalog and product details.
 class AppRouter {
   AppRouter._();
 
@@ -22,18 +23,22 @@ class AppRouter {
         // Route: Home Screen (Product Catalog)
         GoRoute(
           path: '/',
-          builder: (context, state) {
-            return HomeScreen(
-              onToggleTheme: onToggleTheme,
-              isDarkMode: isDarkModeGetter(),
+          pageBuilder: (context, state) {
+            return MaterialPage(
+              key: state.pageKey,
+              child: HomeScreen(
+                onToggleTheme: onToggleTheme,
+                isDarkMode: isDarkModeGetter(),
+              ),
             );
           },
         ),
 
         // Route: Product Detail Screen (Reached via Navigation 2.0)
+        // Uses a clean, natural horizontal slide transition (standard mobile navigation feel)
         GoRoute(
           path: '/product/:id',
-          builder: (context, state) {
+          pageBuilder: (context, state) {
             final productId = state.pathParameters['id'];
 
             // Locate the product matching the route parameter
@@ -42,7 +47,24 @@ class AppRouter {
               orElse: () => mockProducts.first,
             );
 
-            return ProductDetailScreen(product: product);
+            return CustomTransitionPage(
+              key: state.pageKey,
+              child: ProductDetailScreen(product: product),
+              transitionsBuilder:
+                  (context, animation, secondaryAnimation, child) {
+                // Natural right-to-left slide transition
+                const begin = Offset(1.0, 0.0);
+                const end = Offset.zero;
+                final tween = Tween(begin: begin, end: end).chain(
+                  CurveTween(curve: Curves.easeInOut),
+                );
+
+                return SlideTransition(
+                  position: animation.drive(tween),
+                  child: child,
+                );
+              },
+            );
           },
         ),
       ],
