@@ -4,9 +4,8 @@ import '../models/product.dart';
 
 /// Screen displaying details for a selected product.
 ///
-/// Implemented as a [StatefulWidget] to manage the selected variant
-/// (syncing the main image, thumbnail selector, and variant buttons)
-/// and the quantity counter.
+/// Implemented as a [StatefulWidget] to manage the selected variant,
+/// multiple image views (e.g. front and back angles), and the quantity counter.
 class ProductDetailScreen extends StatefulWidget {
   final Product product;
 
@@ -23,6 +22,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   // tracks the currently selected variant index
   int _selectedVariantIndex = 0;
 
+  // tracks the currently selected image index (for front, back, etc.)
+  int _selectedImageIndex = 0;
+
   // item quantity
   int _quantity = 1;
 
@@ -31,12 +33,21 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    // active variant object (or null fallback if product has no variants)
+    // active variant object
     final hasVariants = widget.product.variants.isNotEmpty;
     final activeVariant =
         hasVariants ? widget.product.variants[_selectedVariantIndex] : null;
 
-    // active display values: uses variant-specific values if defined, else defaults to base product
+    // active images: uses variant-specific images if provided, else falls back to product images
+    final activeImages = activeVariant?.allImages.isNotEmpty == true
+        ? activeVariant!.allImages
+        : widget.product.allImages;
+
+    // safe image index bounds check
+    final currentImageIndex =
+        _selectedImageIndex < activeImages.length ? _selectedImageIndex : 0;
+
+    // active display values: uses variant-specific values if defined, else inherits from base product
     final displayName = activeVariant != null
         ? '${widget.product.name} - ${activeVariant.name}'
         : widget.product.name;
@@ -120,6 +131,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 ),
                               ),
                             ),
+                          if (activeImages.length > 1) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              'View ${currentImageIndex + 1} of ${activeImages.length}',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -129,80 +149,152 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             ),
 
             // thumbnail pics row under the main picture
-            if (hasVariants)
-              Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 420),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16.0, vertical: 4.0),
-                    child: SizedBox(
-                      height: 64,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: widget.product.variants.length,
-                        separatorBuilder: (context, index) =>
-                            const SizedBox(width: 8),
-                        itemBuilder: (context, index) {
-                          final isSelected = _selectedVariantIndex == index;
-                          final variant = widget.product.variants[index];
+            Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0, vertical: 4.0),
+                  child: SizedBox(
+                    height: 64,
+                    child: activeImages.length > 1
+                        ? ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: activeImages.length,
+                            separatorBuilder: (context, index) =>
+                                const SizedBox(width: 8),
+                            itemBuilder: (context, index) {
+                              final isSelected = currentImageIndex == index;
+                              final label = index == 0
+                                  ? 'Front'
+                                  : (index == 1 ? 'Back' : 'View ${index + 1}');
 
-                          return GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _selectedVariantIndex = index;
-                              });
-                            },
-                            child: AspectRatio(
-                              aspectRatio: 1.0, // square thumbnail
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: colorScheme.surfaceContainerHighest
-                                      .withAlpha(80),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: isSelected
-                                        ? colorScheme.primary
-                                        : colorScheme.outlineVariant,
-                                    width: isSelected ? 2.5 : 1,
-                                  ),
-                                ),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.image_outlined,
-                                      size: 20,
-                                      color: isSelected
-                                          ? colorScheme.primary
-                                          : colorScheme.onSurfaceVariant,
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      variant.name,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: 9,
-                                        fontWeight: isSelected
-                                            ? FontWeight.bold
-                                            : FontWeight.normal,
+                              return GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _selectedImageIndex = index;
+                                  });
+                                },
+                                child: AspectRatio(
+                                  aspectRatio: 1.0,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: colorScheme.surfaceContainerHighest
+                                          .withAlpha(80),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
                                         color: isSelected
                                             ? colorScheme.primary
-                                            : colorScheme.onSurfaceVariant,
+                                            : colorScheme.outlineVariant,
+                                        width: isSelected ? 2.5 : 1,
                                       ),
                                     ),
-                                  ],
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.photo_outlined,
+                                          size: 18,
+                                          color: isSelected
+                                              ? colorScheme.primary
+                                              : colorScheme.onSurfaceVariant,
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          label,
+                                          style: TextStyle(
+                                            fontSize: 9,
+                                            fontWeight: isSelected
+                                                ? FontWeight.bold
+                                                : FontWeight.normal,
+                                            color: isSelected
+                                                ? colorScheme.primary
+                                                : colorScheme.onSurfaceVariant,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
+                              );
+                            },
+                          )
+                        : (hasVariants
+                            ? ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: widget.product.variants.length,
+                                separatorBuilder: (context, index) =>
+                                    const SizedBox(width: 8),
+                                itemBuilder: (context, index) {
+                                  final isSelected =
+                                      _selectedVariantIndex == index;
+                                  final variant =
+                                      widget.product.variants[index];
+
+                                  return GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _selectedVariantIndex = index;
+                                        _selectedImageIndex = 0;
+                                      });
+                                    },
+                                    child: AspectRatio(
+                                      aspectRatio: 1.0,
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          color: colorScheme
+                                              .surfaceContainerHighest
+                                              .withAlpha(80),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                          border: Border.all(
+                                            color: isSelected
+                                                ? colorScheme.primary
+                                                : colorScheme.outlineVariant,
+                                            width: isSelected ? 2.5 : 1,
+                                          ),
+                                        ),
+                                        child: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons.image_outlined,
+                                              size: 20,
+                                              color: isSelected
+                                                  ? colorScheme.primary
+                                                  : colorScheme
+                                                      .onSurfaceVariant,
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              variant.name,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                fontSize: 9,
+                                                fontWeight: isSelected
+                                                    ? FontWeight.bold
+                                                    : FontWeight.normal,
+                                                color: isSelected
+                                                    ? colorScheme.primary
+                                                    : colorScheme
+                                                        .onSurfaceVariant,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              )
+                            : const SizedBox.shrink()),
                   ),
                 ),
               ),
+            ),
 
             // product info section
             Padding(
@@ -318,6 +410,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             onPressed: () {
                               setState(() {
                                 _selectedVariantIndex = index;
+                                _selectedImageIndex = 0; // reset image to first angle
                               });
                             },
                             child: Text(

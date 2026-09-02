@@ -1,12 +1,20 @@
 import '../models/product.dart';
 
 /// Static repository containing the initial CSSEC merchandise catalog.
+///
+/// NOTE: ProductVariant fields (price, description, stock) are optional.
+/// If left empty, they automatically inherit the values from the parent Product.
+/// You can also provide multiple images in `images: [...]` (e.g. front and back).
 const List<Product> mockProducts = [
   Product(
     id: 'prod-001',
     name: 'CS T-Shirt',
     price: 350.0,
     imagePath: 'assets/images/shirt.jpg',
+    images: [
+      'assets/images/shirt.jpg',
+      'assets/images/shirt.jpg', // placeholder for front & back views
+    ],
     category: 'Apparel',
     description: 'Official CS T-Shirt Merch for School Year 2026-2027.',
     soldCount: 142,
@@ -15,26 +23,18 @@ const List<Product> mockProducts = [
       ProductVariant(
         id: 'prod-001-v1',
         name: 'Violet',
-        price: 350.0,
-        imagePath: 'assets/images/shirt.jpg',
-        description: 'Official CS T-Shirt in iconic Ateneo purple.',
-        stock: 25,
+        images: [
+          'assets/images/shirt.jpg',
+          'assets/images/shirt.jpg', // Front & Back
+        ],
       ),
       ProductVariant(
         id: 'prod-001-v2',
         name: 'Black',
-        price: 350.0,
-        imagePath: 'assets/images/shirt.jpg',
-        description: 'Stealth black edition with violet CS lettering.',
-        stock: 15,
       ),
       ProductVariant(
         id: 'prod-001-v3',
         name: 'White',
-        price: 350.0,
-        imagePath: 'assets/images/shirt.jpg',
-        description: 'Minimalist white edition.',
-        stock: 10,
       ),
     ],
   ),
@@ -52,18 +52,11 @@ const List<Product> mockProducts = [
       ProductVariant(
         id: 'prod-002-v1',
         name: 'Varsity Violet',
-        price: 1200.0,
-        imagePath: 'assets/images/jacket.jpg',
-        description: 'Varsity purple body with black sleeves.',
-        stock: 15,
       ),
       ProductVariant(
         id: 'prod-002-v2',
         name: 'Stealth Black',
-        price: 1250.0,
-        imagePath: 'assets/images/jacket.jpg',
-        description: 'All-black edition with purple embroidered patch.',
-        stock: 10,
+        price: 1250.0, // custom price example for specific variant
       ),
     ],
   ),
@@ -71,7 +64,11 @@ const List<Product> mockProducts = [
     id: 'prod-003',
     name: 'Palarong Atenista CS Jersey',
     price: 650.0,
-    imagePath: 'assets/images/jersey.jpg',
+    imagePath: 'assets/images/jersey_front.png',
+    images: [
+      'assets/images/jersey_front.png',
+      'assets/images/jersey_back.png', // Front and back views
+    ],
     category: 'Apparel',
     description:
         'Breathable dry-fit jersey, designed to be worn for Palarong Atenista 2026. Includes custom naming and jersey number on the back.',
@@ -81,18 +78,14 @@ const List<Product> mockProducts = [
       ProductVariant(
         id: 'prod-003-v1',
         name: 'Home Purple',
-        price: 650.0,
-        imagePath: 'assets/images/jersey.jpg',
-        description: 'Home division primary purple jersey.',
-        stock: 15,
+        images: [
+          'assets/images/jersey_front.png',
+          'assets/images/jersey_back.png',
+        ],
       ),
       ProductVariant(
         id: 'prod-003-v2',
         name: 'Away White',
-        price: 650.0,
-        imagePath: 'assets/images/jersey.jpg',
-        description: 'Away division clean white jersey.',
-        stock: 15,
       ),
     ],
   ),
@@ -106,30 +99,9 @@ const List<Product> mockProducts = [
     soldCount: 310,
     stock: 120,
     variants: [
-      ProductVariant(
-        id: 'prod-004-v1',
-        name: 'Chameleon Logo',
-        price: 220.0,
-        imagePath: 'assets/images/pins.jpg',
-        description: 'Die-cast CSSEC Chameleon emblem.',
-        stock: 40,
-      ),
-      ProductVariant(
-        id: 'prod-004-v2',
-        name: 'Monitor Shield',
-        price: 220.0,
-        imagePath: 'assets/images/pins.jpg',
-        description: 'Computer Studies monitor shield pin.',
-        stock: 40,
-      ),
-      ProductVariant(
-        id: 'prod-004-v3',
-        name: 'Binary CS',
-        price: 220.0,
-        imagePath: 'assets/images/pins.jpg',
-        description: 'Binary code CS badge pin.',
-        stock: 40,
-      ),
+      ProductVariant(id: 'prod-004-v1', name: 'Chameleon Logo'),
+      ProductVariant(id: 'prod-004-v2', name: 'Monitor Shield'),
+      ProductVariant(id: 'prod-004-v3', name: 'Binary CS'),
     ],
   ),
   Product(
@@ -142,30 +114,9 @@ const List<Product> mockProducts = [
     soldCount: 540,
     stock: 200,
     variants: [
-      ProductVariant(
-        id: 'prod-005-v1',
-        name: 'Holo Chameleon',
-        price: 120.0,
-        imagePath: 'assets/images/stickers.jpg',
-        description: 'Holographic metallic chameleon vinyl sticker.',
-        stock: 80,
-      ),
-      ProductVariant(
-        id: 'prod-005-v2',
-        name: 'Python Code',
-        price: 120.0,
-        imagePath: 'assets/images/stickers.jpg',
-        description: 'Code snippet developer sticker.',
-        stock: 60,
-      ),
-      ProductVariant(
-        id: 'prod-005-v3',
-        name: 'Ateneo CS Crest',
-        price: 120.0,
-        imagePath: 'assets/images/stickers.jpg',
-        description: 'Official department crest sticker.',
-        stock: 60,
-      ),
+      ProductVariant(id: 'prod-005-v1', name: 'Holo Chameleon'),
+      ProductVariant(id: 'prod-005-v2', name: 'Python Code'),
+      ProductVariant(id: 'prod-005-v3', name: 'Ateneo Crest'),
     ],
   ),
   Product(
@@ -178,22 +129,8 @@ const List<Product> mockProducts = [
     soldCount: 265,
     stock: 80,
     variants: [
-      ProductVariant(
-        id: 'prod-006-v1',
-        name: 'Purple Acrylic',
-        price: 150.0,
-        imagePath: 'assets/images/keychain.jpg',
-        description: 'Translucent purple acrylic chameleon charm.',
-        stock: 50,
-      ),
-      ProductVariant(
-        id: 'prod-006-v2',
-        name: 'Clear Charm',
-        price: 150.0,
-        imagePath: 'assets/images/keychain.jpg',
-        description: 'Clear transparent laser-cut charm.',
-        stock: 30,
-      ),
+      ProductVariant(id: 'prod-006-v1', name: 'Purple Acrylic'),
+      ProductVariant(id: 'prod-006-v2', name: 'Clear Charm'),
     ],
   ),
 ];
