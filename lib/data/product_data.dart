@@ -64,10 +64,10 @@ const List<Product> mockProducts = [
     id: 'prod-003',
     name: 'Palarong Atenista CS Jersey',
     price: 650.0,
-    imagePath: 'assets/images/jersey_front.png',
+    imagePath: 'assets/images/003-jersey/sleeved_purple_front.png',
     images: [
-      'assets/images/jersey_front.png',
-      'assets/images/jersey_back.png', // Front and back views
+      'assets/images/003-jersey/sleeved_purple_front.png',
+      'assets/images/003-jersey/sleeved_purple_back.png',
     ],
     category: 'Apparel',
     description:
@@ -77,15 +77,19 @@ const List<Product> mockProducts = [
     variants: [
       ProductVariant(
         id: 'prod-003-v1',
-        name: 'Home Purple',
+        name: 'Sleeved Jersey (Purple)',
         images: [
-          'assets/images/jersey_front.png',
-          'assets/images/jersey_back.png',
+          'assets/images/003-jersey/sleeved_purple_front.png',
+          'assets/images/003-jersey/sleeved_purple_back.png',
         ],
       ),
       ProductVariant(
         id: 'prod-003-v2',
-        name: 'Away White',
+        name: 'Sleeved White',
+        images: [
+          'assets/images/003-jersey/sleeved_white_front.png',
+          'assets/images/003-jersey/sleeved_white_back.png',
+        ],
       ),
     ],
   ),
