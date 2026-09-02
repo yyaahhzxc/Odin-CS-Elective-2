@@ -30,9 +30,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final currentVariant = widget.product.variants.isNotEmpty
-        ? widget.product.variants[_selectedVariantIndex]
-        : 'Standard';
+
+    // active variant object (or null fallback if product has no variants)
+    final hasVariants = widget.product.variants.isNotEmpty;
+    final activeVariant =
+        hasVariants ? widget.product.variants[_selectedVariantIndex] : null;
+
+    // active display values: uses variant-specific values if defined, else defaults to base product
+    final displayName = activeVariant != null
+        ? '${widget.product.name} - ${activeVariant.name}'
+        : widget.product.name;
+    final displayPrice = activeVariant?.price != null
+        ? '₱${activeVariant!.price!.toStringAsFixed(0)}'
+        : widget.product.formattedPrice;
+    final displayDescription =
+        activeVariant?.description ?? widget.product.description;
+    final displayStock = activeVariant?.stock ?? widget.product.stock;
 
     // appbar
     return Scaffold(
@@ -84,28 +97,29 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             color: colorScheme.primary,
                           ),
                           const SizedBox(height: 12),
-                          // indicator for the current active variant
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: colorScheme.primary.withAlpha(25),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: colorScheme.primary.withAlpha(80),
+                          // indicator showing the active variant name & sub-id
+                          if (activeVariant != null)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: colorScheme.primary.withAlpha(25),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: colorScheme.primary.withAlpha(80),
+                                ),
+                              ),
+                              child: Text(
+                                '${activeVariant.name} (${activeVariant.id})',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: colorScheme.primary,
+                                  fontSize: 13,
+                                ),
                               ),
                             ),
-                            child: Text(
-                              currentVariant,
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: colorScheme.primary,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ),
                         ],
                       ),
                     ),
@@ -115,76 +129,80 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             ),
 
             // thumbnail pics row under the main picture
-            Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
-                  child: SizedBox(
-                    height: 64,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: widget.product.variants.length,
-                      separatorBuilder: (context, index) => const SizedBox(width: 8),
-                      itemBuilder: (context, index) {
-                        final isSelected = _selectedVariantIndex == index;
-                        final variantName = widget.product.variants[index];
+            if (hasVariants)
+              Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16.0, vertical: 4.0),
+                    child: SizedBox(
+                      height: 64,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: widget.product.variants.length,
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(width: 8),
+                        itemBuilder: (context, index) {
+                          final isSelected = _selectedVariantIndex == index;
+                          final variant = widget.product.variants[index];
 
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _selectedVariantIndex = index;
-                            });
-                          },
-                          child: AspectRatio(
-                            aspectRatio: 1.0, // square thumbnail
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: colorScheme.surfaceContainerHighest.withAlpha(80),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: isSelected
-                                      ? colorScheme.primary
-                                      : colorScheme.outlineVariant,
-                                  width: isSelected ? 2.5 : 1,
-                                ),
-                              ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.image_outlined,
-                                    size: 20,
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _selectedVariantIndex = index;
+                              });
+                            },
+                            child: AspectRatio(
+                              aspectRatio: 1.0, // square thumbnail
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: colorScheme.surfaceContainerHighest
+                                      .withAlpha(80),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
                                     color: isSelected
                                         ? colorScheme.primary
-                                        : colorScheme.onSurfaceVariant,
+                                        : colorScheme.outlineVariant,
+                                    width: isSelected ? 2.5 : 1,
                                   ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    variantName,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 9,
-                                      fontWeight: isSelected
-                                          ? FontWeight.bold
-                                          : FontWeight.normal,
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.image_outlined,
+                                      size: 20,
                                       color: isSelected
                                           ? colorScheme.primary
                                           : colorScheme.onSurfaceVariant,
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      variant.name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: isSelected
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
+                                        color: isSelected
+                                            ? colorScheme.primary
+                                            : colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                        );
-                      },
+                          );
+                        },
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
 
             // product info section
             Padding(
@@ -213,9 +231,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   ),
                   const SizedBox(height: 8),
 
-                  // product title
+                  // product title (shows base name or active variant name)
                   Text(
-                    widget.product.name,
+                    displayName,
                     style: theme.textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                       fontSize: 22,
@@ -228,7 +246,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        widget.product.formattedPrice,
+                        displayPrice,
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -248,7 +266,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           ),
                         ),
                         child: Text(
-                          '${widget.product.stock} in stock',
+                          '$displayStock in stock',
                           style: const TextStyle(
                             color: Colors.green,
                             fontWeight: FontWeight.w600,
@@ -259,61 +277,65 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     ],
                   ),
 
-                  const Divider(height: 28),
-
-                  // variant buttons (color / style selection buttons)
-                  Text(
-                    'Variation',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
+                  // variant buttons section
+                  if (hasVariants) ...[
+                    const Divider(height: 28),
+                    Text(
+                      'Variation',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: List.generate(widget.product.variants.length, (index) {
-                      final isSelected = _selectedVariantIndex == index;
-                      final variantName = widget.product.variants[index];
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: List.generate(
+                        widget.product.variants.length,
+                        (index) {
+                          final isSelected = _selectedVariantIndex == index;
+                          final variant = widget.product.variants[index];
 
-                      return OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          backgroundColor: isSelected
-                              ? colorScheme.primary.withAlpha(25)
-                              : null,
-                          side: BorderSide(
-                            color: isSelected
-                                ? colorScheme.primary
-                                : colorScheme.outlineVariant,
-                            width: isSelected ? 2 : 1,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 10,
-                          ),
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _selectedVariantIndex = index;
-                          });
+                          return OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              backgroundColor: isSelected
+                                  ? colorScheme.primary.withAlpha(25)
+                                  : null,
+                              side: BorderSide(
+                                color: isSelected
+                                    ? colorScheme.primary
+                                    : colorScheme.outlineVariant,
+                                width: isSelected ? 2 : 1,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 10,
+                              ),
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _selectedVariantIndex = index;
+                              });
+                            },
+                            child: Text(
+                              variant.name,
+                              style: TextStyle(
+                                color: isSelected
+                                    ? colorScheme.primary
+                                    : colorScheme.onSurface,
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                          );
                         },
-                        child: Text(
-                          variantName,
-                          style: TextStyle(
-                            color: isSelected
-                                ? colorScheme.primary
-                                : colorScheme.onSurface,
-                            fontWeight: isSelected
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                          ),
-                        ),
-                      );
-                    }),
-                  ),
+                      ),
+                    ),
+                  ],
 
                   const Divider(height: 28),
 
@@ -326,7 +348,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    widget.product.description,
+                    displayDescription,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       height: 1.5,
                     ),
@@ -362,7 +384,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                   : null,
                             ),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 8.0),
                               child: Text(
                                 '$_quantity',
                                 style: const TextStyle(
@@ -373,7 +396,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             ),
                             IconButton(
                               icon: const Icon(Icons.add, size: 18),
-                              onPressed: _quantity < widget.product.stock
+                              onPressed: _quantity < displayStock
                                   ? () {
                                       setState(() {
                                         _quantity++;
@@ -396,10 +419,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       icon: const Icon(Icons.add_shopping_cart_outlined),
                       label: const Text('Add to Cart'),
                       onPressed: () {
+                        final variantNote = activeVariant != null
+                            ? ' (${activeVariant.name} - ${activeVariant.id})'
+                            : '';
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
-                              'Added $_quantity x ${widget.product.name} ($currentVariant) to cart',
+                              'Added $_quantity x ${widget.product.name}$variantNote to cart',
                             ),
                             duration: const Duration(seconds: 2),
                           ),

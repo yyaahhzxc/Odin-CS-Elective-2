@@ -72,26 +72,25 @@ When you type `flutter run` in your terminal, here is the chain reaction:
 ---
 
 ### `lib/models/product.dart`
-- **What it does:** Defines the "Blueprint" for merchandise items.
-- **Fields:**
-  - `id`: Unique identifier (e.g. `'prod-001'`).
-  - `name`: Product name (e.g. `'CS T-Shirt'`).
-  - `price`: Product price as a double (e.g. `350.0`).
-  - `category`: `'Apparel'` or `'Accessories'`.
-  - `description`: Text describing the item.
-  - `soldCount`: Number of sold units.
-  - `stock`: Available stock.
-- **Helper:**
-  - `formattedPrice`: A quick helper that formats `350.0` into `'₱350'`.
+- **What it does:** Defines the "Blueprint" for merchandise items and variants.
+- **Classes:**
+  - **`Product`**: Base product with `id`, `name`, `price`, `imagePath`, `category`, `description`, `soldCount`, `stock`, and a `variants` list.
+  - **`ProductVariant`**: Sub-blueprint for each variant:
+    - `id`: Unique sub-identifier for cart & checkout (e.g. `'prod-001-v1'`).
+    - `name`: Variant display name (e.g. `'Violet'`, `'Black'`).
+    - `price`: Optional custom price for this specific variant.
+    - `imagePath`: Path to the variant's image asset.
+    - `description`: Custom description for this variant.
+    - `stock`: Stock level for this specific variant.
 
 ---
 
 ### `lib/data/product_data.dart`
-- **What it does:** The mock database containing your actual products.
-- **How to edit or add items:**
-  - This is where you edited the names and descriptions!
-  - To add a new product, just add another `Product(...)` item to the `mockProducts` list.
-  - To change a price, change the `price: 350.0` number.
+- **What it does:** The mock database containing your actual products and their variants.
+- **How to edit or add variants:**
+  - Inside any `Product`, find the `variants: [...]` list.
+  - Each variant is a `ProductVariant(id: ..., name: ..., price: ..., imagePath: ..., description: ..., stock: ...)`.
+  - You can change each variant's individual sub-id, price, description, and image path directly!
 
 ---
 
