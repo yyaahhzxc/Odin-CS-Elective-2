@@ -99,47 +99,82 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           width: 1,
                         ),
                       ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      clipBehavior: Clip.antiAlias,
+                      child: Stack(
+                        fit: StackFit.expand,
                         children: [
-                          Icon(
-                            Icons.shopping_bag_outlined,
-                            size: 80,
-                            color: colorScheme.primary,
-                          ),
-                          const SizedBox(height: 12),
-                          // indicator showing the active variant name & sub-id
-                          if (activeVariant != null)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: colorScheme.primary.withAlpha(25),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: colorScheme.primary.withAlpha(80),
-                                ),
-                              ),
-                              child: Text(
-                                '${activeVariant.name} (${activeVariant.id})',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
+                          // Actual product/variant image (falls back to icon if asset not yet available)
+                          Image.asset(
+                            activeImages.isNotEmpty
+                                ? activeImages[currentImageIndex]
+                                : widget.product.imagePath,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Center(
+                                child: Icon(
+                                  Icons.shopping_bag_outlined,
+                                  size: 80,
                                   color: colorScheme.primary,
-                                  fontSize: 13,
+                                ),
+                              );
+                            },
+                          ),
+
+                          // Active variant badge
+                          if (activeVariant != null)
+                            Positioned(
+                              bottom: 12,
+                              left: 12,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: colorScheme.surface.withAlpha(220),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: colorScheme.outlineVariant,
+                                  ),
+                                ),
+                                child: Text(
+                                  '${activeVariant.name} (${activeVariant.id})',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: colorScheme.primary,
+                                    fontSize: 12,
+                                  ),
                                 ),
                               ),
                             ),
-                          if (activeImages.length > 1) ...[
-                            const SizedBox(height: 6),
-                            Text(
-                              'View ${currentImageIndex + 1} of ${activeImages.length}',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                fontSize: 11,
+
+                          // Angle index indicator if multiple images exist
+                          if (activeImages.length > 1)
+                            Positioned(
+                              top: 12,
+                              right: 12,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: colorScheme.surface.withAlpha(220),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: colorScheme.outlineVariant,
+                                  ),
+                                ),
+                                child: Text(
+                                  '${currentImageIndex + 1}/${activeImages.length}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: colorScheme.onSurface,
+                                  ),
+                                ),
                               ),
                             ),
-                          ],
                         ],
                       ),
                     ),
@@ -189,28 +224,50 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                         width: isSelected ? 2.5 : 1,
                                       ),
                                     ),
-                                    child: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
+                                    clipBehavior: Clip.antiAlias,
+                                    child: Stack(
+                                      fit: StackFit.expand,
                                       children: [
-                                        Icon(
-                                          Icons.photo_outlined,
-                                          size: 18,
-                                          color: isSelected
-                                              ? colorScheme.primary
-                                              : colorScheme.onSurfaceVariant,
+                                        Image.asset(
+                                          activeImages[index],
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (context, error, stackTrace) {
+                                            return Center(
+                                              child: Icon(
+                                                Icons.photo_outlined,
+                                                size: 18,
+                                                color: isSelected
+                                                    ? colorScheme.primary
+                                                    : colorScheme
+                                                        .onSurfaceVariant,
+                                              ),
+                                            );
+                                          },
                                         ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          label,
-                                          style: TextStyle(
-                                            fontSize: 9,
-                                            fontWeight: isSelected
-                                                ? FontWeight.bold
-                                                : FontWeight.normal,
-                                            color: isSelected
-                                                ? colorScheme.primary
-                                                : colorScheme.onSurfaceVariant,
+                                        Positioned(
+                                          bottom: 0,
+                                          left: 0,
+                                          right: 0,
+                                          child: Container(
+                                            color: colorScheme.surface
+                                                .withAlpha(210),
+                                            padding: const EdgeInsets.symmetric(
+                                                vertical: 2),
+                                            child: Text(
+                                              label,
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                fontSize: 9,
+                                                fontWeight: isSelected
+                                                    ? FontWeight.bold
+                                                    : FontWeight.normal,
+                                                color: isSelected
+                                                    ? colorScheme.primary
+                                                    : colorScheme
+                                                        .onSurfaceVariant,
+                                              ),
+                                            ),
                                           ),
                                         ),
                                       ],
@@ -231,6 +288,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                       _selectedVariantIndex == index;
                                   final variant =
                                       widget.product.variants[index];
+                                  final variantImage = variant.allImages.isNotEmpty
+                                      ? variant.allImages.first
+                                      : widget.product.imagePath;
 
                                   return GestureDetector(
                                     onTap: () {
@@ -255,32 +315,54 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                             width: isSelected ? 2.5 : 1,
                                           ),
                                         ),
-                                        child: Column(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
+                                        clipBehavior: Clip.antiAlias,
+                                        child: Stack(
+                                          fit: StackFit.expand,
                                           children: [
-                                            Icon(
-                                              Icons.image_outlined,
-                                              size: 20,
-                                              color: isSelected
-                                                  ? colorScheme.primary
-                                                  : colorScheme
-                                                      .onSurfaceVariant,
+                                            Image.asset(
+                                              variantImage,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (context, error,
+                                                  stackTrace) {
+                                                return Center(
+                                                  child: Icon(
+                                                    Icons.image_outlined,
+                                                    size: 20,
+                                                    color: isSelected
+                                                        ? colorScheme.primary
+                                                        : colorScheme
+                                                            .onSurfaceVariant,
+                                                  ),
+                                                );
+                                              },
                                             ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              variant.name,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(
-                                                fontSize: 9,
-                                                fontWeight: isSelected
-                                                    ? FontWeight.bold
-                                                    : FontWeight.normal,
-                                                color: isSelected
-                                                    ? colorScheme.primary
-                                                    : colorScheme
-                                                        .onSurfaceVariant,
+                                            Positioned(
+                                              bottom: 0,
+                                              left: 0,
+                                              right: 0,
+                                              child: Container(
+                                                color: colorScheme.surface
+                                                    .withAlpha(210),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        vertical: 2),
+                                                child: Text(
+                                                  variant.name,
+                                                  textAlign: TextAlign.center,
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: TextStyle(
+                                                    fontSize: 9,
+                                                    fontWeight: isSelected
+                                                        ? FontWeight.bold
+                                                        : FontWeight.normal,
+                                                    color: isSelected
+                                                        ? colorScheme.primary
+                                                        : colorScheme
+                                                            .onSurfaceVariant,
+                                                  ),
+                                                ),
                                               ),
                                             ),
                                           ],

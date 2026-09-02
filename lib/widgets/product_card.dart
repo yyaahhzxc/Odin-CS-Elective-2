@@ -31,7 +31,7 @@ class ProductCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Product image placeholder
+              // Product image
               Expanded(
                 child: Container(
                   width: double.infinity,
@@ -39,12 +39,19 @@ class ProductCard extends StatelessWidget {
                     color: colorScheme.primaryContainer.withAlpha(80),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Center(
-                    child: Icon(
-                      Icons.shopping_bag_outlined,
-                      size: 42,
-                      color: colorScheme.primary,
-                    ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Image.asset(
+                    product.imagePath,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Center(
+                        child: Icon(
+                          Icons.shopping_bag_outlined,
+                          size: 42,
+                          color: colorScheme.primary,
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),
