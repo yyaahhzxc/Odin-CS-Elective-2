@@ -38,7 +38,7 @@ const List<Product> mockProducts = [
   Product(
     id: 'prod-003',
     name: 'Palarong Atenista CS Jersey',
-    price: 650.0,
+    price: 350,
     imagePath: 'assets/images/003-jersey/sleeved_purple_front.png',
     images: [
       'assets/images/003-jersey/sleeved_purple_front.png',
@@ -61,6 +61,7 @@ const List<Product> mockProducts = [
       ProductVariant(
         id: 'prod-003-v2',
         name: 'Sleeved White',
+        price: 999999,
         images: [
           'assets/images/003-jersey/sleeved_white_front.png',
           'assets/images/003-jersey/sleeved_white_back.png',

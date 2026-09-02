@@ -1,25 +1,27 @@
 # CSShop - CSSEC Merch Store
 
 ## Project Overview
-CSShop is a responsive e-commerce mobile catalog application developed for the Computer Studies Student Executive Council (CSSEC) at Ateneo de Davao University, providing a clean and accessible browsing experience for student council merchandise.
+CSShop is a responsive e-commerce mobile and web catalog application developed for the Computer Studies Student Executive Council (CSSEC), providing an accessible, themed browsing experience for student council merchandise.
 
 ## Tasked Instructions / Requirements
-- [x] **Milestone Deliverable (First Half):** Complete design theme, home screen catalog, and Navigation 2.0 routing to an empty details page.
-- [x] **Design Theming (Material 3):** Centralized `ThemeData` applied at the `MaterialApp` level using the official Ateneo CSSEC violet brand palette (`#6D28D9` / `#8B5CF6`), with zero hardcoded inline colors.
+- [x] **Milestone Deliverable (First Half):** Complete design theme, home screen catalog, and Navigation 2.0 routing to a product details page.
+- [x] **Design Theming (Material 3):** Centralized `ThemeData` applied at the `MaterialApp` level using the official CSSEC violet brand palette (`#6D28D9` / `#8B5CF6`), with zero hardcoded inline colors.
 - [x] **Light/Dark Mode Dynamic Toggle:** Fully functional theme mode switcher accessible via the `AppBar` on the Home screen that immediately updates the entire application.
-- [x] **Simplified Store Header:** Clean typography displaying the CSSEC Merch Store title and council description.
-- [x] **Responsive Product Grid:** Dynamic product catalog utilizing `LayoutBuilder` and `GridView.builder` to adaptively render a 2-column grid on mobile displays (`< 600px`) and 3+ columns on tablet/desktop displays (`>= 600px`).
-- [x] **Navigation 2.0 (`go_router`):** Declarative route management configuring root (`/`) and dynamic parameterized product routes (`/product/:id`) with natural mobile slide transitions.
-- [x] **Product Details Page:** A dedicated destination page with an `AppBar`, product image placeholder, item description, quantity selector, and Add to Cart button.
-- [x] **Stateless vs. Stateful Architecture:** Strict separation where immutable UI cards remain `StatelessWidget` and interactive controls (theme switching, category filters) utilize `StatefulWidget`.
-- [x] **Presentation-Ready Codebase:** Surgical, clear comments explaining widget hierarchy, state choices, and layout builders for oral exam defense.
+- [x] **Responsive Product Grid:** Dynamic product catalog utilizing `LayoutBuilder` and `GridView.builder` to adaptively render a 2-column grid on mobile displays (`< 600px`), 3 columns on tablets (`600px - 900px`), and 4 columns on desktop displays (`>= 900px`).
+- [x] **Zero Overflow Guarantee:** Dynamic `childAspectRatio` mathematically derived from actual column widths (`cardWidth / (cardWidth + 96)`), preventing RenderFlex overflow across all device viewports.
+- [x] **Navigation 2.0 (`go_router`):** Declarative route management configuring root (`/`) and parameterized product routes (`/product/:id`) with natural mobile slide transitions.
+- [x] **Interactive Product Details Screen:** Supports product variations (color, sub-id, custom pricing), multiple image angles (e.g., front and back), quantity adjustment, and Add to Cart confirmation.
+- [x] **Adaptive Tablet & Desktop Details Layout:** Shopee-inspired two-column side-by-side layout for displays with width `>= 700px`, transitioning gracefully to a single-column layout on mobile.
+- [x] **Stateless vs. Stateful Architecture:** Strict separation where static UI displays remain `StatelessWidget` and interactive controls (theme switching, category filters, variant selection, quantity counter) utilize `StatefulWidget` with clear technical justifications.
+- [x] **Presentation-Ready Codebase:** Clear, academically sound comments and documentation prepared for code presentation and oral examination defense.
 
 ## Implementation & Solutions
 - **Theming Architecture (`lib/theme/app_theme.dart`):** Implements static getters `AppTheme.lightTheme` and `AppTheme.darkTheme` with tailored `ColorScheme.fromSeed`, custom `CardThemeData`, `AppBarThemeData`, and `TextTheme`. Color references strictly flow from `Theme.of(context)`.
-- **State Management & Lifecycle (`lib/main.dart` & `lib/screens/home_screen.dart`):** Root `CSShopApp` manages application-wide `ThemeMode` transitions via `setState()`, passed into `MaterialApp.router`. `HomeScreen` manages interactive category filter state (`All`, `Apparel`, `Accessories`) to filter mock products dynamically.
-- **Responsive Layout (`lib/screens/home_screen.dart`):** Employs `LayoutBuilder` to measure screen constraints dynamically, selecting 2 columns on phone screens, 3 columns on tablet screens, and 4 columns on desktop displays, maintaining a stable child aspect ratio.
-- **Routing & Slide Transitions (`lib/router/app_router.dart`):** Configures `GoRouter` declarative routes using `CustomTransitionPage` and `SlideTransition` for a smooth, natural right-to-left push animation. On selecting a `ProductCard`, `context.go('/product/${product.id}')` navigates to `ProductDetailScreen`.
-- **Component Modularity (`lib/widgets/product_card.dart` & `lib/screens/product_detail_screen.dart`):** Reusable `ProductCard` with placeholder icon container, and a clean `ProductDetailScreen` laying out the product header, price, description, quantity selector, and action buttons.
+- **State Management & Lifecycle (`lib/main.dart`, `lib/screens/home_screen.dart`, `lib/screens/product_detail_screen.dart`):** Root `CSShopApp` manages application-wide `ThemeMode` transitions via `setState()`. `HomeScreen` manages interactive category filtering (`All`, `Apparel`, `Accessories`). `ProductDetailScreen` is a `StatefulWidget` managing active variant indexing (`_selectedVariantIndex`), multi-angle image indexing (`_selectedImageIndex`), and quantity counters.
+- **Data Modeling & Inheritance (`lib/models/product.dart` & `lib/data/product_data.dart`):** Features an immutable `Product` class with a nested `ProductVariant` model. Each variant carries a unique sub-id for cart and checkout preparation, while optional fields (`price`, `description`, `stock`) automatically inherit from base product properties if omitted.
+- **Responsive Layouts (`lib/screens/home_screen.dart` & `lib/screens/product_detail_screen.dart`):** `HomeScreen` uses `LayoutBuilder` with dynamic aspect ratio calculation to prevent overflow on varying screen widths. `ProductDetailScreen` applies a two-column desktop/tablet layout (`width >= 700px`) separating the square image gallery on the left and product metadata/actions on the right.
+- **Routing & Transitions (`lib/router/app_router.dart`):** Configures `GoRouter` declarative routes using `CustomTransitionPage` and `SlideTransition` for a smooth right-to-left push animation.
+- **Asset Fallback Protection (`lib/widgets/product_card.dart` & `lib/screens/product_detail_screen.dart`):** Checks image path presence before rendering `Image.asset()`, falling back to clean placeholder icons with `errorBuilder` to eliminate 404 network warnings for items pending asset integration.
 
 ## Setup & Dependencies
 ### Prerequisites
