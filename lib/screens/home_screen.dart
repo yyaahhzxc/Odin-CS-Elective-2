@@ -171,6 +171,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     crossAxisCount = 4;
                   }
 
+                  // Dynamically calculate aspect ratio so the card always has enough
+                  // height for the 1:1 square image PLUS the text details on any screen size
+                  final totalSpacing = (crossAxisCount - 1) * 12;
+                  final cardWidth = (constraints.maxWidth - totalSpacing) / crossAxisCount;
+                  final cardHeight = cardWidth + 96; // square image + details + padding
+                  final childAspectRatio = cardWidth / cardHeight;
+
                   // GridView.builder renders the list of product cards in a responsive grid
                   return GridView.builder(
                     shrinkWrap: true, // lets the grid take only the height it needs inside SingleChildScrollView
@@ -180,9 +187,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       crossAxisCount: crossAxisCount, // number of columns (calculated above from screen width)
                       crossAxisSpacing: 12, // horizontal gap between cards
                       mainAxisSpacing: 12, // vertical gap between cards
-                      childAspectRatio: crossAxisCount == 2
-                          ? 0.65
-                          : (crossAxisCount == 3 ? 0.70 : 0.75), // prevents overflow on mobile with square images
+                      childAspectRatio: childAspectRatio, // dynamic ratio guarantees zero overflow on any device
                     ),
                     itemBuilder: (context, index) {
                       // builds each individual product card widget
