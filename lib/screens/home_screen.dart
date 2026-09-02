@@ -180,7 +180,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       crossAxisCount: crossAxisCount, // number of columns (calculated above from screen width)
                       crossAxisSpacing: 12, // horizontal gap between cards
                       mainAxisSpacing: 12, // vertical gap between cards
-                      childAspectRatio: 0.82, // width-to-height ratio of each card
+                      childAspectRatio: crossAxisCount == 2
+                          ? 0.68
+                          : (crossAxisCount == 3 ? 0.72 : 0.76), // width-to-height ratio tailored for 1:1 square image + product details
                     ),
                     itemBuilder: (context, index) {
                       // builds each individual product card widget
