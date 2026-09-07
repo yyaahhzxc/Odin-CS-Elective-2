@@ -10,16 +10,21 @@ All your custom application code lives inside the **`lib/`** directory:
 
 ```text
 lib/
-├── main.dart                      # The starting point (Entry point & Theme state)
+├── main.dart                      # The starting point (Entry point, CartScope, Theme state)
 ├── data/
 │   └── product_data.dart          # Catalog data (mock products, variants, images)
 ├── models/
+│   ├── cart_item.dart             # Cart line item model (dynamic pricing & subtotals)
 │   └── product.dart               # Data models for Product and ProductVariant
 ├── router/
-│   └── app_router.dart            # Navigation 2.0 (GoRouter routes & slide transitions)
+│   └── app_router.dart            # Navigation 2.0 (GoRouter routes, slide transitions, guards)
 ├── screens/
-│   ├── home_screen.dart           # Home page: App bar, filter chips, and responsive grid
-│   └── product_detail_screen.dart # Details page: Responsive Shopee layout, gallery, variants
+│   ├── cart_screen.dart           # Shopping Cart: Stateful quantity controls & live running total
+│   ├── checkout_confirmation_screen.dart # Confirmation: Final itemized receipt summary
+│   ├── home_screen.dart           # Home page: App bar, filter chips, cart badge, responsive grid
+│   └── product_detail_screen.dart # Details page: Responsive Shopee layout, gallery, Add to Cart
+├── state/
+│   └── cart_state.dart            # Native CartManager (ChangeNotifier) & CartScope (InheritedNotifier)
 ├── theme/
 │   └── app_theme.dart             # Centralized Material 3 colors, light/dark themes
 └── widgets/
@@ -27,8 +32,8 @@ lib/
 ```
 
 Other important root files:
-- **`pubspec.yaml`**: Package dependencies (`go_router`) and registered asset directories (`assets/images/`, `assets/images/003-jersey/`).
-- **`test/widget_test.dart`**: Automated widget smoke tests verifying clean app rendering.
+- **`pubspec.yaml`**: Package dependencies (`go_router`) and registered asset directories.
+- **`test/widget_test.dart`**: Automated end-to-end smoke and user flow widget tests.
 - **`README.md`**: Academic project summary for your GitHub repository.
 
 ---
@@ -38,10 +43,13 @@ Other important root files:
 When you run the project:
 
 1. **`main.dart`** executes first. Its `main()` function calls `runApp(const CSShopApp())`.
-2. **`CSShopApp`** is a `StatefulWidget` managing the current theme (`ThemeMode.light` or `ThemeMode.dark`).
-3. It passes this theme into **`MaterialApp.router`**, using the designs we defined in **`app_theme.dart`**.
-4. **`app_router.dart`** determines which screen to open first. The root route `/` displays **`home_screen.dart`**.
-5. When a user taps any product card, `context.go('/product/:id')` tells `GoRouter` to transition to **`product_detail_screen.dart`**.
+2. **`CSShopApp`** is a `StatefulWidget` managing the current theme (`ThemeMode.light` or `ThemeMode.dark`) and instantiating the `CartManager`.
+3. It wraps the entire application with **`CartScope`** (`InheritedNotifier<CartManager>`), allowing any screen or widget to listen to and update cart state reactively.
+4. **`app_router.dart`** manages declarative routes via `GoRouter`:
+   - Root `/`: **`home_screen.dart`** (product grid with category filters and cart icon badge).
+   - Product Details `/product/:id`: **`product_detail_screen.dart`** (interactive variants, quantity counter, Add to Cart button).
+   - Cart `/cart`: **`cart_screen.dart`** (itemized line items, stateful `+` / `-` quantity steppers, live running total).
+   - Checkout Confirmation `/checkout`: **`checkout_confirmation_screen.dart`** (guarded route showing order receipt summary).
 
 ---
 
@@ -52,77 +60,71 @@ When you run the project:
 ### `lib/main.dart`
 - **What it does:** The root of the entire Flutter application.
 - **Why it is a `StatefulWidget`:** It holds the `_themeMode` state variable. When the user taps the theme toggle button in the AppBar, it calls `setState()`, switching between Light and Dark mode across the whole app.
-- **Key Widget to Know:**
+- **Key Concepts:**
+  - `CartScope`: Wraps `MaterialApp.router` so that cart updates automatically rebuild any listening UI components.
   - `MaterialApp.router`: Connects the app to `GoRouter` for Navigation 2.0.
+
+---
+
+### `lib/state/cart_state.dart`
+- **What it does:** Centralized reactive state management for the shopping cart.
+- **Why it matters for the exam:** It demonstrates how to achieve reactive state management using **pure, built-in Flutter SDK classes** (`ChangeNotifier` and `InheritedNotifier`) with zero external package dependencies.
+- **Key Classes:**
+  - **`CartManager`**: Extends `ChangeNotifier`. Manages `_items` and provides methods like `addItem()`, `incrementQuantity()`, `decrementQuantity()`, `removeItem()`, and `clearCart()`.
+  - **`CartScope`**: An `InheritedNotifier<CartManager>` that makes `CartScope.of(context)` accessible anywhere in the widget tree.
+
+---
+
+### `lib/models/cart_item.dart`
+- **What it does:** Encapsulates an item in the cart.
+- **Properties:**
+  - `id`: Composite identifier (`${product.id}_${variant.id}`).
+  - `product`: Base product reference.
+  - `variant`: Selected variant (if any).
+  - `quantity`: Number of units.
+  - `unitPrice`, `subtotal`, `displayName`, `imagePath`: Computed properties ensuring accurate pricing and display formatting.
+
+---
+
+### `lib/screens/cart_screen.dart`
+- **What it does:** The shopping cart page.
+- **Why it is a `StatefulWidget`:** It directly handles user interactions—incrementing/decrementing item quantities and removing items—triggering live rebuilds of running totals.
+- **Key Features:**
+  - **Live Running Total:** Displays subtotal per item and overall order total that immediately recalculates when `+` or `-` is tapped.
+  - **Responsive Layout:** On mobile (`< 700px`), displays a scrollable item list with a sticky bottom checkout bar. On tablet/desktop (`>= 700px`), presents a side-by-side layout with a sticky order summary card.
+  - **Empty State:** Shows a clean empty cart notice with a quick navigation button back to the catalog.
+
+---
+
+### `lib/screens/checkout_confirmation_screen.dart`
+- **What it does:** The final confirmation screen after checkout.
+- **Why it is protected:** A Navigation 2.0 redirect guard in `app_router.dart` ensures this screen is **reachable only when at least one item is in the cart**, satisfying the exam rubric.
+- **Key Features:**
+  - Captures a snapshot of the purchased items, per-item subtotals, and overall total.
+  - Clears the active cart lifecycle safely.
+  - Displays a clean, itemized receipt card (`StatelessWidget`) with Order ID, pickup location, and total paid.
+  - Includes a "Continue Shopping" button returning to `/`.
 
 ---
 
 ### `lib/theme/app_theme.dart`
 - **What it does:** Centralizes all colors, fonts, card styles, and button styles.
-- **Why it matters for the exam:** The rubric requires: *"Define a single ThemeData applied at the MaterialApp level — no hardcoded colors scattered through individual widgets."* This file satisfies that requirement completely.
+- **Why it matters for the exam:** The rubric requires: *"Define a single ThemeData applied at the MaterialApp level — no hardcoded colors scattered through individual widgets."*
 - **Key Concepts:**
-  - `primaryViolet`: The main CSSEC purple brand color (`0xFF6D28D9`).
-  - `lightTheme` and `darkTheme`: Generated using `ColorScheme.fromSeed()` with Material 3 design standards.
-
----
-
-### `lib/models/product.dart`
-- **What it does:** Defines the blueprints for merchandise items and variants.
-- **Classes:**
-  - **`Product`**: Base product with `id`, `name`, `price`, `imagePath`, `category`, `description`, `soldCount`, `stock`, and `variants`.
-  - **`ProductVariant`**: Sub-blueprint for specific variations (e.g. Sleeved Purple vs. Sleeved White):
-    - `id`: Unique sub-identifier ready for cart and checkout in part 2 (e.g. `'prod-003-v1'`).
-    - `name`: Display title of the variant.
-    - `price`: Optional custom price (automatically inherits base product price if omitted).
-    - `images`: List of image paths (e.g., front and back photos).
-    - `description` & `stock`: Optional variant-specific overrides.
-
----
-
-### `lib/data/product_data.dart`
-- **What it does:** The catalog database containing your items.
-- **How it works:**
-  - If a product does not have real images yet, its image fields are left empty, and the app cleanly renders the placeholder icon with zero 404 network warnings.
-  - For products with multiple photos (like the Palarong Atenista CS Jersey), each variant lists its front and back images under `images: [...]`.
+  - `primaryViolet`: The official CSSEC purple brand color (`0xFF6D28D9`).
+  - `lightTheme` and `darkTheme`: Generated using `ColorScheme.fromSeed()` adhering to Material 3 design standards.
 
 ---
 
 ### `lib/router/app_router.dart`
 - **What it does:** Configures **Navigation 2.0** using `GoRouter`.
 - **Routes Defined:**
-  - `'/'`: Home screen.
-  - `'/product/:id'`: Details screen for the clicked product.
+  - `'/'`: Home screen (Product Catalog).
+  - `'/product/:id'`: Details screen with parameter extraction.
+  - `'/cart'`: Shopping cart screen.
+  - `'/checkout'`: Guarded checkout confirmation screen.
 - **Transitions:**
   - Uses `CustomTransitionPage` and `SlideTransition` to give a natural, native horizontal push animation.
-
----
-
-### `lib/screens/home_screen.dart`
-- **What it does:** The main browsing page with category filters and the responsive product grid.
-- **Why it is a `StatefulWidget`:** It tracks which category chip the user selected (`_selectedCategory`) and calls `setState()` to filter the catalog.
-- **Responsive Grid Logic:**
-  - Uses `LayoutBuilder` to inspect `constraints.maxWidth`:
-    - Phone (`< 600px`) $\rightarrow$ **2 columns**.
-    - Tablet (`600px - 900px`) $\rightarrow$ **3 columns**.
-    - Desktop (`>= 900px`) $\rightarrow$ **4 columns**.
-  - **Dynamic Aspect Ratio:** Computes `childAspectRatio = cardWidth / (cardWidth + 96)` dynamically, ensuring the 1:1 square image and product details never overflow on any mobile or tablet screen (such as iPad Pro or iPhone XR).
-
----
-
-### `lib/widgets/product_card.dart`
-- **What it does:** Reusable card widget for a single product item.
-- **Why it is a `StatelessWidget`:** The card only displays the data passed into it and does not need internal state changes.
-- **Square Image Guarantee:** Wraps the image area in `AspectRatio(aspectRatio: 1.0)`. If a real image asset is present, it displays it; otherwise, it renders a clean shopping bag icon without throwing network errors.
-
----
-
-### `lib/screens/product_detail_screen.dart`
-- **What it does:** The product details page.
-- **Why it is a `StatefulWidget`:** Manages user interaction: switching variants (`_selectedVariantIndex`), switching photo angles (`_selectedImageIndex`), and adjusting quantity (`_quantity`).
-- **Responsive Layout (`LayoutBuilder`):**
-  - **Tablet / Desktop ($\ge 700\text{px}$):** Implements a **Shopee-style two-column layout** where the square highlight image and thumbnail gallery are on the left, and product title, rating, price, variations, and Add to Cart button are on the right.
-  - **Mobile ($< 700\text{px}$):** Renders a clean, single-column vertical layout.
-- **Multi-Angle Gallery:** Under the main square image, a thumbnail strip lets users tap between `[Front]` and `[Back]` views.
 
 ---
 
@@ -132,54 +134,41 @@ Direct, clear answers to common questions your instructor may ask based on the g
 
 ### Q1: "Why are some widgets StatefulWidget while others are StatelessWidget?"
 > **Answer:**
-> *"Anything that updates based on user interaction is a `StatefulWidget`. `CSShopApp` is stateful to toggle the app-wide theme. `HomeScreen` is stateful to manage category filter selection. `ProductDetailScreen` is stateful to manage variant switching, image angle selection, and quantity counts. In contrast, `ProductCard` is a `StatelessWidget` because it only receives static product data and displays it without needing internal state."*
+> *"Anything that updates based on user interaction is a `StatefulWidget`. `CSShopApp` is stateful to toggle the app-wide theme. `HomeScreen` is stateful to manage category filter selection. `ProductDetailScreen` is stateful to manage variant switching, photo angle selection, and quantity counter. `CartScreen` is stateful to handle interactive quantity modification and item removal. In contrast, `ProductCard` and `_OrderReceiptCard` are `StatelessWidget`s because they only display immutable data passed down to them without internal state mutations."*
 
-### Q2: "How did you implement the Light and Dark mode toggle?"
+### Q2: "How did you manage the Shopping Cart state without third-party packages?"
 > **Answer:**
-> *"In `lib/main.dart`, the root widget `CSShopApp` holds a `ThemeMode` state variable. We pass a callback to the AppBar in `HomeScreen`. Tapping the theme icon calls `setState()`, switching between `ThemeMode.light` and `ThemeMode.dark`, which immediately updates the `MaterialApp.router` using our centralized `AppTheme` definitions."*
+> *"We implemented a `CartManager` class extending Flutter's native `ChangeNotifier`, providing atomic methods for adding, incrementing, decrementing, and clearing items. We then wrapped the root application in a custom `CartScope` extending `InheritedNotifier<CartManager>`. This allows any widget to access cart state via `CartScope.of(context)` and automatically re-render when the cart changes, adhering strictly to course package policies."*
 
-### Q3: "Did you hardcode any colors in your widgets?"
+### Q3: "How does the running total update live in the Cart?"
 > **Answer:**
-> *"No. All colors are centralized in `lib/theme/app_theme.dart` using Material 3 `ColorScheme.fromSeed` with our CSSEC violet brand seed color. Across all widgets, we strictly reference colors using `Theme.of(context).colorScheme`."*
+> *"Whenever the user taps the `+` or `-` buttons on a cart item, `CartManager.incrementQuantity()` or `decrementQuantity()` mutates the quantity and invokes `notifyListeners()`. Because `CartScreen` depends on `CartScope`, the widget rebuilds immediately, dynamically computing `totalAmount = sum(unitPrice * quantity)` in real time."*
 
-### Q4: "How does your app adapt between mobile and tablet screens?"
+### Q4: "How did you ensure the Checkout Confirmation screen is reachable only when the cart is not empty?"
 > **Answer:**
-> *"On the home screen, `HomeScreen` uses a `LayoutBuilder` to calculate column counts: 2 columns on phones (<600px), 3 columns on tablets (600px–900px), and 4 columns on desktops (>=900px). On the product details page, `ProductDetailScreen` detects screen width >= 700px to switch to a side-by-side 2-column layout (gallery on the left, product details on the right), and collapses to a single vertical column on mobile."*
+> *"We enforced a route guard inside our declarative `GoRouter` configuration in `lib/router/app_router.dart`. The `/checkout` route definition specifies a `redirect` handler that checks `if (cartManager.isEmpty) return '/cart';`. If a user attempts to navigate directly to `/checkout` with zero items, GoRouter instantly redirects them back to the cart."*
 
 ### Q5: "How did you prevent card bottom overflow across different screen sizes?"
 > **Answer:**
 > *"Because card images have a 1:1 square aspect ratio that scales with column width, fixing a single childAspectRatio causes overflows on wider screens like the iPad Pro. We solved this by dynamically calculating `childAspectRatio = cardWidth / (cardWidth + 96)` inside `LayoutBuilder`, mathematically guaranteeing that the card height always provides enough room for the image plus details on any device."*
 
-### Q6: "How does Navigation 2.0 work in this project?"
+### Q6: "How does your app adapt between mobile and tablet screens?"
 > **Answer:**
-> *"We use the `go_router` package declared in `lib/router/app_router.dart`. We configured declarative routes for `/` (Home) and `/product/:id` (Details). Tapping a product card calls `context.go('/product/${product.id}')` which pushes the route with a custom `SlideTransition`."*
+> *"On the home screen, `HomeScreen` uses `LayoutBuilder` to calculate column counts: 2 columns on phones (<600px), 3 columns on tablets (600px–900px), and 4 columns on desktops (>=900px). On the product details page, width >= 700px switches to a side-by-side 2-column layout (gallery on the left, product details on the right). On the shopping cart screen, width >= 700px displays items on the left and a sticky order summary on the right, while mobile uses a single-column list with a bottom checkout bar."*
 
 ---
 
-## 5. Quick "How-To" Cheatsheet for Editing
+## 5. Helpful Terminal Commands
 
-| What do you want to change? | Where to go | What to look for |
-| :--- | :--- | :--- |
-| **Change product names, prices, or descriptions** | `lib/data/product_data.dart` | Inside `mockProducts` list |
-| **Add a new product image** | `assets/images/` and `product_data.dart` | Add image path to `imagePath` or `images` |
-| **Change the purple color theme** | `lib/theme/app_theme.dart` | `static const Color primaryViolet = ...` |
-| **Change store title** | `lib/screens/home_screen.dart` | `Text('CSShop - The CSSEC Merch Store')` |
-| **Change category names** | `lib/screens/home_screen.dart` | `final List<String> _categories = ...` |
-| **Adjust tablet layout breakpoint** | `lib/screens/product_detail_screen.dart` | `constraints.maxWidth >= 700` |
-| **Change the Add to Cart snackbar text** | `lib/screens/product_detail_screen.dart` | Inside `ElevatedButton`'s `onPressed` |
-
----
-
-## 6. Helpful Terminal Commands
-
-- **Hot Reload (while app is running):** Press `r` in the terminal.
-- **Hot Restart:** Press `R` in the terminal.
-- **Quit Running Session:** Press `q` in the terminal.
-- **Run the code analyzer (check for errors):**
+- **Run the code analyzer (check for lint issues):**
   ```bash
   flutter analyze
   ```
-- **Run the automated widget test:**
+- **Run the automated widget test suite:**
   ```bash
   flutter test
+  ```
+- **Launch application locally:**
+  ```bash
+  flutter run
   ```

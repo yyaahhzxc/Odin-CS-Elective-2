@@ -1,6 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../models/product.dart';
+import '../state/cart_state.dart';
+import '../theme/app_theme.dart';
 
 /// Screen displaying details for a selected product.
 ///
@@ -32,10 +35,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   // item quantity
   int _quantity = 1;
 
+  // floating notification banner state
+  bool _showBanner = false;
+  String _bannerMessage = '';
+  Timer? _bannerTimer;
+
+  @override
+  void dispose() {
+    _bannerTimer?.cancel();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final cart = CartScope.of(context);
 
     // active variant object
     final hasVariants = widget.product.variants.isNotEmpty;
@@ -56,7 +71,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         ? '${widget.product.name} - ${activeVariant.name}'
         : widget.product.name;
     final displayPrice = activeVariant?.price != null
-        ? '₱${activeVariant!.price!.toStringAsFixed(0)}'
+        ? '₱${AppTheme.formatPrice(activeVariant!.price!)}'
         : widget.product.formattedPrice;
     final displayDescription =
         activeVariant?.description ?? widget.product.description;
@@ -70,6 +85,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           icon: const Icon(Icons.arrow_back),
           tooltip: 'Back to Menu',
           onPressed: () {
+            _bannerTimer?.cancel();
             if (context.canPop()) {
               context.pop();
             } else {
@@ -77,93 +93,177 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             }
           },
         ),
+        actions: [
+          IconButton(
+            icon: Badge(
+              isLabelVisible: cart.isNotEmpty,
+              label: Text('${cart.totalItemCount}'),
+              child: const Icon(Icons.shopping_cart_outlined),
+            ),
+            tooltip: 'Shopping Cart',
+            onPressed: () {
+              _bannerTimer?.cancel();
+              context.go('/cart');
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
 
-      // body: responsive layout (2-column for tablet/desktop, 1-column for mobile)
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final isTablet = constraints.maxWidth >= 700;
+      // body: responsive layout with top floating confirmation banner
+      body: Stack(
+        children: [
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isTablet = constraints.maxWidth >= 700;
 
-          if (isTablet) {
-            // Tablet / Desktop 2-column layout (Shopee e-commerce style)
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1050),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Left Column: Square Highlight Image + Thumbnail Gallery
-                      SizedBox(
-                        width: 380,
-                        child: _buildImageGallery(
-                          context,
-                          colorScheme,
-                          activeVariant,
-                          activeImages,
-                          currentImageIndex,
-                          hasVariants,
-                        ),
-                      ),
-                      const SizedBox(width: 32),
-
-                      // Right Column: Product Information & Action Buttons
-                      Expanded(
-                        child: _buildProductDetails(
-                          context,
-                          theme,
-                          colorScheme,
-                          activeVariant,
-                          displayName,
-                          displayPrice,
-                          displayDescription,
-                          displayStock,
-                          hasVariants,
-                          isTablet: true,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          } else {
-            // Mobile single-column layout
-            return SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
+              if (isTablet) {
+                // Tablet / Desktop 2-column layout (Shopee e-commerce style)
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Center(
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 420),
-                      child: _buildImageGallery(
-                        context,
-                        colorScheme,
-                        activeVariant,
-                        activeImages,
-                        currentImageIndex,
-                        hasVariants,
+                      constraints: const BoxConstraints(maxWidth: 1050),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Left Column: Square Highlight Image + Thumbnail Gallery
+                          SizedBox(
+                            width: 380,
+                            child: _buildImageGallery(
+                              context,
+                              colorScheme,
+                              activeVariant,
+                              activeImages,
+                              currentImageIndex,
+                              hasVariants,
+                            ),
+                          ),
+                          const SizedBox(width: 32),
+
+                          // Right Column: Product Information & Action Buttons
+                          Expanded(
+                            child: _buildProductDetails(
+                              context,
+                              theme,
+                              colorScheme,
+                              activeVariant,
+                              displayName,
+                              displayPrice,
+                              displayDescription,
+                              displayStock,
+                              hasVariants,
+                              isTablet: true,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                  _buildProductDetails(
-                    context,
-                    theme,
-                    colorScheme,
-                    activeVariant,
-                    displayName,
-                    displayPrice,
-                    displayDescription,
-                    displayStock,
-                    hasVariants,
-                    isTablet: false,
+                );
+              } else {
+                // Mobile single-column layout
+                return SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 420),
+                          child: _buildImageGallery(
+                            context,
+                            colorScheme,
+                            activeVariant,
+                            activeImages,
+                            currentImageIndex,
+                            hasVariants,
+                          ),
+                        ),
+                      ),
+                      _buildProductDetails(
+                        context,
+                        theme,
+                        colorScheme,
+                        activeVariant,
+                        displayName,
+                        displayPrice,
+                        displayDescription,
+                        displayStock,
+                        hasVariants,
+                        isTablet: false,
+                      ),
+                    ],
                   ),
-                ],
+                );
+              }
+            },
+          ),
+
+          // Floating top notification banner (theme-styled, auto-dismissing)
+          Positioned(
+            top: 12,
+            left: 16,
+            right: 16,
+            child: AnimatedSlide(
+              duration: const Duration(milliseconds: 320),
+              curve: Curves.easeOutCubic,
+              offset: _showBanner ? Offset.zero : const Offset(0, -1.6),
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 260),
+                opacity: _showBanner ? 1.0 : 0.0,
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 560),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: colorScheme.outlineVariant,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: colorScheme.shadow.withAlpha(40),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 16,
+                            backgroundColor: colorScheme.primary.withAlpha(30),
+                            child: Icon(
+                              Icons.check_rounded,
+                              size: 18,
+                              color: colorScheme.primary,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              _bannerMessage,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: colorScheme.onSurface,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ),
-            );
-          }
-        },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -226,7 +326,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           ),
                         ),
 
-                  // Active variant badge
+                  // Active variant badge (clean name only, no id)
                   if (activeVariant != null)
                     Positioned(
                       bottom: 12,
@@ -244,7 +344,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           ),
                         ),
                         child: Text(
-                          '${activeVariant.name} (${activeVariant.id})',
+                          activeVariant.name,
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: colorScheme.primary,
@@ -253,6 +353,73 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         ),
                       ),
                     ),
+
+                  // Image navigation arrows for multi-photo variants
+                  if (activeImages.length > 1) ...[
+                    // Left arrow button
+                    Positioned(
+                      left: 8,
+                      top: 0,
+                      bottom: 0,
+                      child: Center(
+                        child: Material(
+                          color: colorScheme.surface.withAlpha(210),
+                          shape: const CircleBorder(),
+                          elevation: 2,
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: () {
+                              setState(() {
+                                _selectedImageIndex = (_selectedImageIndex -
+                                        1 +
+                                        activeImages.length) %
+                                    activeImages.length;
+                              });
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Icon(
+                                Icons.chevron_left_rounded,
+                                size: 22,
+                                color: colorScheme.onSurface,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Right arrow button
+                    Positioned(
+                      right: 8,
+                      top: 0,
+                      bottom: 0,
+                      child: Center(
+                        child: Material(
+                          color: colorScheme.surface.withAlpha(210),
+                          shape: const CircleBorder(),
+                          elevation: 2,
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: () {
+                              setState(() {
+                                _selectedImageIndex =
+                                    (_selectedImageIndex + 1) %
+                                        activeImages.length;
+                              });
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Icon(
+                                Icons.chevron_right_rounded,
+                                size: 22,
+                                color: colorScheme.onSurface,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
 
                   // Angle index indicator if multiple images exist
                   if (activeImages.length > 1)
@@ -548,7 +715,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           // Rating and Sold count row (Shopee style)
           Row(
             children: [
-              const Icon(Icons.star, size: 16, color: Colors.amber),
+              const Icon(Icons.star, size: 16, color: AppTheme.ratingStarColor),
               const SizedBox(width: 4),
               const Text(
                 '5.0',
@@ -595,16 +762,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.green.withAlpha(20),
+                    color: AppTheme.inStockColor.withAlpha(20),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: Colors.green.withAlpha(80),
+                      color: AppTheme.inStockColor.withAlpha(80),
                     ),
                   ),
                   child: Text(
                     '$displayStock in stock',
                     style: const TextStyle(
-                      color: Colors.green,
+                      color: AppTheme.inStockColor,
                       fontWeight: FontWeight.w600,
                       fontSize: 12,
                     ),
@@ -757,17 +924,28 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               icon: const Icon(Icons.add_shopping_cart_outlined),
               label: const Text('Add to Cart'),
               onPressed: () {
+                final cart = CartScope.of(context);
+                cart.addItem(widget.product, activeVariant, _quantity);
                 final variantNote = activeVariant != null
-                    ? ' (${activeVariant.name} - ${activeVariant.id})'
+                    ? ' (${activeVariant.name})'
                     : '';
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Added $_quantity x ${widget.product.name}$variantNote to cart',
-                    ),
-                    duration: const Duration(seconds: 2),
-                  ),
-                );
+
+                _bannerTimer?.cancel();
+                setState(() {
+                  _bannerMessage =
+                      'Added $_quantity × ${widget.product.name}$variantNote to cart';
+                  _showBanner = true;
+                  _quantity = 1; // Reset counter back to 1
+                });
+
+                // Auto-dismiss confirmation banner after 5 seconds
+                _bannerTimer = Timer(const Duration(seconds: 5), () {
+                  if (mounted) {
+                    setState(() {
+                      _showBanner = false;
+                    });
+                  }
+                });
               },
             ),
           ),

@@ -1,3 +1,5 @@
+import '../theme/app_theme.dart';
+
 /// Model representing an individual variant of a product (e.g. color, style, or edition).
 ///
 /// Fields like `price`, `description`, and `stock` are optional (nullable).
@@ -59,8 +61,8 @@ class Product {
     this.variants = const [],
   });
 
-  /// Formatted Philippine Peso price string.
-  String get formattedPrice => '₱${price.toStringAsFixed(0)}';
+  /// Formatted Philippine Peso price string with comma separator.
+  String get formattedPrice => '₱${AppTheme.formatPrice(price)}';
 
   /// Returns all images available for this product.
   List<String> get allImages {

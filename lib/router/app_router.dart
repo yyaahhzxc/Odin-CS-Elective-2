@@ -1,21 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../data/product_data.dart';
+import '../screens/cart_screen.dart';
+import '../screens/checkout_confirmation_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/product_detail_screen.dart';
+import '../state/cart_state.dart';
 
 /// Navigation 2.0 router configuration utilizing [GoRouter].
 ///
-/// Sets up declarative URL-based routing for the application,
-/// including a clean, native-feeling slide transition when navigating
-/// between the catalog and product details.
+/// Configures declarative URL-based routing for the entire application,
+/// including route guards and native slide page transitions.
 class AppRouter {
   AppRouter._();
 
-  /// Constructs the application [GoRouter] instance with injected theme state handlers.
+  /// Constructs the application [GoRouter] instance with injected state dependencies.
   static GoRouter createRouter({
     required VoidCallback onToggleTheme,
     required bool Function() isDarkModeGetter,
+    required CartManager cartManager,
   }) {
     return GoRouter(
       initialLocation: '/',
@@ -34,7 +37,7 @@ class AppRouter {
           },
         ),
 
-        // Product details route with horizontal slide transition
+        // Route: Product Details with slide transition
         GoRoute(
           path: '/product/:id',
           pageBuilder: (context, state) {
@@ -46,27 +49,43 @@ class AppRouter {
               orElse: () => mockProducts.first,
             );
 
-            return CustomTransitionPage(
-              key: state.pageKey,
+            return _buildSlideTransition(
+              state: state,
               child: ProductDetailScreen(product: product),
-              transitionsBuilder:
-                  (context, animation, secondaryAnimation, child) {
-                // Natural right-to-left slide transition
-                const begin = Offset(1.0, 0.0);
-                const end = Offset.zero;
-                final tween = Tween(begin: begin, end: end).chain(
-                  CurveTween(curve: Curves.easeInOut),
-                );
+            );
+          },
+        ),
 
-                return SlideTransition(
-                  position: animation.drive(tween),
-                  child: child,
-                );
-              },
+        // Route: Shopping Cart Screen
+        GoRoute(
+          path: '/cart',
+          pageBuilder: (context, state) {
+            return _buildSlideTransition(
+              state: state,
+              child: const CartScreen(),
+            );
+          },
+        ),
+
+        // Route: Checkout Confirmation Screen (Reachable only when cart has items)
+        GoRoute(
+          path: '/checkout',
+          redirect: (context, state) {
+            // Guard: Automatically redirect back to cart if attempted with empty cart
+            if (cartManager.isEmpty) {
+              return '/cart';
+            }
+            return null;
+          },
+          pageBuilder: (context, state) {
+            return _buildSlideTransition(
+              state: state,
+              child: const CheckoutConfirmationScreen(),
             );
           },
         ),
       ],
+
       // Fallback screen for unknown routes
       errorBuilder: (context, state) {
         return Scaffold(
@@ -84,6 +103,29 @@ class AppRouter {
               ],
             ),
           ),
+        );
+      },
+    );
+  }
+
+  /// Helper generating a natural right-to-left [SlideTransition] page.
+  static CustomTransitionPage<void> _buildSlideTransition({
+    required GoRouterState state,
+    required Widget child,
+  }) {
+    return CustomTransitionPage<void>(
+      key: state.pageKey,
+      child: child,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        const begin = Offset(1.0, 0.0);
+        const end = Offset.zero;
+        final tween = Tween(begin: begin, end: end).chain(
+          CurveTween(curve: Curves.easeInOut),
+        );
+
+        return SlideTransition(
+          position: animation.drive(tween),
+          child: child,
         );
       },
     );

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../data/product_data.dart';
 import '../models/product.dart';
+import '../state/cart_state.dart';
 import '../widgets/product_card.dart';
 
 /// home Screen displays the product browsing catalog
@@ -44,11 +46,23 @@ class _HomeScreenState extends State<HomeScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
+    final cart = CartScope.of(context);
+
     return Scaffold(
-      // appbar, contains title on top left and theme toggle
+      // appbar, contains title on top left, cart button with badge, and theme toggle
       appBar: AppBar(
         title: const Text('CSShop'),
         actions: [
+          // Shopping cart button with live item count badge
+          IconButton(
+            icon: Badge(
+              isLabelVisible: cart.isNotEmpty,
+              label: Text('${cart.totalItemCount}'),
+              child: const Icon(Icons.shopping_cart_outlined),
+            ),
+            tooltip: 'Shopping Cart',
+            onPressed: () => context.go('/cart'),
+          ),
           // Light/Dark mode toggle button
           IconButton(
             icon: Icon(

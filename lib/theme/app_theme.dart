@@ -24,6 +24,20 @@ class AppTheme {
   static const Color darkCardBackground = Color(0xFF1E293B);
   static const Color darkBorder = Color(0xFF334155);
 
+  // Semantic status, badge, and rating colors.
+  static const Color inStockColor = Color(0xFF16A34A);
+  static const Color inStockContainer = Color(0xFFDCFCE7);
+  static const Color ratingStarColor = Color(0xFFF59E0B);
+
+  /// Formats a number with comma as thousands separator (e.g., 4200 -> "4,200", 100000 -> "100,000").
+  static String formatPrice(num price) {
+    final str = price.toStringAsFixed(0);
+    return str.replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]},',
+    );
+  }
+
   /// Light Theme definition applied at the MaterialApp level.
   static ThemeData get lightTheme {
     final colorScheme = ColorScheme.fromSeed(
