@@ -26,6 +26,13 @@ CSShop is a responsive e-commerce mobile and web application developed for the C
 - **Data Modeling & Inheritance (`lib/models/product.dart`, `lib/models/cart_item.dart` & `lib/data/product_data.dart`):** Features immutable `Product` and `ProductVariant` models with fallback property inheritance, alongside `CartItem` representing line items with dynamic unit pricing and computed subtotals.
 - **Responsive Layouts (`lib/screens/home_screen.dart`, `lib/screens/product_detail_screen.dart`, `lib/screens/cart_screen.dart`):** `HomeScreen` adapts grid column counts dynamically via `LayoutBuilder`. `ProductDetailScreen` adapts between a side-by-side gallery/info layout (`>= 700px`) and a stacked mobile view. `CartScreen` shifts between a two-column desktop layout (items left, summary right) and a mobile view with a sticky bottom checkout bar.
 - **Routing & Route Guards (`lib/router/app_router.dart`):** Configures declarative `GoRouter` routes with custom right-to-left `SlideTransition` animations and an automated redirect guard on `/checkout` to block invalid empty-cart checkouts.
+- **Asset Architecture & 1:1 Merchandise Pipeline (`assets/images/` & `pubspec.yaml`):** Integrates high-fidelity 1:1 square aspect ratio merchandise assets organized into structured subdirectories:
+  - `001-shirt/`: 3 shirt variants (`Black`, `White`, `Violet`), each equipped with dedicated Front and Back view angles.
+  - `002-jacket/`: 2 varsity jacket variants (`Varsity Violet` with white panel, `Stealth Violet` with purple panel).
+  - `003-jersey/`: 2 jersey variants (`Purple`, `White`) with dual front and back angles.
+  - `004-pin/`: 2 button pin variants (`Robot Companion`, `CS Student`).
+  - `005-sticker/`: 2 die-cut sticker variants (`Frog Hood Chibi`, `Exhausted Student`).
+  - `006-keychain/`: Acrylic charm keychain (`CS Mascot Chibi`).
 - **Asset Fallback Protection (`lib/widgets/product_card.dart`, `lib/screens/product_detail_screen.dart`, `lib/screens/cart_screen.dart`):** Validates asset availability before rendering `Image.asset()`, falling back to clean shopping bag icons with `errorBuilder` to eliminate 404 network warnings.
 
 ## Setup & Dependencies

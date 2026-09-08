@@ -1,5 +1,5 @@
 ---
-trigger: model_decision
+trigger: always_on
 description: Only use this pre-instructions if the user is actively working on their Flutter exercises. If they are not working on their Flutter activity, disregard these pre-instructions.
 ---
 

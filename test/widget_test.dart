@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:csshop/main.dart';
+import 'package:csshop/data/product_data.dart';
 
 void main() {
   testWidgets('CSShop home screen smoke and widget test',
@@ -104,5 +106,54 @@ void main() {
 
     // Verify returned to Home screen catalog
     expect(find.text('CSShop - The CSSEC Merch Store'), findsOneWidget);
+  });
+
+  test('Verifies catalog asset paths exist on disk and meet variant requirements', () {
+    // 1. Check shirt product variants (3 variants, each with front & back)
+    final shirt = mockProducts.firstWhere((p) => p.id == 'prod-001');
+    expect(shirt.variants.length, 3);
+    for (final variant in shirt.variants) {
+      expect(variant.images.length, 2);
+      for (final img in variant.images) {
+        expect(File(img).existsSync(), isTrue, reason: 'Asset $img should exist');
+      }
+    }
+
+    // 2. Check jacket product variants (2 variants)
+    final jacket = mockProducts.firstWhere((p) => p.id == 'prod-002');
+    expect(jacket.variants.length, 2);
+    for (final variant in jacket.variants) {
+      expect(variant.allImages.isNotEmpty, isTrue);
+      for (final img in variant.allImages) {
+        expect(File(img).existsSync(), isTrue, reason: 'Asset $img should exist');
+      }
+    }
+
+    // 3. Check pin product variants (2 variants)
+    final pin = mockProducts.firstWhere((p) => p.id == 'prod-004');
+    expect(pin.variants.length, 2);
+    for (final variant in pin.variants) {
+      for (final img in variant.allImages) {
+        expect(File(img).existsSync(), isTrue, reason: 'Asset $img should exist');
+      }
+    }
+
+    // 4. Check sticker product variants (2 variants)
+    final sticker = mockProducts.firstWhere((p) => p.id == 'prod-005');
+    expect(sticker.variants.length, 2);
+    for (final variant in sticker.variants) {
+      for (final img in variant.allImages) {
+        expect(File(img).existsSync(), isTrue, reason: 'Asset $img should exist');
+      }
+    }
+
+    // 5. Check keychain product variants (1 variant)
+    final keychain = mockProducts.firstWhere((p) => p.id == 'prod-006');
+    expect(keychain.variants.length, 1);
+    for (final variant in keychain.variants) {
+      for (final img in variant.allImages) {
+        expect(File(img).existsSync(), isTrue, reason: 'Asset $img should exist');
+      }
+    }
   });
 }
