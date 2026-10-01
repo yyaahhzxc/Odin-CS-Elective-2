@@ -6,8 +6,8 @@ void main() {
     // Build the PokedexApp widget tree
     await tester.pumpWidget(const PokedexApp());
 
-    // Verify the presence of the header title
-    expect(find.text('Pokédex Starters'), findsOneWidget);
-    expect(find.text('Generations 1 – 9 • 27 Pokémon'), findsOneWidget);
+    // Verify the presence of the header title and subtitle
+    expect(find.text('Pokédex'), findsOneWidget);
+    expect(find.text('Starter Pokémon • Generations 1–9'), findsOneWidget);
   });
 }

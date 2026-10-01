@@ -69,8 +69,6 @@ class Pokemon {
   }
 
   /// Determines the generation of the starter based on its National Pokédex ID.
-  ///
-  /// Useful for contextual grouping or educational breakdown during presentation.
   int get generation {
     if (id <= 151) return 1;
     if (id <= 251) return 2;
@@ -81,5 +79,31 @@ class Pokemon {
     if (id <= 809) return 7;
     if (id <= 905) return 8;
     return 9;
+  }
+
+  /// Returns the canonical region corresponding to the Pokémon's generation.
+  String get regionName {
+    switch (generation) {
+      case 1:
+        return 'Kanto';
+      case 2:
+        return 'Johto';
+      case 3:
+        return 'Hoenn';
+      case 4:
+        return 'Sinnoh';
+      case 5:
+        return 'Unova';
+      case 6:
+        return 'Kalos';
+      case 7:
+        return 'Alola';
+      case 8:
+        return 'Galar';
+      case 9:
+        return 'Paldea';
+      default:
+        return '';
+    }
   }
 }

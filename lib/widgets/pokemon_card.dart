@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import '../models/pokemon.dart';
 import 'type_badge.dart';
 
-/// A clean, minimalist card widget styled in the spirit of PokémonDB.
+/// A minimalist, borderless Pokémon component styled in the spirit of PokémonDB.
 ///
 /// Features:
-/// - Crisp white card with a subtle 1px border and soft rounded corners.
-/// - Formatted National Pokédex ID (#0001) in muted gray.
-/// - Centered official artwork with loading & error fallback states.
+/// - Borderless, box-free presentation directly on the clean canvas.
+/// - Centered high-resolution official artwork with loading & error fallbacks.
+/// - Formatted National Pokédex ID (#0001) in muted monospace typography.
 /// - Bold, legible name typography.
 /// - Compact PokémonDB-style type pills.
-/// - Adheres strictly to the requirement: no navigation to a detail page.
+/// - Strict scope compliance: no navigation to a detail view.
 class PokemonCard extends StatelessWidget {
   final Pokemon pokemon;
 
@@ -21,117 +21,87 @@ class PokemonCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: const Color(0xFFE5E7EB), // Neutral border
-          width: 1.0,
-        ),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0A000000), // Subtle shadow
-            blurRadius: 4,
-            offset: Offset(0, 2),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 8.0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // 1. Centered High-Resolution Official Artwork Sprite
+          SizedBox(
+            height: 85,
+            child: Center(
+              child: pokemon.imageUrl.isNotEmpty
+                  ? Image.network(
+                      pokemon.imageUrl,
+                      fit: BoxFit.contain,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return const Center(
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.0,
+                              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF9CA3AF)),
+                            ),
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Icon(
+                          Icons.broken_image_outlined,
+                          size: 36,
+                          color: Color(0xFF9CA3AF),
+                        );
+                      },
+                    )
+                  : const Icon(
+                      Icons.image_not_supported_outlined,
+                      size: 36,
+                      color: Color(0xFF9CA3AF),
+                    ),
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // 2. National Pokédex ID in muted monospace typography
+          Text(
+            pokemon.formattedId,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              fontFamily: 'monospace',
+              color: Color(0xFF9CA3AF),
+            ),
+          ),
+          const SizedBox(height: 2),
+
+          // 3. Pokémon Display Name
+          Text(
+            pokemon.displayName,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827),
+              letterSpacing: -0.2,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 6),
+
+          // 4. Compact Elemental Type Badges
+          Wrap(
+            spacing: 4.0,
+            runSpacing: 4.0,
+            alignment: WrapAlignment.center,
+            children: pokemon.types
+                .map((type) => TypeBadge(typeName: type))
+                .toList(),
           ),
         ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // Top Row: Generation indicator and National Pokédex ID
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Gen ${pokemon.generation}',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFF9CA3AF),
-                  ),
-                ),
-                Text(
-                  pokemon.formattedId,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    fontFamily: 'monospace',
-                    color: Color(0xFF6B7280),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-
-            // Centered High-Resolution Official Artwork Sprite
-            Expanded(
-              child: Center(
-                child: pokemon.imageUrl.isNotEmpty
-                    ? Image.network(
-                        pokemon.imageUrl,
-                        fit: BoxFit.contain,
-                        // Progressive loading placeholder
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return const Center(
-                            child: SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.0,
-                                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF9CA3AF)),
-                              ),
-                            ),
-                          );
-                        },
-                        // Fallback in case of network or image loading failure
-                        errorBuilder: (context, error, stackTrace) {
-                          return const Icon(
-                            Icons.broken_image_outlined,
-                            size: 40,
-                            color: Color(0xFF9CA3AF),
-                          );
-                        },
-                      )
-                    : const Icon(
-                        Icons.image_not_supported_outlined,
-                        size: 40,
-                        color: Color(0xFF9CA3AF),
-                      ),
-              ),
-            ),
-            const SizedBox(height: 8),
-
-            // Pokémon Display Name
-            Text(
-              pokemon.displayName,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF111827),
-                letterSpacing: -0.2,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 6),
-
-            // Elemental Type Badges (Row of compact badges)
-            Wrap(
-              spacing: 4.0,
-              runSpacing: 4.0,
-              alignment: WrapAlignment.center,
-              children: pokemon.types
-                  .map((type) => TypeBadge(typeName: type))
-                  .toList(),
-            ),
-          ],
-        ),
       ),
     );
   }
