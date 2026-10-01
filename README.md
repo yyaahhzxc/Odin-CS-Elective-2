@@ -1,12 +1,12 @@
-# Pokédex Starters (Gen 1–9)
+# Starter Pokédex (Gen 1–9)
 
 ## Project Overview
-Pokédex Starters is a Flutter application that fetches and displays the complete roster of Grass, Fire, and Water starter Pokémon across Generations 1 through 9 from PokéAPI in a clean, scrollable layout inspired by PokémonDB.
+Starter Pokédex is a Flutter application that fetches and displays the complete roster of Grass, Fire, and Water starter Pokémon across Generations 1 through 9 from PokéAPI in a clean, scrollable layout inspired by PokémonDB.
 
 ## Tasked Instructions / Requirements
 - **Data Source**: Fetch data from PokéAPI (`https://pokeapi.co/api/v2/pokemon`).
 - **Dataset Limitation**: Limit results to 30 Pokémon (implemented with the 27 starter Pokémon across Gens 1–9).
-- **Scrollable Grid / Generation Rows**: Display Pokémon in a responsive, scrollable layout presenting name, official artwork image, and Pokédex ID, organized with 3 starters per generation row.
+- **Scrollable Layout / Generation Rows**: Display Pokémon in a responsive, scrollable layout presenting name, official artwork image, and Pokédex ID, organized with 3 starters per generation row.
 - **Architectural Decision (Future vs. Stream)**: Determine whether data fetching should utilize a `Future` or a `Stream`, with comprehensive justification.
 - **State Handling**: Implement graceful handling for loading, error, and empty states.
 - **Scope Termination**: Output strictly terminates at the grid/list view; no detail page navigation is introduced for this assignment.
@@ -28,7 +28,7 @@ The codebase strictly adheres to the requested four-tier architectural pattern:
   - `loading_view.dart`: Centered progress indicator with contextual status text.
   - `error_view.dart`: Error state banner with description and a retry action button.
   - `empty_view.dart`: Clean empty placeholder view.
-- `lib/screens/pokedex_screen.dart`: Primary screen managing the async lifecycle with `initState`, `FutureBuilder`, `RefreshIndicator`, generation section headers, and 3-starter generation rows.
+- `lib/screens/pokedex_screen.dart`: Primary screen managing the async lifecycle with `initState`, `FutureBuilder`, `RefreshIndicator`, centered `Starter Pokédex` AppBar, centered generation dividers, and 3-starter generation rows.
 
 ### 2. Architectural Analysis: Future vs. Stream Decision
 For this assignment, **`Future` (`Future<List<Pokemon>>`) was selected over `Stream`** based on the following principles:
@@ -45,10 +45,10 @@ For this assignment, **`Future` (`Future<List<Pokemon>>`) was selected over `Str
 4. **Integration with `FutureBuilder`**:
    `FutureBuilder` cleanly evaluates the discrete states of an asynchronous request (`ConnectionState.waiting`, `snapshot.hasError`, and `snapshot.hasData`), making state transitions deterministic and straightforward.
 
-### 3. Visual Layout: PokémonDB Aesthetic & Generation Grouping
+### 3. Visual Layout: PokémonDB Aesthetic & Simplified Dividers
 The UI is styled to mirror the clean, minimal aesthetic of PokémonDB:
-- **Refined Header Bar**: Sleek white app bar featuring a Pokéball red accent indicator, clear typography, total starter count badge (`27 Starters`), and refresh action.
-- **Generation Section Headers**: Each generation block is introduced with an uppercase generation label, region tag pill (e.g., `KANTO`, `JOHTO`, `HOENN`), and a hairline divider line.
+- **Centered AppBar Header**: Clean, borderless title displaying `Starter Pokédex` centered on the bar with a refresh action.
+- **Centered Generation Section Dividers**: Each generation block is separated by a centered label (e.g., `Generation 1 • Kanto`) flanked by subtle hairline divider lines.
 - **3 Starters Per Generation Row**: The 3 starter Pokémon (Grass, Fire, Water) are aligned side-by-side in a responsive 3-column row per generation.
 - **Extra Inter-Generation Spacing**: Generous vertical spacing separates each generation block to enhance visual clarity.
 - **Borderless Presentation**: Elimination of enclosing card boxes, borders, and shadows, allowing the artwork and typography to integrate seamlessly on the neutral canvas.
