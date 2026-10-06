@@ -42,7 +42,11 @@ class _PokedexScreenState extends State<PokedexScreen> {
     setState(() {
       _startersFuture = _apiService.fetchStarterPokemons();
     });
-    await _startersFuture;
+    try {
+      await _startersFuture;
+    } catch (_) {
+      // Errors are caught and presented via FutureBuilder's snapshot.hasError branch
+    }
   }
 
   @override

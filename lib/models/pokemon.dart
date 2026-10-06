@@ -31,27 +31,40 @@ class Pokemon {
   /// - `types`: Iterates over the `types` array, extracting each inner `type['name']`.
   factory Pokemon.fromJson(Map<String, dynamic> json) {
     // 1. Extract official artwork sprite with null-safe fallbacks
-    final sprites = json['sprites'] as Map<String, dynamic>?;
-    final other = sprites?['other'] as Map<String, dynamic>?;
-    final officialArtwork = other?['official-artwork'] as Map<String, dynamic>?;
+    final dynamic rawSprites = json['sprites'];
+    final Map<dynamic, dynamic>? sprites = rawSprites is Map ? rawSprites : null;
 
-    final String extractedImageUrl = officialArtwork?['front_default'] as String? ??
-        sprites?['front_default'] as String? ??
-        '';
+    final dynamic rawOther = sprites?['other'];
+    final Map<dynamic, dynamic>? other = rawOther is Map ? rawOther : null;
 
-    // 2. Extract elemental types from the types array
-    final rawTypes = json['types'] as List<dynamic>? ?? [];
-    final List<String> extractedTypes = rawTypes
+    final dynamic rawArtwork = other?['official-artwork'];
+    final Map<dynamic, dynamic>? officialArtwork = rawArtwork is Map ? rawArtwork : null;
+
+    final dynamic rawUrl = officialArtwork?['front_default'] ?? sprites?['front_default'];
+    final String extractedImageUrl = rawUrl != null ? rawUrl.toString() : '';
+
+    // 2. Extract elemental types from the types array safely
+    final dynamic rawTypes = json['types'];
+    final List<dynamic> typesList = rawTypes is List ? rawTypes : [];
+    final List<String> extractedTypes = typesList
         .map((entry) {
-          final typeObj = entry['type'] as Map<String, dynamic>?;
-          return typeObj?['name'] as String? ?? '';
+          if (entry is Map) {
+            final dynamic typeObj = entry['type'];
+            if (typeObj is Map && typeObj['name'] != null) {
+              return typeObj['name'].toString();
+            }
+          }
+          return '';
         })
         .where((type) => type.isNotEmpty)
         .toList();
 
+    final dynamic idVal = json['id'];
+    final int extractedId = idVal is num ? idVal.toInt() : int.tryParse(idVal?.toString() ?? '') ?? 0;
+
     return Pokemon(
-      id: json['id'] as int? ?? 0,
-      name: json['name'] as String? ?? 'Unknown',
+      id: extractedId,
+      name: json['name']?.toString() ?? 'Unknown',
       imageUrl: extractedImageUrl,
       types: extractedTypes,
     );

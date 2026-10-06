@@ -64,10 +64,9 @@ class PokeApiService {
     final uri = Uri.parse('$_baseUrl/$id');
 
     try {
-      final response = await _client.get(uri).timeout(
-            const Duration(seconds: 15),
-            onTimeout: () => throw Exception('Connection timed out while fetching Pokémon #$id'),
-          );
+      final response = await _client
+          .get(uri)
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body) as Map<String, dynamic>;

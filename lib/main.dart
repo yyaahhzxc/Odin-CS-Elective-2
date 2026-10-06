@@ -31,7 +31,7 @@ class PokedexApp extends StatelessWidget {
           backgroundColor: Colors.white,
           foregroundColor: Color(0xFF111827),
           elevation: 0,
-          centerTitle: false,
+          centerTitle: true,
         ),
       ),
       home: const PokedexScreen(),
