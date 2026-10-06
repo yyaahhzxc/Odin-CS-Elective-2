@@ -1,21 +1,108 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 import 'package:pokedex_app/main.dart';
 import 'package:pokedex_app/models/pokemon.dart';
+import 'package:pokedex_app/providers/pokemon_provider.dart';
+import 'package:pokedex_app/screens/pokedex_screen.dart';
+import 'package:pokedex_app/screens/pokemon_detail_screen.dart';
+import 'package:pokedex_app/widgets/error_view.dart';
 import 'package:pokedex_app/widgets/loading_view.dart';
 import 'package:pokedex_app/widgets/type_badge.dart';
 
+class MockSuccessPokemonProvider extends PokemonProvider {
+  final List<Pokemon> mockList;
+
+  MockSuccessPokemonProvider(this.mockList);
+
+  @override
+  List<Pokemon> get pokemons => mockList;
+
+  @override
+  PokemonStateStatus get status => PokemonStateStatus.success;
+
+  @override
+  Future<void> fetchPokemons({bool forceRefresh = false}) async {}
+}
+
+class MockErrorPokemonProvider extends PokemonProvider {
+  final String error;
+
+  MockErrorPokemonProvider(this.error);
+
+  @override
+  PokemonStateStatus get status => PokemonStateStatus.error;
+
+  @override
+  String get errorMessage => error;
+
+  @override
+  Future<void> fetchPokemons({bool forceRefresh = false}) async {}
+}
+
 void main() {
-  group('PokedexApp Widget Tests', () {
+  const samplePokemon = Pokemon(
+    id: 1,
+    name: 'bulbasaur',
+    imageUrl: 'https://example.com/bulbasaur.png',
+    types: ['grass', 'poison'],
+  );
+
+  group('PokedexApp & Provider Integration Tests', () {
     testWidgets('Renders centered title and initial loading state', (WidgetTester tester) async {
       await tester.pumpWidget(const PokedexApp());
 
-      // Verify the presence of the header title
       expect(find.text('Starter Pokédex'), findsOneWidget);
-
-      // Verify initial loading indicator state
       expect(find.byType(LoadingView), findsOneWidget);
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    });
+
+    testWidgets('Renders error state when provider encounters an error', (WidgetTester tester) async {
+      final mockProvider = MockErrorPokemonProvider('Connection failed');
+
+      await tester.pumpWidget(
+        ChangeNotifierProvider<PokemonProvider>.value(
+          value: mockProvider,
+          child: const MaterialApp(home: PokedexScreen()),
+        ),
+      );
+
+      expect(find.byType(ErrorView), findsOneWidget);
+      expect(find.text('Connection failed'), findsOneWidget);
+    });
+
+    testWidgets('Renders pokemon grid on provider success state', (WidgetTester tester) async {
+      final mockProvider = MockSuccessPokemonProvider([samplePokemon]);
+
+      await tester.pumpWidget(
+        ChangeNotifierProvider<PokemonProvider>.value(
+          value: mockProvider,
+          child: const MaterialApp(home: PokedexScreen()),
+        ),
+      );
+
+      expect(find.text('Bulbasaur'), findsOneWidget);
+      expect(find.text('#0001'), findsOneWidget);
+      expect(find.text('GRASS'), findsOneWidget);
+    });
+
+    testWidgets('Navigates to PokemonDetailScreen and reads state from provider', (WidgetTester tester) async {
+      final provider = PokemonProvider();
+      provider.selectPokemon(samplePokemon);
+
+      await tester.pumpWidget(
+        ChangeNotifierProvider<PokemonProvider>.value(
+          value: provider,
+          child: const MaterialApp(home: PokemonDetailScreen()),
+        ),
+      );
+
+      // Verify page contents come from Provider App State (Requirement 9)
+      expect(find.text('Bulbasaur'), findsNWidgets(2)); // AppBar and Title
+      expect(find.text('#0001'), findsOneWidget);
+      expect(find.text('National Dex Number'), findsOneWidget);
+      expect(find.text('Gen 1'), findsOneWidget);
+      expect(find.text('Kanto'), findsOneWidget);
     });
   });
 
@@ -90,4 +177,3 @@ void main() {
     });
   });
 }
-

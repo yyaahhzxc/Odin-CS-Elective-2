@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/pokemon.dart';
+import '../providers/pokemon_provider.dart';
+import '../screens/pokemon_detail_screen.dart';
 import 'type_badge.dart';
 
 /// A minimalist, borderless Pokémon component styled in the spirit of PokémonDB.
@@ -10,7 +13,7 @@ import 'type_badge.dart';
 /// - Formatted National Pokédex ID (#0001) in muted monospace typography.
 /// - Bold, legible name typography.
 /// - Compact PokémonDB-style type pills.
-/// - Strict scope compliance: no navigation to a detail view.
+/// - Interactive tap handling: dispatches selection to [PokemonProvider] and navigates to [PokemonDetailScreen].
 class PokemonCard extends StatelessWidget {
   final Pokemon pokemon;
 
@@ -21,12 +24,24 @@ class PokemonCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 8.0),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          context.read<PokemonProvider>().selectPokemon(pokemon);
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const PokemonDetailScreen(),
+            ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 8.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
           // 1. Centered High-Resolution Official Artwork Sprite
           SizedBox(
             height: 85,
@@ -103,6 +118,8 @@ class PokemonCard extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ),
+  ),
+);
   }
 }

@@ -1,57 +1,49 @@
-# Starter Pokédex (Gen 1–9)
+# Starter Pokédex State Management (Gen 1–9)
 
 ## Project Overview
-Starter Pokédex is a Flutter application that fetches and displays the complete roster of Grass, Fire, and Water starter Pokémon across Generations 1 through 9 from PokéAPI in a clean, scrollable layout inspired by PokémonDB.
+Starter Pokédex is a Flutter application that fetches and displays the complete roster of Grass, Fire, and Water starter Pokémon across Generations 1 through 9 from PokéAPI, utilizing Provider architecture to manage centralized application state, dynamic routing, and data refreshing.
 
 ## Tasked Instructions / Requirements
 - **Data Source**: Fetch data from PokéAPI (`https://pokeapi.co/api/v2/pokemon`).
 - **Dataset Limitation**: Limit results to 30 Pokémon (implemented with the 27 starter Pokémon across Gens 1–9).
-- **Scrollable Layout / Generation Rows**: Display Pokémon in a responsive, scrollable layout presenting name, official artwork image, and Pokédex ID, organized with 3 starters per generation row.
-- **Architectural Decision (Future vs. Stream)**: Determine whether data fetching should utilize a `Future` or a `Stream`, with comprehensive justification.
-- **State Handling**: Implement graceful handling for loading, error, and empty states.
-- **Scope Termination**: Output strictly terminates at the grid/list view; no detail page navigation is introduced for this assignment.
-- **Directory Structure**: Implement the required modular folder structure:
-  - `models/`
-  - `services/`
-  - `widgets/`
-  - `screens/`
+- **Designated Model Class**: Create a dedicated class for each Pokémon encapsulating `name`, `image`, and `ID`.
+- **State Management via Provider**: Manage discrete lifecycle states utilizing `package:provider`:
+  - Success State (rendered Pokémon information).
+  - Loading State.
+  - Error State.
+- **Scrollable Grid Presentation**: Display Pokémon in a responsive, scrollable grid layout organized by generation.
+- **Provider-Encapsulated API Execution**: Network fetching operations must be encapsulated directly as a method within the Provider.
+- **Refresh Functionality**: Provide user-triggered refresh capability on the main page that re-executes the API call.
+- **Strict App State Consumption**: All UI values across screens must be sourced strictly from centralized App State rather than ephemeral widget state.
+- **Dedicated Pokémon Detail View**: Implement an individual page for any clicked Pokémon, with its name, image, and ID derived directly from the Provider.
+- **VCS & Branching**: Submit on dedicated branch `state-mgt-act`.
 
 ## Implementation & Solutions
 
-### 1. Folder & File Structure
-The codebase strictly adheres to the requested four-tier architectural pattern:
-- `lib/models/pokemon.dart`: Defines the `Pokemon` entity with strongly-typed properties (`id`, `name`, `imageUrl`, `types`), helper getters (`formattedId`, `displayName`, `generation`, `regionName`), and a robust `Pokemon.fromJson` deserializer navigating nested sprite and typing structures.
-- `lib/services/poke_api_service.dart`: Encapsulates all network communication with PokéAPI using `package:http`. Coordinates parallel requests for the 27 starter IDs via `Future.wait` to eliminate sequential network blocking.
+### 1. Architectural Architecture & Folder Structure
+The codebase follows a clean, modular structure:
+- `lib/models/pokemon.dart`: Strongly-typed `Pokemon` data model containing `id`, `name`, `imageUrl`, and `types`, with deserializer `Pokemon.fromJson` and helper getters (`formattedId`, `displayName`, `generation`, `regionName`).
+- `lib/services/poke_api_service.dart`: Encapsulates low-level HTTP communication with PokéAPI using `package:http`. Uses `Future.wait` for concurrent retrieval of starter Pokémon.
+- `lib/providers/pokemon_provider.dart`: Core App State manager extending `ChangeNotifier`:
+  - State fields: `List<Pokemon> _pokemons`, `Pokemon? _selectedPokemon`, `PokemonStateStatus _status`, `String _errorMessage`.
+  - Methods: `fetchPokemons({bool forceRefresh = false})`, `selectPokemon(Pokemon pokemon)`, and `clearSelectedPokemon()`.
+  - Encapsulates API request dispatching and state machine transitions (initial, loading, success, error).
 - `lib/widgets/`: Modular UI presentation components:
-  - `pokemon_card.dart`: Minimalist borderless Pokémon item rendering centered official artwork, muted `#0001` ID, capitalized name, and authentic PokémonDB type pills.
-  - `type_badge.dart`: Pill badges matching authentic PokémonDB hex color codes for all 18 elemental types.
-  - `loading_view.dart`: Centered progress indicator with contextual status text.
-  - `error_view.dart`: Error state banner with description and a retry action button.
-  - `empty_view.dart`: Clean empty placeholder view.
-- `lib/screens/pokedex_screen.dart`: Primary screen managing the async lifecycle with `initState`, `FutureBuilder`, `RefreshIndicator`, centered `Starter Pokédex` AppBar, centered generation dividers, and 3-starter generation rows.
+  - `pokemon_card.dart`: Interactive borderless Pokémon item handling tap events to dispatch `provider.selectPokemon(pokemon)` and navigate to the detail view.
+  - `type_badge.dart`: Element badge pill rendering PokémonDB authentic colors.
+  - `loading_view.dart`: Centered progress indicator for in-flight requests.
+  - `error_view.dart`: Error presentation view with retry trigger.
+  - `empty_view.dart`: Fallback empty view.
+- `lib/screens/pokedex_screen.dart`: Main screen observing `PokemonProvider`. Renders the loading, error, empty, or scrollable generation-divided grid based on provider state. Connects `RefreshIndicator` and header action to `provider.fetchPokemons(forceRefresh: true)`.
+- `lib/screens/pokemon_detail_screen.dart`: Detail screen consuming `context.watch<PokemonProvider>().selectedPokemon`. Derives all UI values (name, image, ID, elemental types, generation, and region) from App State with zero ephemeral route arguments.
 
-### 2. Architectural Analysis: Future vs. Stream Decision
-For this assignment, **`Future` (`Future<List<Pokemon>>`) was selected over `Stream`** based on the following principles:
-
-1. **Stateless Request-Response Semantics**:
-   The application interacts with a standard RESTful HTTP endpoint (`https://pokeapi.co/api/v2/pokemon/{id}`). REST over HTTP represents discrete, single-shot request-response operations. A `Future` naturally models a computation that produces a single eventual value or throws an error.
-
-2. **Resource Lifecycle & Memory Safety**:
-   `Stream` is intended for continuous, multi-event asynchronous sequences (such as WebSockets, sensor feeds, or real-time event buses). Using a `Stream` for a fixed, bounded dataset introduces unnecessary overhead, requiring persistent subscription management, `StreamController` lifecycle handling, and risk of memory leaks if not properly canceled.
-
-3. **Performance via Parallelism (`Future.wait`)**:
-   Instead of sequentially streaming items one after another over 27 round-trips (~15+ seconds), `Future.wait` executes all 27 HTTP GET calls concurrently. Total network wait time is reduced to the single slowest request (~1 to 2 seconds).
-
-4. **Integration with `FutureBuilder`**:
-   `FutureBuilder` cleanly evaluates the discrete states of an asynchronous request (`ConnectionState.waiting`, `snapshot.hasError`, and `snapshot.hasData`), making state transitions deterministic and straightforward.
-
-### 3. Visual Layout: PokémonDB Aesthetic & Simplified Dividers
-The UI is styled to mirror the clean, minimal aesthetic of PokémonDB:
-- **Centered AppBar Header**: Clean, borderless title displaying `Starter Pokédex` centered on the bar with a refresh action.
-- **Centered Generation Section Dividers**: Each generation block is separated by a centered label (e.g., `Generation 1 • Kanto`) flanked by subtle hairline divider lines.
-- **3 Starters Per Generation Row**: The 3 starter Pokémon (Grass, Fire, Water) are aligned side-by-side in a responsive 3-column row per generation.
-- **Extra Inter-Generation Spacing**: Generous vertical spacing separates each generation block to enhance visual clarity.
-- **Borderless Presentation**: Elimination of enclosing card boxes, borders, and shadows, allowing the artwork and typography to integrate seamlessly on the neutral canvas.
+### 2. Provider State Management & Separation of Concerns
+1. **Centralized App State**:
+   Rather than maintaining local widget state (`setState` or `FutureBuilder`), the application injects `PokemonProvider` at the root via `ChangeNotifierProvider`. Both `PokedexScreen` and `PokemonDetailScreen` are stateless consumers of this centralized store.
+2. **Deterministic State Transitions**:
+   The lifecycle is driven by `PokemonStateStatus` (`initial`, `loading`, `success`, `error`), enabling deterministic UI updates across loading spinners, error banners with retry capabilities, and the populated grid.
+3. **Decoupled Detail Navigation**:
+   Clicking a card invokes `selectPokemon(pokemon)` on `PokemonProvider`. `PokemonDetailScreen` retrieves `provider.selectedPokemon`, ensuring the screen is fully decoupled from route arguments and strictly adheres to App State requirements.
 
 ## Setup & Dependencies
 
@@ -67,6 +59,7 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.8
   http: ^1.6.0
+  provider: ^6.1.2
 
 dev_dependencies:
   flutter_test:
@@ -75,23 +68,23 @@ dev_dependencies:
 ```
 
 ### Running the Application
-1. Clone or navigate to the project directory:
+1. Clone the repository and checkout the activity branch:
    ```bash
-   cd "Flutter Activity 4"
+   git checkout state-mgt-act
    ```
 2. Install project dependencies:
    ```bash
    flutter pub get
    ```
-3. Run static code analysis to verify clean code adherence:
+3. Run static analysis:
    ```bash
    flutter analyze
    ```
-4. Execute unit and widget tests:
+4. Execute the test suite:
    ```bash
    flutter test
    ```
-5. Launch the application in Google Chrome:
+5. Launch the application:
    ```bash
-   flutter run -d chrome
+   flutter run
    ```

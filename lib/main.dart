@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'providers/pokemon_provider.dart';
 import 'screens/pokedex_screen.dart';
 
 /// Application entry point.
@@ -8,16 +10,16 @@ void main() {
 
 /// Root widget of the Pokédex application.
 ///
-/// Configures a clean, minimalist Material 3 theme inspired by PokémonDB:
-/// - Light neutral background canvas (#F9FAFB)
-/// - Crisp typography and subtle gray borders
-/// - Clean elevation and smooth card transitions
+/// Injects [PokemonProvider] into the widget hierarchy via [ChangeNotifierProvider].
+/// Adheres to requirement 4 (Manage states using Provider) and requirement 8 (App State).
 class PokedexApp extends StatelessWidget {
-  const PokedexApp({super.key});
+  final PokemonProvider? provider;
+
+  const PokedexApp({super.key, this.provider});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    final Widget app = MaterialApp(
       title: 'Pokédex Starters',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
@@ -35,6 +37,18 @@ class PokedexApp extends StatelessWidget {
         ),
       ),
       home: const PokedexScreen(),
+    );
+
+    if (provider != null) {
+      return ChangeNotifierProvider<PokemonProvider>.value(
+        value: provider!,
+        child: app,
+      );
+    }
+
+    return ChangeNotifierProvider<PokemonProvider>(
+      create: (_) => PokemonProvider()..fetchPokemons(),
+      child: app,
     );
   }
 }
