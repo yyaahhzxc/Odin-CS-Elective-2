@@ -8,10 +8,12 @@ import 'package:flutter/material.dart';
 /// - Clean uppercase typography with white contrast text.
 class TypeBadge extends StatelessWidget {
   final String typeName;
+  final bool isLarge;
 
   const TypeBadge({
     super.key,
     required this.typeName,
+    this.isLarge = false,
   });
 
   /// Maps elemental type names to their canonical PokémonDB hex colors.
@@ -63,16 +65,19 @@ class TypeBadge extends StatelessWidget {
     final Color badgeColor = _getTypeColor(typeName);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: EdgeInsets.symmetric(
+        horizontal: isLarge ? 12 : 8,
+        vertical: isLarge ? 4 : 2,
+      ),
       decoration: BoxDecoration(
         color: badgeColor,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(isLarge ? 6 : 4),
       ),
       child: Text(
         typeName.toUpperCase(),
-        style: const TextStyle(
+        style: TextStyle(
           color: Colors.white,
-          fontSize: 10,
+          fontSize: isLarge ? 12 : 10,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.5,
         ),

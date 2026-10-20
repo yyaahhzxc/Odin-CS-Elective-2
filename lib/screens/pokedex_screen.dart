@@ -255,7 +255,8 @@ class _PokedexScreenState extends ConsumerState<PokedexScreen> {
     );
   }
 
-  /// Groups Pokemon by generation and returns structured generation blocks.
+  /// Groups Pokemon by generation and returns structured generation blocks
+  /// organized into a consistent 3-item row layout.
   List<Widget> _buildPokemonSections(List<Pokemon> pokemons) {
     final Map<int, List<Pokemon>> generationMap = {};
     for (final pokemon in pokemons) {
@@ -268,22 +269,34 @@ class _PokedexScreenState extends ConsumerState<PokedexScreen> {
       final starters = generationMap[gen] ?? [];
       final region = starters.isNotEmpty ? starters.first.regionName : '';
 
+      // Partition starters into rows of exactly 3
+      final rows = <List<Pokemon>>[];
+      for (var i = 0; i < starters.length; i += 3) {
+        final end = (i + 3 < starters.length) ? i + 3 : starters.length;
+        rows.add(starters.sublist(i, end));
+      }
+
       return Padding(
         padding: const EdgeInsets.only(bottom: 28.0),
         child: Column(
           children: [
             _buildGenerationHeader(gen, region),
-            Wrap(
-              spacing: 12.0,
-              runSpacing: 16.0,
-              alignment: WrapAlignment.center,
-              children: starters.map((pokemon) {
-                return SizedBox(
-                  width: 104,
-                  child: PokemonCard(pokemon: pokemon),
-                );
-              }).toList(),
-            ),
+            ...rows.map((row) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (var i = 0; i < 3; i++)
+                      Expanded(
+                        child: i < row.length
+                            ? PokemonCard(pokemon: row[i])
+                            : const SizedBox.shrink(),
+                      ),
+                  ],
+                ),
+              );
+            }),
           ],
         ),
       );

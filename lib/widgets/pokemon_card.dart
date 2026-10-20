@@ -5,6 +5,7 @@ import '../providers/pokemon_provider.dart';
 import '../screens/pokemon_detail_screen.dart';
 import 'nickname_dialog.dart';
 import 'pokeball_icon.dart';
+import 'pokedex_toast.dart';
 import 'type_badge.dart';
 
 /// A minimalist, borderless Pokemon card styled after PokemonDB with Shadcn touches.
@@ -70,6 +71,13 @@ class PokemonCard extends ConsumerWidget {
                         ref
                             .read(favoritesProvider.notifier)
                             .toggleFavorite(pokemon.id);
+                        showPokedexToast(
+                          context,
+                          !isFavorite
+                              ? 'Added ${pokemon.displayName} to favorites'
+                              : 'Removed ${pokemon.displayName} from favorites',
+                          icon: PokeballIcon(isFavorite: !isFavorite, size: 16),
+                        );
                       },
                     ),
                   ],

@@ -119,11 +119,7 @@ void main() {
       expect(find.text('Bulbasaur'), findsOneWidget);
       expect(find.text('Charmander'), findsOneWidget);
 
-      // Expand filter panel
-      await tester.tap(find.text('Expand'));
-      await tester.pumpAndSettle();
-
-      // Tap on FIRE filter chip by key
+      // Tap on FIRE filter chip directly by key
       await tester.tap(find.byKey(const Key('type_chip_fire')));
       await tester.pumpAndSettle();
 

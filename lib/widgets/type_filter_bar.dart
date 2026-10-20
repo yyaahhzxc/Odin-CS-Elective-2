@@ -1,21 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/pokemon_provider.dart';
-import 'type_badge.dart';
 
-/// Expandable type filter bar styled after Shadcn collapsible controls.
+/// Clean type filter bar displaying all elemental types naturally with color-coded styling.
 ///
-/// Features:
-/// - Arranges all 18 official elemental types in the exact canonical reference order:
+/// Visual system:
+/// - Unselected: Color-coded outline with white background and matching color text.
+/// - Selected: Color-coded filled background with crisp white text.
+/// - Displayed naturally without collapse/expand barriers.
+/// - Arranged in canonical reference order:
 ///   Normal, Fire, Water, Electric, Grass, Ice, Fighting, Poison, Ground, Flying,
 ///   Psychic, Bug, Rock, Ghost, Dragon, Dark, Steel, Fairy.
-/// - Non-horizontal scrolling: Expands smoothly downwards on mobile/desktop.
-/// - Expand/collapse animation with rotating chevron indicator.
-/// - Micro-animations on selection with visual feedback and instant reactivity.
-class TypeFilterBar extends ConsumerStatefulWidget {
+class TypeFilterBar extends ConsumerWidget {
   const TypeFilterBar({super.key});
 
-  /// The 18 official Pokémon elemental types in the required reference order.
+  /// The 18 official Pokémon elemental types in the exact reference order.
   static const List<String> orderedTypes = [
     'Normal',
     'Fire',
@@ -38,25 +37,13 @@ class TypeFilterBar extends ConsumerStatefulWidget {
   ];
 
   @override
-  ConsumerState<TypeFilterBar> createState() => _TypeFilterBarState();
-}
-
-class _TypeFilterBarState extends ConsumerState<TypeFilterBar> {
-  bool _isExpanded = false;
-
-  void _toggleExpanded() {
-    setState(() {
-      _isExpanded = !_isExpanded;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final activeFilter = ref.watch(selectedTypeFilterProvider);
     final notifier = ref.read(selectedTypeFilterProvider.notifier);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12.0),
+      padding: const EdgeInsets.all(14.0),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -72,252 +59,95 @@ class _TypeFilterBarState extends ConsumerState<TypeFilterBar> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Header / Toggle Bar
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.filter_list_rounded,
-                  size: 18,
+          // Header Row
+          Row(
+            children: [
+              const Icon(
+                Icons.filter_list_rounded,
+                size: 18,
+                color: Color(0xFF0F172A),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Filter by Type',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
                   color: Color(0xFF0F172A),
+                  letterSpacing: -0.2,
                 ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Filter by Type',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF0F172A),
-                    letterSpacing: -0.2,
-                  ),
-                ),
-                const SizedBox(width: 8),
-
-                // Active filter indicator badge
-                if (activeFilter != null) ...[
-                  TypeBadge(typeName: activeFilter),
-                  const SizedBox(width: 6),
-                  InkWell(
-                    borderRadius: BorderRadius.circular(10),
-                    onTap: () => notifier.clearFilter(),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8.0, vertical: 3.0),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFFCBD5E1)),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.close_rounded,
-                              size: 11, color: Color(0xFF475569)),
-                          SizedBox(width: 3),
-                          Text(
-                            'Clear',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF475569),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ] else
-                  const Text(
-                    '(All Types)',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF94A3B8),
-                    ),
-                  ),
-
-                const Spacer(),
-
-                // Expand / Collapse Action Button
+              ),
+              const Spacer(),
+              if (activeFilter != null)
                 InkWell(
                   borderRadius: BorderRadius.circular(8),
-                  onTap: _toggleExpanded,
-                  child: Padding(
+                  onTap: () => notifier.clearFilter(),
+                  child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 8.0, vertical: 4.0),
-                    child: Row(
+                        horizontal: 8.0, vertical: 3.0),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFCBD5E1)),
+                    ),
+                    child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        Icon(Icons.close_rounded,
+                            size: 12, color: Color(0xFF475569)),
+                        SizedBox(width: 4),
                         Text(
-                          _isExpanded ? 'Collapse' : 'Expand',
-                          style: const TextStyle(
-                            fontSize: 12,
+                          'Clear',
+                          style: TextStyle(
+                            fontSize: 11,
                             fontWeight: FontWeight.w600,
-                            color: Color(0xFF64748B),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        AnimatedRotation(
-                          turns: _isExpanded ? 0.5 : 0.0,
-                          duration: const Duration(milliseconds: 200),
-                          curve: Curves.easeOutCubic,
-                          child: const Icon(
-                            Icons.keyboard_arrow_down_rounded,
-                            size: 18,
-                            color: Color(0xFF64748B),
+                            color: Color(0xFF475569),
                           ),
                         ),
                       ],
                     ),
                   ),
                 ),
-              ],
-            ),
+            ],
           ),
+          const SizedBox(height: 12),
 
-          // Downward Expandable Panel with Micro-Animations
-          AnimatedSize(
-            duration: const Duration(milliseconds: 240),
-            curve: Curves.easeOutCubic,
-            child: _isExpanded
-                ? Container(
-                    padding: const EdgeInsets.fromLTRB(14.0, 4.0, 14.0, 14.0),
-                    decoration: const BoxDecoration(
-                      border: Border(
-                        top: BorderSide(color: Color(0xFFF1F5F9), width: 1.0),
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8.0,
-                          runSpacing: 8.0,
-                          children: [
-                            // "ALL" Option Chip
-                            _AnimatedTypeChip(
-                              label: 'ALL',
-                              isActive: activeFilter == null,
-                              onTap: () => notifier.clearFilter(),
-                            ),
+          // Naturally Displayed Type Chips with Color-Coded Outline / Fill
+          Wrap(
+            spacing: 6.0,
+            runSpacing: 6.0,
+            children: [
+              // ALL option chip
+              _ColorCodedTypeChip(
+                key: const Key('type_chip_all'),
+                label: 'ALL',
+                chipColor: const Color(0xFF475569),
+                isActive: activeFilter == null,
+                onTap: () => notifier.clearFilter(),
+              ),
 
-                            // All 18 Elemental Types in exact order
-                            ...TypeFilterBar.orderedTypes.map((type) {
-                              final isSelected = activeFilter?.toLowerCase() ==
-                                  type.toLowerCase();
-                              return _AnimatedTypeChip(
-                                key: Key('type_chip_${type.toLowerCase()}'),
-                                label: type.toUpperCase(),
-                                typeName: type,
-                                isActive: isSelected,
-                                onTap: () =>
-                                    notifier.selectType(type.toLowerCase()),
-                              );
-                            }),
-                          ],
-                        ),
-                      ],
-                    ),
-                  )
-                : const SizedBox.shrink(),
+              // 18 Elemental Type Chips in canonical order
+              ...orderedTypes.map((type) {
+                final isSelected =
+                    activeFilter?.toLowerCase() == type.toLowerCase();
+                final color = _getTypeColor(type);
+
+                return _ColorCodedTypeChip(
+                  key: Key('type_chip_${type.toLowerCase()}'),
+                  label: type.toUpperCase(),
+                  chipColor: color,
+                  isActive: isSelected,
+                  onTap: () => notifier.selectType(type.toLowerCase()),
+                );
+              }),
+            ],
           ),
         ],
       ),
     );
   }
-}
 
-/// Shadcn-styled pill chip with animated scale and color transition.
-class _AnimatedTypeChip extends StatefulWidget {
-  final String label;
-  final String? typeName;
-  final bool isActive;
-  final VoidCallback onTap;
-
-  const _AnimatedTypeChip({
-    super.key,
-    required this.label,
-    this.typeName,
-    required this.isActive,
-    required this.onTap,
-  });
-
-  @override
-  State<_AnimatedTypeChip> createState() => _AnimatedTypeChipState();
-}
-
-class _AnimatedTypeChipState extends State<_AnimatedTypeChip> {
-  bool _isPressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _isPressed = true),
-      onTapUp: (_) => setState(() => _isPressed = false),
-      onTapCancel: () => setState(() => _isPressed = false),
-      onTap: widget.onTap,
-      child: AnimatedScale(
-        scale: _isPressed ? 0.94 : (widget.isActive ? 1.04 : 1.0),
-        duration: const Duration(milliseconds: 140),
-        curve: Curves.easeOutCubic,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
-          decoration: BoxDecoration(
-            color: widget.isActive ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: widget.isActive
-                  ? const Color(0xFF0F172A)
-                  : const Color(0xFFE2E8F0),
-              width: 1.0,
-            ),
-            boxShadow: widget.isActive
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.12),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (widget.typeName != null) ...[
-                Container(
-                  width: 7,
-                  height: 7,
-                  decoration: BoxDecoration(
-                    color: _getTypeColor(widget.typeName!),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 6),
-              ],
-              Text(
-                widget.label,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight:
-                      widget.isActive ? FontWeight.w700 : FontWeight.w600,
-                  color: widget.isActive
-                      ? Colors.white
-                      : const Color(0xFF475569),
-                  letterSpacing: 0.3,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
+  /// Maps canonical Pokémon types to their official hex colors.
   static Color _getTypeColor(String type) {
     switch (type.toLowerCase()) {
       case 'grass':
@@ -359,5 +189,76 @@ class _AnimatedTypeChipState extends State<_AnimatedTypeChip> {
       default:
         return const Color(0xFF888888);
     }
+  }
+}
+
+/// Interactive chip: Outline when unselected, Filled when selected.
+class _ColorCodedTypeChip extends StatefulWidget {
+  final String label;
+  final Color chipColor;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  const _ColorCodedTypeChip({
+    super.key,
+    required this.label,
+    required this.chipColor,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  @override
+  State<_ColorCodedTypeChip> createState() => _ColorCodedTypeChipState();
+}
+
+class _ColorCodedTypeChipState extends State<_ColorCodedTypeChip> {
+  bool _isPressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = widget.chipColor;
+
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapUp: (_) => setState(() => _isPressed = false),
+      onTapCancel: () => setState(() => _isPressed = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: _isPressed ? 0.93 : (widget.isActive ? 1.03 : 1.0),
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.easeOutCubic,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.0),
+          decoration: BoxDecoration(
+            color: widget.isActive ? color : Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: color,
+              width: 1.5,
+            ),
+            boxShadow: widget.isActive
+                ? [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.3),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Text(
+            widget.label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: widget.isActive ? Colors.white : color,
+              letterSpacing: 0.4,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

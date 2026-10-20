@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/pokemon_provider.dart';
 import '../widgets/nickname_dialog.dart';
 import '../widgets/pokeball_icon.dart';
+import '../widgets/pokedex_toast.dart';
 import '../widgets/type_badge.dart';
 
 /// Screen displaying comprehensive details of an individual Pokemon.
@@ -91,6 +92,13 @@ class PokemonDetailScreen extends ConsumerWidget {
             icon: PokeballIcon(isFavorite: isFavorite, size: 20),
             onPressed: () {
               ref.read(favoritesProvider.notifier).toggleFavorite(pokemon.id);
+              showPokedexToast(
+                context,
+                !isFavorite
+                    ? 'Added ${pokemon.displayName} to favorites'
+                    : 'Removed ${pokemon.displayName} from favorites',
+                icon: PokeballIcon(isFavorite: !isFavorite, size: 16),
+              );
             },
           ),
           const SizedBox(width: 8),
@@ -169,13 +177,14 @@ class PokemonDetailScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 4),
 
-                      // Primary Title: Nickname/Name with inline pencil edit icon
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Flexible(
-                            child: Text(
+                      // Primary Title: Nickname/Name with snug inline pencil edit icon
+                      Center(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Text(
                               hasNickname ? nickname : pokemon.displayName,
                               style: const TextStyle(
                                 fontSize: 22,
@@ -183,26 +192,23 @@ class PokemonDetailScreen extends ConsumerWidget {
                                 color: Color(0xFF0F172A),
                                 letterSpacing: -0.5,
                               ),
-                              textAlign: TextAlign.center,
                             ),
-                          ),
-                          const SizedBox(width: 6),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.edit_rounded,
-                              size: 18,
-                              color: Color(0xFF64748B),
+                            const SizedBox(width: 4),
+                            InkWell(
+                              borderRadius: BorderRadius.circular(8),
+                              onTap: () =>
+                                  NicknameDialog.show(context, pokemon),
+                              child: const Padding(
+                                padding: EdgeInsets.all(3.0),
+                                child: Icon(
+                                  Icons.edit_rounded,
+                                  size: 16,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
                             ),
-                            tooltip: hasNickname
-                                ? 'Edit Nickname'
-                                : 'Assign Nickname',
-                            splashRadius: 18,
-                            constraints: const BoxConstraints(),
-                            padding: const EdgeInsets.all(4),
-                            onPressed: () =>
-                                NicknameDialog.show(context, pokemon),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
 
                       // Subtitle: Original species name if custom nickname is present
@@ -219,13 +225,13 @@ class PokemonDetailScreen extends ConsumerWidget {
                       ],
                       const SizedBox(height: 12),
 
-                      // Elemental Type Badges
+                      // Elemental Type Badges (Larger display)
                       Wrap(
-                        spacing: 6.0,
-                        runSpacing: 6.0,
+                        spacing: 8.0,
+                        runSpacing: 8.0,
                         alignment: WrapAlignment.center,
                         children: pokemon.types
-                            .map((type) => TypeBadge(typeName: type))
+                            .map((type) => TypeBadge(typeName: type, isLarge: true))
                             .toList(),
                       ),
                     ],

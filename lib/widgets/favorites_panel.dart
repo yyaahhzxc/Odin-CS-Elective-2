@@ -4,6 +4,7 @@ import '../models/pokemon.dart';
 import '../providers/pokemon_provider.dart';
 import '../screens/pokemon_detail_screen.dart';
 import 'pokeball_icon.dart';
+import 'pokedex_toast.dart';
 
 /// Retractable panel displaying favorited Pokemon throughout the app.
 ///
@@ -148,6 +149,11 @@ class FavoritesPanel extends ConsumerWidget {
                                 ref
                                     .read(favoritesProvider.notifier)
                                     .removeFavorite(pokemon.id);
+                                showPokedexToast(
+                                  context,
+                                  'Removed ${pokemon.displayName} from favorites',
+                                  icon: const PokeballIcon(isFavorite: false, size: 16),
+                                );
                               },
                               onTap: () {
                                 ref

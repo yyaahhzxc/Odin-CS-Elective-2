@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/pokemon.dart';
 import '../providers/pokemon_provider.dart';
+import 'pokedex_toast.dart';
 
 /// Modal dialog styled after Shadcn UI dialog components.
 ///
@@ -53,16 +54,34 @@ class _NicknameDialogState extends ConsumerState<NicknameDialog> {
     final text = _controller.text.trim();
     if (text.isEmpty) {
       ref.read(nicknamesProvider.notifier).removeNickname(widget.pokemon.id);
+      showPokedexToast(
+        context,
+        'Nickname removed for ${widget.pokemon.displayName}',
+        icon: const Icon(Icons.delete_outline_rounded,
+            size: 16, color: Color(0xFFEF4444)),
+      );
     } else {
       ref
           .read(nicknamesProvider.notifier)
           .setNickname(widget.pokemon.id, text);
+      showPokedexToast(
+        context,
+        'Nickname set to "$text"',
+        icon: const Icon(Icons.check_circle_rounded,
+            size: 16, color: Color(0xFF22C55E)),
+      );
     }
     Navigator.of(context).pop();
   }
 
   void _removeNickname() {
     ref.read(nicknamesProvider.notifier).removeNickname(widget.pokemon.id);
+    showPokedexToast(
+      context,
+      'Nickname removed for ${widget.pokemon.displayName}',
+      icon: const Icon(Icons.delete_outline_rounded,
+          size: 16, color: Color(0xFFEF4444)),
+    );
     Navigator.of(context).pop();
   }
 
