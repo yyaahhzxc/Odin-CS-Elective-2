@@ -119,8 +119,12 @@ void main() {
       expect(find.text('Bulbasaur'), findsOneWidget);
       expect(find.text('Charmander'), findsOneWidget);
 
-      // Tap on Fire filter chip
-      await tester.tap(find.text('Fire'));
+      // Expand filter panel
+      await tester.tap(find.text('Expand'));
+      await tester.pumpAndSettle();
+
+      // Tap on FIRE filter chip by key
+      await tester.tap(find.byKey(const Key('type_chip_fire')));
       await tester.pumpAndSettle();
 
       // Only Charmander should be visible
@@ -186,6 +190,8 @@ void main() {
       // Species name subtitle
       expect(find.text('Charmander'), findsWidgets);
       expect(find.text('#0004'), findsOneWidget);
+      // Pencil edit icon is present beside name
+      expect(find.byIcon(Icons.edit_rounded), findsOneWidget);
     });
   });
 

@@ -26,28 +26,27 @@ class PokeApiService {
   /// Base endpoint URL for the PokéAPI v2.
   static const String _baseUrl = 'https://pokeapi.co/api/v2/pokemon';
 
-  /// National Pokédex IDs for all Grass, Fire, and Water starters across Generations 1 through 9.
-  ///
-  /// Total: 9 generations * 3 starters = 27 Pokémon (adheres to the <= 30 Pokémon limit requirement).
+  /// National Pokédex IDs for all Grass, Fire, and Water starter evolution lines
+  /// across Generations 1 through 9 (3 evolution stages * 3 starters * 9 gens = 81 Pokémon).
   static const List<int> starterIds = [
     // Generation 1 (Kanto)
-    1, 4, 7,
+    1, 2, 3, 4, 5, 6, 7, 8, 9,
     // Generation 2 (Johto)
-    152, 155, 158,
+    152, 153, 154, 155, 156, 157, 158, 159, 160,
     // Generation 3 (Hoenn)
-    252, 255, 258,
+    252, 253, 254, 255, 256, 257, 258, 259, 260,
     // Generation 4 (Sinnoh)
-    387, 390, 393,
+    387, 388, 389, 390, 391, 392, 393, 394, 395,
     // Generation 5 (Unova)
-    495, 498, 501,
+    495, 496, 497, 498, 499, 500, 501, 502, 503,
     // Generation 6 (Kalos)
-    650, 653, 656,
+    650, 651, 652, 653, 654, 655, 656, 657, 658,
     // Generation 7 (Alola)
-    722, 725, 728,
+    722, 723, 724, 725, 726, 727, 728, 729, 730,
     // Generation 8 (Galar)
-    810, 813, 816,
+    810, 811, 812, 813, 814, 815, 816, 817, 818,
     // Generation 9 (Paldea)
-    906, 909, 912,
+    906, 907, 908, 909, 910, 911, 912, 913, 914,
   ];
 
   final http.Client _client;

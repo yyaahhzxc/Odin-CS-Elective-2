@@ -1,16 +1,17 @@
 # Starter Pokédex Application (Midterm Exam)
 
 ## Project Overview
-Starter Pokédex is a cross-platform Flutter application displaying the 27 starter Pokémon across Generations 1 through 9 from PokéAPI, built using Riverpod state management to deliver asynchronous list handling, interactive type filtering, retractable favorites tracking, and custom nickname editing within a PokémonDB-inspired, Shadcn-styled minimalist design system.
+Starter Pokédex is a cross-platform Flutter application displaying the complete 81-Pokémon starter evolution roster across Generations 1 through 9 from PokéAPI, built using Riverpod state management to deliver asynchronous list handling, interactive downward-expandable 18-type filtering, retractable favorites tracking, and custom nickname editing within a PokémonDB-inspired, Shadcn-styled minimalist design system.
 
 ## Tasked Instructions / Requirements
 - **State Management Migration**: Transition from Provider to Riverpod (`flutter_riverpod`), encapsulating all functionality as methods directly within state notifiers.
 - **Pokémon List Management**:
-  - Asynchronous network retrieval from PokéAPI.
+  - Asynchronous network retrieval from PokéAPI covering all 81 starter evolution lines (9 generations × 3 families × 3 evolution stages).
   - Distinct UI handling for loading, error, and loaded states.
   - User-triggered list refresh on the home page re-invoking the primary `fetchPokemons()` method.
 - **Pokémon Nickname Editor**:
   - Modal dialog interface for assigning, editing, or deleting custom nicknames.
+  - Inline pencil edit icon directly beside the Pokémon's name on the detail view.
   - Centralized state persistence in Riverpod.
   - Visual display prioritizing the custom nickname as the primary title with the canonical species name as the subtitle.
 - **Favorite Pokémon & Retractable Panel**:
@@ -21,7 +22,8 @@ Starter Pokédex is a cross-platform Flutter application displaying the 27 start
   - Small Pokéball icon on each card indicating favorite status (filled active state vs outlined inactive state).
   - Tap interaction with scale micro-animation that updates global state without triggering card navigation.
 - **Pokémon Type Filter**:
-  - Horizontal chip filter allowing selection of elemental types (Grass, Fire, Water, Poison, Flying, etc.).
+  - Downward-expandable filter panel featuring all 18 elemental types in canonical order (Normal, Fire, Water, Electric, Grass, Ice, Fighting, Poison, Ground, Flying, Psychic, Bug, Rock, Ghost, Dragon, Dark, Steel, Fairy).
+  - Smooth expansion and selection micro-animations.
   - Reactive derivation displaying only matching Pokémon.
   - Clear filter control to restore the complete roster.
 - **VCS & Branching**:
