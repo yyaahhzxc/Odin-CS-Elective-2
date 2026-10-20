@@ -1,90 +1,79 @@
-# Starter Pokédex State Management (Gen 1–9)
+# Starter Pokédex Application (Midterm Exam)
 
 ## Project Overview
-Starter Pokédex is a Flutter application that fetches and displays the complete roster of Grass, Fire, and Water starter Pokémon across Generations 1 through 9 from PokéAPI, utilizing Provider architecture to manage centralized application state, dynamic routing, and data refreshing.
+Starter Pokédex is a cross-platform Flutter application displaying the 27 starter Pokémon across Generations 1 through 9 from PokéAPI, built using Riverpod state management to deliver asynchronous list handling, interactive type filtering, retractable favorites tracking, and custom nickname editing within a PokémonDB-inspired, Shadcn-styled minimalist design system.
 
 ## Tasked Instructions / Requirements
-- **Data Source**: Fetch data from PokéAPI (`https://pokeapi.co/api/v2/pokemon`).
-- **Dataset Limitation**: Limit results to 30 Pokémon (implemented with the 27 starter Pokémon across Gens 1–9).
-- **Designated Model Class**: Create a dedicated class for each Pokémon encapsulating `name`, `image`, and `ID`.
-- **State Management via Provider**: Manage discrete lifecycle states utilizing `package:provider`:
-  - Success State (rendered Pokémon information).
-  - Loading State.
-  - Error State.
-- **Scrollable Grid Presentation**: Display Pokémon in a responsive, scrollable grid layout organized by generation.
-- **Provider-Encapsulated API Execution**: Network fetching operations must be encapsulated directly as a method within the Provider.
-- **Refresh Functionality**: Provide user-triggered refresh capability on the main page that re-executes the API call.
-- **Strict App State Consumption**: All UI values across screens must be sourced strictly from centralized App State rather than ephemeral widget state.
-- **Dedicated Pokémon Detail View**: Implement an individual page for any clicked Pokémon, with its name, image, and ID derived directly from the Provider.
-- **VCS & Branching**: Submit on dedicated branch `state-mgt-act`.
+- **State Management Migration**: Transition from Provider to Riverpod (`flutter_riverpod`), encapsulating all functionality as methods directly within state notifiers.
+- **Pokémon List Management**:
+  - Asynchronous network retrieval from PokéAPI.
+  - Distinct UI handling for loading, error, and loaded states.
+  - User-triggered list refresh on the home page re-invoking the primary `fetchPokemons()` method.
+- **Pokémon Nickname Editor**:
+  - Modal dialog interface for assigning, editing, or deleting custom nicknames.
+  - Centralized state persistence in Riverpod.
+  - Visual display prioritizing the custom nickname as the primary title with the canonical species name as the subtitle.
+- **Favorite Pokémon & Retractable Panel**:
+  - Add or remove Pokémon from favorites globally.
+  - Collapsible, animated favorites panel embedded in the home page navigation area.
+  - Immediate state reflection when favorites are added, removed, or empty.
+- **Pokéball Favorite Indicator**:
+  - Small Pokéball icon on each card indicating favorite status (filled active state vs outlined inactive state).
+  - Tap interaction with scale micro-animation that updates global state without triggering card navigation.
+- **Pokémon Type Filter**:
+  - Horizontal chip filter allowing selection of elemental types (Grass, Fire, Water, Poison, Flying, etc.).
+  - Reactive derivation displaying only matching Pokémon.
+  - Clear filter control to restore the complete roster.
+- **VCS & Branching**:
+  - Branch out from `state-mgt-act` to `midterm-exam`.
 
 ## Implementation & Solutions
 
-### 1. Architectural Architecture & Folder Structure
-The codebase follows a clean, modular structure:
-- `lib/models/pokemon.dart`: Strongly-typed `Pokemon` data model containing `id`, `name`, `imageUrl`, and `types`, with deserializer `Pokemon.fromJson` and helper getters (`formattedId`, `displayName`, `generation`, `regionName`).
-- `lib/services/poke_api_service.dart`: Encapsulates low-level HTTP communication with PokéAPI using `package:http`. Uses `Future.wait` for concurrent retrieval of starter Pokémon.
-- `lib/providers/pokemon_provider.dart`: Core App State manager extending `ChangeNotifier`:
-  - State fields: `List<Pokemon> _pokemons`, `Pokemon? _selectedPokemon`, `PokemonStateStatus _status`, `String _errorMessage`.
-  - Methods: `fetchPokemons({bool forceRefresh = false})`, `selectPokemon(Pokemon pokemon)`, and `clearSelectedPokemon()`.
-  - Encapsulates API request dispatching and state machine transitions (initial, loading, success, error).
-- `lib/widgets/`: Modular UI presentation components:
-  - `pokemon_card.dart`: Interactive borderless Pokémon item handling tap events to dispatch `provider.selectPokemon(pokemon)` and navigate to the detail view.
-  - `type_badge.dart`: Element badge pill rendering PokémonDB authentic colors.
-  - `loading_view.dart`: Centered progress indicator for in-flight requests.
-  - `error_view.dart`: Error presentation view with retry trigger.
-  - `empty_view.dart`: Fallback empty view.
-- `lib/screens/pokedex_screen.dart`: Main screen observing `PokemonProvider`. Renders the loading, error, empty, or scrollable generation-divided grid based on provider state. Connects `RefreshIndicator` and header action to `provider.fetchPokemons(forceRefresh: true)`.
-- `lib/screens/pokemon_detail_screen.dart`: Detail screen consuming `context.watch<PokemonProvider>().selectedPokemon`. Derives all UI values (name, image, ID, elemental types, generation, and region) from App State with zero ephemeral route arguments.
+### 1. Architecture & State Management (Riverpod)
+The application architecture replaces `package:provider` with `package:flutter_riverpod` (`^2.6.1`), organized under [lib/providers/pokemon_provider.dart](file:///C:/Users/HP/Documents/GitHub/Flutter%20Midterm%20Exam/lib/providers/pokemon_provider.dart):
+- **`pokemonListProvider` (`AsyncNotifier<List<Pokemon>>`)**: Encapsulates async lifecycle states (loading, error, data). Exposes `fetchPokemons({bool forceRefresh})`, which is directly called by `RefreshIndicator` and the AppBar refresh action without duplicate wrapper methods.
+- **`favoritesProvider` (`Notifier<Set<int>>`)**: Maintains the set of favorited Pokémon IDs, exposing `toggleFavorite` and `removeFavorite`.
+- **`nicknamesProvider` (`Notifier<Map<int, String>>`)**: Stores custom Pokémon nicknames mapped by ID, exposing `setNickname` and `removeNickname`.
+- **`selectedTypeFilterProvider` (`Notifier<String?>`)**: Holds the active elemental type filter.
+- **`filteredPokemonsProvider` (`Provider<List<Pokemon>>`)**: Declaratively derives the filtered list by subscribing to both `pokemonListProvider` and `selectedTypeFilterProvider`.
+- **`selectedPokemonProvider` (`Notifier<Pokemon?>`)**: Manages the active Pokémon for detail screen routing without ephemeral route arguments.
 
-### 2. Provider State Management & Separation of Concerns
-1. **Centralized App State**:
-   Rather than maintaining local widget state (`setState` or `FutureBuilder`), the application injects `PokemonProvider` at the root via `ChangeNotifierProvider`. Both `PokedexScreen` and `PokemonDetailScreen` are stateless consumers of this centralized store.
-2. **Deterministic State Transitions**:
-   The lifecycle is driven by `PokemonStateStatus` (`initial`, `loading`, `success`, `error`), enabling deterministic UI updates across loading spinners, error banners with retry capabilities, and the populated grid.
-3. **Decoupled Detail Navigation**:
-   Clicking a card invokes `selectPokemon(pokemon)` on `PokemonProvider`. `PokemonDetailScreen` retrieves `provider.selectedPokemon`, ensuring the screen is fully decoupled from route arguments and strictly adheres to App State requirements.
+### 2. UI Components & Shadcn-Inspired Aesthetics
+- **[lib/widgets/pokeball_icon.dart](file:///C:/Users/HP/Documents/GitHub/Flutter%20Midterm%20Exam/lib/widgets/pokeball_icon.dart)**: Custom Canvas-painted Pokéball component supporting an outlined slate inactive state and an authentic two-tone red/white filled active state.
+- **[lib/widgets/favorites_panel.dart](file:///C:/Users/HP/Documents/GitHub/Flutter%20Midterm%20Exam/lib/widgets/favorites_panel.dart)**: Retractable top drawer utilizing `AnimatedSize` with `Curves.easeOutCubic`, horizontal cards with quick-remove buttons, and a clean empty state.
+- **[lib/widgets/type_filter_bar.dart](file:///C:/Users/HP/Documents/GitHub/Flutter%20Midterm%20Exam/lib/widgets/type_filter_bar.dart)**: Horizontal pill badge list with 12px (0.75rem) rounded corners, subtle shadows, and an animated clear action positioned for accessible tap targets.
+- **[lib/widgets/nickname_dialog.dart](file:///C:/Users/HP/Documents/GitHub/Flutter%20Midterm%20Exam/lib/widgets/nickname_dialog.dart)**: Shadcn-inspired modal dialog featuring text input, autofocus, Save, and destructive Remove actions.
+- **[lib/widgets/pokemon_card.dart](file:///C:/Users/HP/Documents/GitHub/Flutter%20Midterm%20Exam/lib/widgets/pokemon_card.dart)**: Borderless PokémonDB card layout integrating title/subtitle nickname hierarchy and animated Pokéball favorite toggle.
 
 ## Setup & Dependencies
 
 ### Prerequisites
-- Flutter SDK (v3.10.1 or higher)
-- Dart SDK (v3.10.1 or higher)
+- Flutter SDK `^3.10.1`
+- Dart SDK `^3.1.0`
 
 ### Dependencies
-The following packages are declared in `pubspec.yaml`:
-```yaml
-dependencies:
-  flutter:
-    sdk: flutter
-  cupertino_icons: ^1.0.8
-  http: ^1.6.0
-  provider: ^6.1.2
+Defined in [pubspec.yaml](file:///C:/Users/HP/Documents/GitHub/Flutter%20Midterm%20Exam/pubspec.yaml):
+- `flutter`: Flutter SDK
+- `cupertino_icons`: `^1.0.8`
+- `http`: `^1.6.0`
+- `flutter_riverpod`: `^2.6.1`
+- `flutter_lints`: `^6.0.0` (dev)
+- `flutter_test`: Flutter SDK (dev)
 
-dev_dependencies:
-  flutter_test:
-    sdk: flutter
-  flutter_lints: ^6.0.0
-```
-
-### Running the Application
-1. Clone the repository and checkout the activity branch:
-   ```bash
-   git checkout state-mgt-act
-   ```
-2. Install project dependencies:
+### Execution Steps
+1. Fetch project dependencies:
    ```bash
    flutter pub get
    ```
-3. Run static analysis:
+2. Verify code analysis and lints:
    ```bash
    flutter analyze
    ```
-4. Execute the test suite:
+3. Run the automated test suite:
    ```bash
    flutter test
    ```
-5. Launch the application:
+4. Launch the application:
    ```bash
    flutter run
    ```

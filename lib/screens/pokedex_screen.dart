@@ -1,22 +1,36 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/pokemon.dart';
 import '../providers/pokemon_provider.dart';
-import '../widgets/empty_view.dart';
 import '../widgets/error_view.dart';
+import '../widgets/favorites_panel.dart';
 import '../widgets/loading_view.dart';
+import '../widgets/pokeball_icon.dart';
 import '../widgets/pokemon_card.dart';
+import '../widgets/type_filter_bar.dart';
 
-/// Main screen displaying the 27 starter Pokémon from Generations 1 to 9.
+/// Main screen displaying the 27 starter Pokemon across Generations 1 to 9.
 ///
-/// Refactored to adhere strictly to State Management specifications:
-/// - Replaces ephemeral [FutureBuilder] state with centralized [PokemonProvider] App State.
-/// - Handles Success, Loading, and Error states derived from [PokemonProvider] (Requirement 4).
-/// - Triggers API calls through the provider method [PokemonProvider.fetchPokemons] (Requirement 6).
-/// - Includes refresh functionality via [RefreshIndicator] and AppBar action (Requirement 7).
-/// - All UI values derived from App State (Requirement 8).
-class PokedexScreen extends StatelessWidget {
+/// Refactored to Riverpod architecture (Exam Requirement):
+/// - Manages loading, error, and success states through [pokemonListProvider].
+/// - Pull-to-refresh and AppBar refresh recall the existing [fetchPokemons] method.
+/// - Integrated retractable Favorites Panel in the AppBar with live count badge.
+/// - Type Filter Bar allowing selection and clearing of elemental types.
+class PokedexScreen extends ConsumerStatefulWidget {
   const PokedexScreen({super.key});
+
+  @override
+  ConsumerState<PokedexScreen> createState() => _PokedexScreenState();
+}
+
+class _PokedexScreenState extends ConsumerState<PokedexScreen> {
+  bool _isFavoritesPanelExpanded = false;
+
+  void _toggleFavoritesPanel() {
+    setState(() {
+      _isFavoritesPanelExpanded = !_isFavoritesPanelExpanded;
+    });
+  }
 
   /// Builds a simplified, centered generation section divider flanked by hairline lines.
   Widget _buildGenerationHeader(int gen, String region) {
@@ -24,15 +38,12 @@ class PokedexScreen extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 20.0),
       child: Row(
         children: [
-          // Left hairline divider
           const Expanded(
             child: Divider(
-              color: Color(0xFFE5E7EB),
+              color: Color(0xFFE2E8F0),
               thickness: 1.0,
             ),
           ),
-
-          // Centered generation label: e.g., "Generation 1 • Kanto"
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Text(
@@ -41,15 +52,13 @@ class PokedexScreen extends StatelessWidget {
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.6,
-                color: Color(0xFF6B7280),
+                color: Color(0xFF64748B),
               ),
             ),
           ),
-
-          // Right hairline divider
           const Expanded(
             child: Divider(
-              color: Color(0xFFE5E7EB),
+              color: Color(0xFFE2E8F0),
               thickness: 1.0,
             ),
           ),
@@ -60,10 +69,13 @@ class PokedexScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<PokemonProvider>();
+    final asyncPokemons = ref.watch(pokemonListProvider);
+    final favorites = ref.watch(favoritesProvider);
+    final activeType = ref.watch(selectedTypeFilterProvider);
+    final filteredPokemons = ref.watch(filteredPokemonsProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
@@ -72,14 +84,60 @@ class PokedexScreen extends StatelessWidget {
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1.0),
           child: Container(
-            color: const Color(0xFFE5E7EB),
+            color: const Color(0xFFE2E8F0),
             height: 1.0,
+          ),
+        ),
+        leading: Tooltip(
+          message: _isFavoritesPanelExpanded
+              ? 'Collapse Favorites'
+              : 'Expand Favorites',
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: _toggleFavoritesPanel,
+            child: Center(
+              child: Stack(
+                clipBehavior: Clip.none,
+                alignment: Alignment.center,
+                children: [
+                  PokeballIcon(
+                    isFavorite: favorites.isNotEmpty,
+                    size: 20,
+                  ),
+                  if (favorites.isNotEmpty)
+                    Positioned(
+                      top: -4,
+                      right: -6,
+                      child: Container(
+                        padding: const EdgeInsets.all(2.5),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFEF4444),
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 14,
+                          minHeight: 14,
+                        ),
+                        child: Text(
+                          '${favorites.length}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ),
         ),
         title: const Text(
           'Starter Pokédex',
           style: TextStyle(
-            color: Color(0xFF111827),
+            color: Color(0xFF0F172A),
             fontSize: 18,
             fontWeight: FontWeight.w700,
             letterSpacing: -0.3,
@@ -87,86 +145,148 @@ class PokedexScreen extends StatelessWidget {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: Color(0xFF4B5563), size: 20),
+            icon: const Icon(Icons.refresh_rounded,
+                color: Color(0xFF475569), size: 20),
             tooltip: 'Refresh Pokémon',
-            onPressed: () => context.read<PokemonProvider>().fetchPokemons(forceRefresh: true),
+            onPressed: () {
+              ref
+                  .read(pokemonListProvider.notifier)
+                  .fetchPokemons(forceRefresh: true);
+            },
           ),
           const SizedBox(width: 8),
         ],
       ),
-      body: _buildBody(context, provider),
+      body: Column(
+        children: [
+          // 1. Retractable Favorites Panel (Collapsible)
+          FavoritesPanel(
+            isExpanded: _isFavoritesPanelExpanded,
+            onToggle: _toggleFavoritesPanel,
+          ),
+
+          // 2. Main Content Area with Type Filter Bar and Pokemon Grid
+          Expanded(
+            child: asyncPokemons.when(
+              loading: () => const LoadingView(),
+              error: (err, _) => ErrorView(
+                errorMessage: err.toString().replaceFirst('Exception: ', ''),
+                onRetry: () {
+                  ref
+                      .read(pokemonListProvider.notifier)
+                      .fetchPokemons(forceRefresh: true);
+                },
+              ),
+              data: (_) {
+                return RefreshIndicator(
+                  color: const Color(0xFF0F172A),
+                  backgroundColor: Colors.white,
+                  onRefresh: () => ref
+                      .read(pokemonListProvider.notifier)
+                      .fetchPokemons(forceRefresh: true),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 860),
+                      child: ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.only(
+                            top: 8.0, bottom: 28.0, left: 16.0, right: 16.0),
+                        children: [
+                          // Type Filter Bar
+                          const TypeFilterBar(),
+                          const SizedBox(height: 12),
+
+                          // Empty filtered results check
+                          if (filteredPokemons.isEmpty)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 48, horizontal: 20),
+                              child: Center(
+                                child: Column(
+                                  children: [
+                                    const Icon(
+                                      Icons.filter_list_off_rounded,
+                                      size: 40,
+                                      color: Color(0xFF94A3B8),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      activeType != null
+                                          ? 'No Pokémon found matching type "$activeType".'
+                                          : 'No Pokémon found.',
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: Color(0xFF64748B),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    OutlinedButton(
+                                      style: OutlinedButton.styleFrom(
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                        ),
+                                        side: const BorderSide(
+                                            color: Color(0xFFCBD5E1)),
+                                      ),
+                                      onPressed: () => ref
+                                          .read(selectedTypeFilterProvider
+                                              .notifier)
+                                          .clearFilter(),
+                                      child: const Text('Clear Filter'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          else
+                            ..._buildPokemonSections(filteredPokemons),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildBody(BuildContext context, PokemonProvider provider) {
-    // 1. Loading State
-    if (provider.status == PokemonStateStatus.loading ||
-        provider.status == PokemonStateStatus.initial) {
-      return const LoadingView();
-    }
-
-    // 2. Error State
-    if (provider.status == PokemonStateStatus.error) {
-      return ErrorView(
-        errorMessage: provider.errorMessage,
-        onRetry: () => context.read<PokemonProvider>().fetchPokemons(forceRefresh: true),
-      );
-    }
-
-    // 3. Empty State Check
-    final List<Pokemon> pokemons = provider.pokemons;
-    if (pokemons.isEmpty) {
-      return const EmptyView();
-    }
-
-    // Group Pokémon by Generation (Generations 1 to 9)
+  /// Groups Pokemon by generation and returns structured generation blocks.
+  List<Widget> _buildPokemonSections(List<Pokemon> pokemons) {
     final Map<int, List<Pokemon>> generationMap = {};
     for (final pokemon in pokemons) {
       generationMap.putIfAbsent(pokemon.generation, () => []).add(pokemon);
     }
 
-    final List<int> sortedGens = generationMap.keys.toList()..sort();
+    final sortedGens = generationMap.keys.toList()..sort();
 
-    // 4. Success State: Scrollable generation blocks with 3 starters per row
-    return RefreshIndicator(
-      color: const Color(0xFF2563EB),
-      backgroundColor: Colors.white,
-      onRefresh: () => context.read<PokemonProvider>().fetchPokemons(forceRefresh: true),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 860),
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
-            physics: const AlwaysScrollableScrollPhysics(),
-            itemCount: sortedGens.length,
-            itemBuilder: (context, index) {
-              final int gen = sortedGens[index];
-              final List<Pokemon> starters = generationMap[gen] ?? [];
-              final String region = starters.isNotEmpty ? starters.first.regionName : '';
+    return sortedGens.map((gen) {
+      final starters = generationMap[gen] ?? [];
+      final region = starters.isNotEmpty ? starters.first.regionName : '';
 
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 36.0),
-                child: Column(
-                  children: [
-                    // Centered Generation Divider
-                    _buildGenerationHeader(gen, region),
-
-                    // 3 Starters displayed across a 3-item row
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: starters.map((pokemon) {
-                        return Expanded(
-                          child: PokemonCard(pokemon: pokemon),
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 28.0),
+        child: Column(
+          children: [
+            _buildGenerationHeader(gen, region),
+            Wrap(
+              spacing: 12.0,
+              runSpacing: 16.0,
+              alignment: WrapAlignment.center,
+              children: starters.map((pokemon) {
+                return SizedBox(
+                  width: 104,
+                  child: PokemonCard(pokemon: pokemon),
+                );
+              }).toList(),
+            ),
+          ],
         ),
-      ),
-    );
+      );
+    }).toList();
   }
 }

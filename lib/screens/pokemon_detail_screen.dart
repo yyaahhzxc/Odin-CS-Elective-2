@@ -1,35 +1,38 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/pokemon_provider.dart';
+import '../widgets/nickname_dialog.dart';
+import '../widgets/pokeball_icon.dart';
 import '../widgets/type_badge.dart';
 
-/// Screen displaying comprehensive details of an individual Pokémon.
+/// Screen displaying comprehensive details of an individual Pokemon.
 ///
-/// In strict accordance with requirements:
-/// - Page contents (name, image, and ID) are sourced exclusively from [PokemonProvider] (Requirement 9).
-/// - Operates without ephemeral route parameter dependencies, reading directly from App State (Requirement 8).
-class PokemonDetailScreen extends StatelessWidget {
+/// Refactored to Riverpod architecture:
+/// - Reads selected Pokemon from [selectedPokemonProvider].
+/// - Displays Pokeball favorite button with live toggle functionality.
+/// - Shows nickname management card allowing adding, editing, or removing nicknames.
+class PokemonDetailScreen extends ConsumerWidget {
   const PokemonDetailScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // Access active Pokémon from centralized App State
-    final pokemon = context.watch<PokemonProvider>().selectedPokemon;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pokemon = ref.watch(selectedPokemonProvider);
 
     if (pokemon == null) {
       return Scaffold(
-        backgroundColor: const Color(0xFFF9FAFB),
+        backgroundColor: const Color(0xFFF8FAFC),
         appBar: AppBar(
           backgroundColor: Colors.white,
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF111827)),
+            icon:
+                const Icon(Icons.arrow_back_rounded, color: Color(0xFF0F172A)),
             onPressed: () => Navigator.of(context).pop(),
           ),
           title: const Text(
             'Pokémon Details',
             style: TextStyle(
-              color: Color(0xFF111827),
+              color: Color(0xFF0F172A),
               fontSize: 18,
               fontWeight: FontWeight.w700,
             ),
@@ -39,7 +42,7 @@ class PokemonDetailScreen extends StatelessWidget {
           child: Text(
             'No Pokémon selected in application state.',
             style: TextStyle(
-              color: Color(0xFF6B7280),
+              color: Color(0xFF64748B),
               fontSize: 14,
             ),
           ),
@@ -47,8 +50,12 @@ class PokemonDetailScreen extends StatelessWidget {
       );
     }
 
+    final isFavorite = ref.watch(favoritesProvider).contains(pokemon.id);
+    final nickname = ref.watch(nicknamesProvider)[pokemon.id];
+    final hasNickname = nickname != null && nickname.isNotEmpty;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
@@ -57,55 +64,67 @@ class PokemonDetailScreen extends StatelessWidget {
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1.0),
           child: Container(
-            color: const Color(0xFFE5E7EB),
+            color: const Color(0xFFE2E8F0),
             height: 1.0,
           ),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF111827)),
+          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF0F172A)),
           tooltip: 'Back to Pokédex',
           onPressed: () {
-            context.read<PokemonProvider>().clearSelectedPokemon();
+            ref.read(selectedPokemonProvider.notifier).clearSelection();
             Navigator.of(context).pop();
           },
         ),
         title: Text(
-          pokemon.displayName,
+          hasNickname ? nickname : pokemon.displayName,
           style: const TextStyle(
-            color: Color(0xFF111827),
+            color: Color(0xFF0F172A),
             fontSize: 18,
             fontWeight: FontWeight.w700,
             letterSpacing: -0.3,
           ),
         ),
+        actions: [
+          IconButton(
+            tooltip: isFavorite ? 'Remove Favorite' : 'Mark as Favorite',
+            icon: PokeballIcon(isFavorite: isFavorite, size: 20),
+            onPressed: () {
+              ref.read(favoritesProvider.notifier).toggleFavorite(pokemon.id);
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 520),
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 28.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Artwork Container with subtle border and neutral backdrop
+                // 1. Artwork Card
                 Container(
-                  padding: const EdgeInsets.all(28.0),
+                  padding: const EdgeInsets.all(24.0),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
                   ),
                   child: Column(
                     children: [
-                      // Centered High-Resolution Sprite
+                      // High-res sprite
                       SizedBox(
-                        height: 200,
+                        height: 190,
                         child: Center(
                           child: pokemon.imageUrl.isNotEmpty
                               ? Image.network(
                                   pokemon.imageUrl,
                                   fit: BoxFit.contain,
-                                  loadingBuilder: (context, child, loadingProgress) {
+                                  loadingBuilder:
+                                      (context, child, loadingProgress) {
                                     if (loadingProgress == null) return child;
                                     return const Center(
                                       child: SizedBox(
@@ -113,8 +132,9 @@ class PokemonDetailScreen extends StatelessWidget {
                                         height: 28,
                                         child: CircularProgressIndicator(
                                           strokeWidth: 2.5,
-                                          valueColor: AlwaysStoppedAnimation<Color>(
-                                            Color(0xFF9CA3AF),
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                            Color(0xFF94A3B8),
                                           ),
                                         ),
                                       ),
@@ -124,41 +144,54 @@ class PokemonDetailScreen extends StatelessWidget {
                                     return const Icon(
                                       Icons.broken_image_outlined,
                                       size: 64,
-                                      color: Color(0xFF9CA3AF),
+                                      color: Color(0xFF94A3B8),
                                     );
                                   },
                                 )
                               : const Icon(
                                   Icons.image_not_supported_outlined,
                                   size: 64,
-                                  color: Color(0xFF9CA3AF),
+                                  color: Color(0xFF94A3B8),
                                 ),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 14),
 
-                      // Monospace Pokédex Number
+                      // Monospace Dex Number
                       Text(
                         pokemon.formattedId,
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                           fontFamily: 'monospace',
-                          color: Color(0xFF6B7280),
+                          color: Color(0xFF64748B),
                         ),
                       ),
                       const SizedBox(height: 4),
 
-                      // Prominent Pokémon Name
+                      // Primary Title: Nickname if available, else original name
                       Text(
-                        pokemon.displayName,
+                        hasNickname ? nickname : pokemon.displayName,
                         style: const TextStyle(
-                          fontSize: 24,
+                          fontSize: 22,
                           fontWeight: FontWeight.w800,
-                          color: Color(0xFF111827),
+                          color: Color(0xFF0F172A),
                           letterSpacing: -0.5,
                         ),
                       ),
+
+                      // Subtitle: Original name if custom nickname exists
+                      if (hasNickname) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          pokemon.displayName,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 12),
 
                       // Elemental Type Badges
@@ -175,13 +208,77 @@ class PokemonDetailScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
 
-                // Metadata Card displaying Generation and Region info
+                // 2. Nickname Management Card (Shadcn card style)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 18.0, vertical: 14.0),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.badge_outlined,
+                        size: 20,
+                        color: Color(0xFF64748B),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Custom Nickname',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              hasNickname ? nickname : 'None assigned',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: hasNickname
+                                    ? FontWeight.w700
+                                    : FontWeight.w400,
+                                color: hasNickname
+                                    ? const Color(0xFF0F172A)
+                                    : const Color(0xFF94A3B8),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFFCBD5E1)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                        ),
+                        icon: const Icon(Icons.edit_rounded, size: 14),
+                        label: Text(hasNickname ? 'Edit' : 'Assign'),
+                        onPressed: () => NicknameDialog.show(context, pokemon),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // 3. Metadata Card (Generation, Region, Dex Number)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 18.0, vertical: 16.0),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
                   ),
                   child: Column(
                     children: [
@@ -189,12 +286,12 @@ class PokemonDetailScreen extends StatelessWidget {
                         label: 'National Dex Number',
                         value: pokemon.id.toString(),
                       ),
-                      const Divider(color: Color(0xFFF3F4F6), height: 20),
+                      const Divider(color: Color(0xFFF1F5F9), height: 20),
                       _buildInfoRow(
                         label: 'Generation',
                         value: 'Gen ${pokemon.generation}',
                       ),
-                      const Divider(color: Color(0xFFF3F4F6), height: 20),
+                      const Divider(color: Color(0xFFF1F5F9), height: 20),
                       _buildInfoRow(
                         label: 'Origin Region',
                         value: pokemon.regionName,
@@ -210,7 +307,6 @@ class PokemonDetailScreen extends StatelessWidget {
     );
   }
 
-  /// Helper row widget for key-value pair attributes.
   Widget _buildInfoRow({required String label, required String value}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -219,7 +315,7 @@ class PokemonDetailScreen extends StatelessWidget {
           label,
           style: const TextStyle(
             fontSize: 13,
-            color: Color(0xFF6B7280),
+            color: Color(0xFF64748B),
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -227,7 +323,7 @@ class PokemonDetailScreen extends StatelessWidget {
           value,
           style: const TextStyle(
             fontSize: 13,
-            color: Color(0xFF111827),
+            color: Color(0xFF0F172A),
             fontWeight: FontWeight.w600,
           ),
         ),

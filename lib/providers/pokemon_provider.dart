@@ -1,102 +1,176 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/pokemon.dart';
 import '../services/poke_api_service.dart';
 
-/// Enumeration representing the discrete states of the Pokédex data lifecycle.
-enum PokemonStateStatus {
-  initial,
-  loading,
-  success,
-  error,
+/// Service provider injecting [PokeApiService].
+final pokeApiServiceProvider = Provider<PokeApiService>((ref) {
+  final service = PokeApiService();
+  ref.onDispose(() => service.dispose());
+  return service;
+});
+
+/// Async state notifier managing the Pokemon list lifecycle.
+///
+/// Encapsulates loading, error, and data states natively via [AsyncValue].
+/// Fulfills Exam Requirement 1: list loading/fetching in state management,
+/// and refresh directly re-executes [fetchPokemons] without creating extra methods.
+class PokemonListNotifier extends AsyncNotifier<List<Pokemon>> {
+  @override
+  Future<List<Pokemon>> build() async {
+    return _fetch();
+  }
+
+  Future<List<Pokemon>> _fetch() async {
+    final apiService = ref.read(pokeApiServiceProvider);
+    return await apiService.fetchStarterPokemons();
+  }
+
+  /// Fetches Pokemon data asynchronously and updates the state.
+  ///
+  /// Setting [forceRefresh] triggers a reload even if data is already loaded.
+  Future<void> fetchPokemons({bool forceRefresh = false}) async {
+    if (state.isLoading) return;
+    if (state.hasValue && !forceRefresh) return;
+
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() => _fetch());
+  }
 }
 
-/// Provider managing application-wide state for Pokémon data.
+/// Provider managing the list of Pokemon entities.
+final pokemonListProvider =
+    AsyncNotifierProvider<PokemonListNotifier, List<Pokemon>>(() {
+  return PokemonListNotifier();
+});
+
+/// Notifier managing favorited Pokemon IDs.
 ///
-/// Encapsulates:
-/// - Asynchronous state machine (initial, loading, success, error)
-/// - List of fetched Pokémon entities
-/// - Active Pokémon selection for the detail screen (App State)
-/// - Network error messaging
+/// Fulfills Exam Requirements 3 & 4.
+class FavoritesNotifier extends Notifier<Set<int>> {
+  @override
+  Set<int> build() => <int>{};
+
+  /// Toggles favorite status for a Pokemon ID.
+  void toggleFavorite(int id) {
+    if (state.contains(id)) {
+      state = Set<int>.from(state)..remove(id);
+    } else {
+      state = Set<int>.from(state)..add(id);
+    }
+  }
+
+  /// Removes a Pokemon ID from favorites.
+  void removeFavorite(int id) {
+    if (state.contains(id)) {
+      state = Set<int>.from(state)..remove(id);
+    }
+  }
+
+  /// Checks if a Pokemon ID is favorited.
+  bool isFavorite(int id) => state.contains(id);
+}
+
+/// Provider managing the user's favorite Pokemon IDs.
+final favoritesProvider = NotifierProvider<FavoritesNotifier, Set<int>>(() {
+  return FavoritesNotifier();
+});
+
+/// Notifier managing custom nicknames assigned to Pokemon.
 ///
-/// Adheres strictly to requirements:
-/// - States managed using Provider (Requirement 4)
-/// - API call encapsulated as a method in the Provider (Requirement 6)
-/// - All UI values derived from App State rather than ephemeral state (Requirement 8)
-/// - Detail page contents provided via centralized state (Requirement 9)
-class PokemonProvider extends ChangeNotifier {
-  final PokeApiService _apiService;
+/// Maps Pokemon ID to custom nickname. Fulfills Exam Requirement 2.
+class NicknamesNotifier extends Notifier<Map<int, String>> {
+  @override
+  Map<int, String> build() => <int, String>{};
 
-  List<Pokemon> _pokemons = [];
-  Pokemon? _selectedPokemon;
-  PokemonStateStatus _status = PokemonStateStatus.initial;
-  String _errorMessage = '';
-
-  /// Constructor allows dependency injection of [PokeApiService] for testing.
-  PokemonProvider({PokeApiService? apiService})
-      : _apiService = apiService ?? PokeApiService();
-
-  /// Unmodifiable view of the current Pokémon list.
-  List<Pokemon> get pokemons => List.unmodifiable(_pokemons);
-
-  /// Currently selected Pokémon entity stored in App State.
-  Pokemon? get selectedPokemon => _selectedPokemon;
-
-  /// Current lifecycle state status.
-  PokemonStateStatus get status => _status;
-
-  /// Human-readable error message populated during error state.
-  String get errorMessage => _errorMessage;
-
-  /// Helper boolean getter indicating an in-flight network request.
-  bool get isLoading => _status == PokemonStateStatus.loading;
-
-  /// Helper boolean getter indicating an error state.
-  bool get hasError => _status == PokemonStateStatus.error;
-
-  /// Helper boolean getter indicating successful data retrieval.
-  bool get isSuccess => _status == PokemonStateStatus.success;
-
-  /// Fetches the Pokémon dataset and manages state transitions.
-  ///
-  /// Can be forced to bypass cache when [forceRefresh] is set to true.
-  Future<void> fetchPokemons({bool forceRefresh = false}) async {
-    if (_status == PokemonStateStatus.loading) return;
-    if (_status == PokemonStateStatus.success && _pokemons.isNotEmpty && !forceRefresh) {
+  /// Assigns or updates a custom nickname for a Pokemon.
+  void setNickname(int id, String nickname) {
+    final trimmed = nickname.trim();
+    if (trimmed.isEmpty) {
+      removeNickname(id);
       return;
     }
+    state = Map<int, String>.from(state)..[id] = trimmed;
+  }
 
-    _status = PokemonStateStatus.loading;
-    _errorMessage = '';
-    notifyListeners();
-
-    try {
-      final results = await _apiService.fetchStarterPokemons();
-      _pokemons = results;
-      _status = PokemonStateStatus.success;
-      _errorMessage = '';
-    } catch (e) {
-      _status = PokemonStateStatus.error;
-      _errorMessage = e.toString().replaceFirst('Exception: ', '');
-    } finally {
-      notifyListeners();
+  /// Removes an existing nickname.
+  void removeNickname(int id) {
+    if (state.containsKey(id)) {
+      state = Map<int, String>.from(state)..remove(id);
     }
   }
 
-  /// Sets the active Pokémon in App State for detail view rendering.
-  void selectPokemon(Pokemon pokemon) {
-    _selectedPokemon = pokemon;
-    notifyListeners();
-  }
+  /// Returns the custom nickname if assigned, otherwise null.
+  String? getNickname(int id) => state[id];
+}
 
-  /// Clears the active Pokémon from App State upon navigating back.
-  void clearSelectedPokemon() {
-    _selectedPokemon = null;
-    notifyListeners();
-  }
+/// Provider managing custom Pokemon nicknames.
+final nicknamesProvider =
+    NotifierProvider<NicknamesNotifier, Map<int, String>>(() {
+  return NicknamesNotifier();
+});
 
+/// Notifier managing the selected elemental type filter.
+///
+/// Fulfills Exam Requirement 5.
+class TypeFilterNotifier extends Notifier<String?> {
   @override
-  void dispose() {
-    _apiService.dispose();
-    super.dispose();
+  String? build() => null;
+
+  /// Selects an elemental type filter. Passing null or the current type clears it.
+  void selectType(String? type) {
+    if (state == type) {
+      state = null;
+    } else {
+      state = type;
+    }
+  }
+
+  /// Clears the active type filter.
+  void clearFilter() {
+    state = null;
   }
 }
+
+/// Provider managing the active type filter selection.
+final selectedTypeFilterProvider =
+    NotifierProvider<TypeFilterNotifier, String?>(() {
+  return TypeFilterNotifier();
+});
+
+/// Derived provider computing the filtered list of Pokemon.
+///
+/// Automatically recalculates whenever [pokemonListProvider] or
+/// [selectedTypeFilterProvider] changes.
+final filteredPokemonsProvider = Provider<List<Pokemon>>((ref) {
+  final asyncPokemons = ref.watch(pokemonListProvider);
+  final selectedType = ref.watch(selectedTypeFilterProvider);
+
+  final pokemons = asyncPokemons.value ?? [];
+  if (selectedType == null) {
+    return pokemons;
+  }
+
+  return pokemons
+      .where((p) => p.types.any((t) => t.toLowerCase() == selectedType.toLowerCase()))
+      .toList();
+});
+
+/// Notifier tracking the currently selected Pokemon for the detail screen.
+class SelectedPokemonNotifier extends Notifier<Pokemon?> {
+  @override
+  Pokemon? build() => null;
+
+  void selectPokemon(Pokemon pokemon) {
+    state = pokemon;
+  }
+
+  void clearSelection() {
+    state = null;
+  }
+}
+
+/// Provider managing the active Pokemon for the detail view.
+final selectedPokemonProvider =
+    NotifierProvider<SelectedPokemonNotifier, Pokemon?>(() {
+  return SelectedPokemonNotifier();
+});
