@@ -7,6 +7,7 @@ import 'package:pokedex_app/providers/pokemon_provider.dart';
 import 'package:pokedex_app/screens/pokedex_screen.dart';
 import 'package:pokedex_app/screens/pokemon_detail_screen.dart';
 import 'package:pokedex_app/widgets/loading_view.dart';
+import 'package:pokedex_app/widgets/nickname_dialog.dart';
 import 'package:pokedex_app/widgets/type_badge.dart';
 
 void main() {
@@ -119,6 +120,13 @@ void main() {
       expect(find.text('Bulbasaur'), findsOneWidget);
       expect(find.text('Charmander'), findsOneWidget);
 
+      // Verify collapsed by default
+      expect(find.byKey(const Key('type_chip_fire')), findsNothing);
+
+      // Expand type filter
+      await tester.tap(find.byKey(const Key('toggle_type_filter_button')));
+      await tester.pumpAndSettle();
+
       // Tap on FIRE filter chip directly by key
       await tester.tap(find.byKey(const Key('type_chip_fire')));
       await tester.pumpAndSettle();
@@ -127,8 +135,8 @@ void main() {
       expect(find.text('Charmander'), findsOneWidget);
       expect(find.text('Bulbasaur'), findsNothing);
 
-      // Tap on Clear button
-      await tester.tap(find.text('Clear'));
+      // Tap on ALL chip to reset filter
+      await tester.tap(find.byKey(const Key('type_chip_all')));
       await tester.pumpAndSettle();
 
       // Both should be visible again
@@ -188,6 +196,47 @@ void main() {
       expect(find.text('#0004'), findsOneWidget);
       // Pencil edit icon is present beside name
       expect(find.byIcon(Icons.edit_rounded), findsOneWidget);
+    });
+
+    testWidgets(
+        'NicknameDialog displays type-customized suggested nickname placeholder text',
+        (tester) async {
+      const waterPokemon = Pokemon(
+        id: 7,
+        name: 'squirtle',
+        imageUrl: 'https://example.com/squirtle.png',
+        types: ['water'],
+      );
+
+      // Test Grass
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(body: NicknameDialog(pokemon: samplePokemon1)),
+          ),
+        ),
+      );
+      expect(find.text('e.g. Sprout, Leafy, Ivy...'), findsOneWidget);
+
+      // Test Fire
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(body: NicknameDialog(pokemon: samplePokemon2)),
+          ),
+        ),
+      );
+      expect(find.text('e.g. Blaze, Ember, Pyro...'), findsOneWidget);
+
+      // Test Water
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(body: NicknameDialog(pokemon: waterPokemon)),
+          ),
+        ),
+      );
+      expect(find.text('e.g. Splash, Aqua, Bubbles...'), findsOneWidget);
     });
   });
 

@@ -4,15 +4,23 @@ import '../providers/pokemon_provider.dart';
 
 /// Clean type filter bar displaying all elemental types naturally with color-coded styling.
 ///
-/// Visual system:
-/// - Unselected: Color-coded outline with white background and matching color text.
-/// - Selected: Color-coded filled background with crisp white text.
-/// - Displayed naturally without collapse/expand barriers.
+/// Features:
+/// - Collapsible by default with smooth [Curves.easeOutCubic] animation.
+/// - Header displays count of filtered Pokémon when active.
+/// - Unselected chips: Color-coded outline with white background and matching color text.
+/// - Selected chips: Color-coded filled background with crisp white text.
 /// - Arranged in canonical reference order:
 ///   Normal, Fire, Water, Electric, Grass, Ice, Fighting, Poison, Ground, Flying,
 ///   Psychic, Bug, Rock, Ghost, Dragon, Dark, Steel, Fairy.
 class TypeFilterBar extends ConsumerWidget {
-  const TypeFilterBar({super.key});
+  final bool isExpanded;
+  final VoidCallback? onToggle;
+
+  const TypeFilterBar({
+    super.key,
+    this.isExpanded = false,
+    this.onToggle,
+  });
 
   /// The 18 official Pokémon elemental types in the exact reference order.
   static const List<String> orderedTypes = [
@@ -44,7 +52,6 @@ class TypeFilterBar extends ConsumerWidget {
     final filteredCount = filteredPokemons.length;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12.0),
       padding: const EdgeInsets.all(14.0),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -72,97 +79,113 @@ class TypeFilterBar extends ConsumerWidget {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'Filter by Type',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF0F172A),
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                    if (activeFilter != null) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        '$filteredCount filtered ${_capitalize(activeFilter)}-type Pokémon found',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFF64748B),
+                child: InkWell(
+                  onTap: onToggle,
+                  splashColor: Colors.transparent,
+                  highlightColor: Colors.transparent,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Filter by Type',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF0F172A),
+                          letterSpacing: -0.2,
                         ),
                       ),
-                    ],
-                  ],
-                ),
-              ),
-              if (activeFilter != null)
-                InkWell(
-                  borderRadius: BorderRadius.circular(8),
-                  onTap: () => notifier.clearFilter(),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8.0, vertical: 3.0),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFCBD5E1)),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.close_rounded,
-                            size: 12, color: Color(0xFF475569)),
-                        SizedBox(width: 4),
+                      if (activeFilter != null) ...[
+                        const SizedBox(height: 2),
                         Text(
-                          'Clear',
-                          style: TextStyle(
+                          '$filteredCount filtered ${_capitalize(activeFilter)}-type Pokémon found',
+                          style: const TextStyle(
                             fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF475569),
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF64748B),
                           ),
                         ),
                       ],
-                    ),
+                    ],
                   ),
                 ),
+              ),
+              InkWell(
+                key: const Key('toggle_type_filter_button'),
+                borderRadius: BorderRadius.circular(8),
+                onTap: onToggle,
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        isExpanded ? 'Collapse' : 'Expand',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF64748B),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(width: 2),
+                      Icon(
+                        isExpanded
+                            ? Icons.keyboard_arrow_up_rounded
+                            : Icons.keyboard_arrow_down_rounded,
+                        size: 16,
+                        color: const Color(0xFF64748B),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 12),
 
-          // Naturally Displayed Type Chips with Color-Coded Outline / Fill
-          Wrap(
-            alignment: WrapAlignment.center,
-            spacing: 6.0,
-            runSpacing: 6.0,
-            children: [
-              // ALL option chip
-              _ColorCodedTypeChip(
-                key: const Key('type_chip_all'),
-                label: 'ALL',
-                chipColor: const Color(0xFF475569),
-                isActive: activeFilter == null,
-                onTap: () => notifier.clearFilter(),
-              ),
+          // Collapsible Content
+          AnimatedSize(
+            duration: const Duration(milliseconds: 240),
+            curve: Curves.easeOutCubic,
+            child: isExpanded
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SizedBox(height: 12),
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        spacing: 6.0,
+                        runSpacing: 6.0,
+                        children: [
+                          // ALL option chip
+                          _ColorCodedTypeChip(
+                            key: const Key('type_chip_all'),
+                            label: 'ALL',
+                            chipColor: const Color(0xFF475569),
+                            isActive: activeFilter == null,
+                            onTap: () => notifier.clearFilter(),
+                          ),
 
-              // 18 Elemental Type Chips in canonical order
-              ...orderedTypes.map((type) {
-                final isSelected =
-                    activeFilter?.toLowerCase() == type.toLowerCase();
-                final color = _getTypeColor(type);
+                          // 18 Elemental Type Chips in canonical order
+                          ...orderedTypes.map((type) {
+                            final isSelected =
+                                activeFilter?.toLowerCase() == type.toLowerCase();
+                            final color = _getTypeColor(type);
 
-                return _ColorCodedTypeChip(
-                  key: Key('type_chip_${type.toLowerCase()}'),
-                  label: type.toUpperCase(),
-                  chipColor: color,
-                  isActive: isSelected,
-                  onTap: () => notifier.selectType(type.toLowerCase()),
-                );
-              }),
-            ],
+                            return _ColorCodedTypeChip(
+                              key: Key('type_chip_${type.toLowerCase()}'),
+                              label: type.toUpperCase(),
+                              chipColor: color,
+                              isActive: isSelected,
+                              onTap: () => notifier.selectType(type.toLowerCase()),
+                            );
+                          }),
+                        ],
+                      ),
+                    ],
+                  )
+                : const SizedBox.shrink(),
           ),
         ],
       ),

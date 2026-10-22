@@ -34,7 +34,6 @@ class FavoritesPanel extends ConsumerWidget {
         allPokemons.where((p) => favorites.contains(p.id)).toList();
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12.0),
       padding: const EdgeInsets.all(14.0),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -84,18 +83,32 @@ class FavoritesPanel extends ConsumerWidget {
               ),
               const Spacer(),
               InkWell(
+                key: const Key('toggle_favorites_button'),
                 borderRadius: BorderRadius.circular(8),
                 onTap: onToggle,
                 child: Padding(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  child: Text(
-                    isExpanded ? 'Collapse' : 'Expand',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF64748B),
-                      fontWeight: FontWeight.w500,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        isExpanded ? 'Collapse' : 'Expand',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF64748B),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(width: 2),
+                      Icon(
+                        isExpanded
+                            ? Icons.keyboard_arrow_up_rounded
+                            : Icons.keyboard_arrow_down_rounded,
+                        size: 16,
+                        color: const Color(0xFF64748B),
+                      ),
+                    ],
                   ),
                 ),
               ),

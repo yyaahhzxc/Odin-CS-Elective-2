@@ -9,6 +9,7 @@ import 'pokedex_toast.dart';
 /// Features:
 /// - 12px (0.75rem) corner radius with subtle border and elevation.
 /// - Text field for entering or editing a custom nickname.
+/// - Dynamic background placeholder text customized per starter type (Fire, Water, Grass, etc.).
 /// - Primary save action and destructive removal action.
 class NicknameDialog extends ConsumerStatefulWidget {
   final Pokemon pokemon;
@@ -48,6 +49,21 @@ class _NicknameDialogState extends ConsumerState<NicknameDialog> {
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  /// Returns tailored suggested nickname placeholder/hint text based on the Pokémon's elemental type.
+  String _getSuggestedNicknameHint(Pokemon pokemon) {
+    final types = pokemon.types.map((t) => t.toLowerCase()).toList();
+    if (types.contains('fire')) {
+      return 'e.g. Blaze, Ember, Pyro...';
+    } else if (types.contains('water')) {
+      return 'e.g. Splash, Aqua, Bubbles...';
+    } else if (types.contains('grass')) {
+      return 'e.g. Sprout, Leafy, Ivy...';
+    } else if (types.contains('electric')) {
+      return 'e.g. Sparky, Volt, Bolt...';
+    }
+    return 'e.g. Champ, Ace, Buddy...';
   }
 
   void _saveNickname() {
@@ -107,29 +123,31 @@ class _NicknameDialogState extends ConsumerState<NicknameDialog> {
             children: [
               // Header
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Edit Nickname',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -0.2,
-                          color: Color(0xFF0F172A),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Edit Nickname',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.2,
+                            color: Color(0xFF0F172A),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Set a custom name for ${widget.pokemon.displayName}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF64748B),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Set a custom name for ${widget.pokemon.displayName}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF64748B),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.close_rounded,
@@ -154,7 +172,7 @@ class _NicknameDialogState extends ConsumerState<NicknameDialog> {
                 ),
                 decoration: InputDecoration(
                   labelText: 'Nickname',
-                  hintText: 'e.g. Sparky, Blaze...',
+                  hintText: _getSuggestedNicknameHint(widget.pokemon),
                   hintStyle: const TextStyle(
                     fontSize: 13,
                     color: Color(0xFF94A3B8),

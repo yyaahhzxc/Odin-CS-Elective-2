@@ -23,12 +23,24 @@ class PokedexScreen extends ConsumerStatefulWidget {
 }
 
 class _PokedexScreenState extends ConsumerState<PokedexScreen> {
-  bool _isFavoritesPanelExpanded = true;
+  bool _isFavoritesPanelExpanded = false;
+  bool _isTypeFilterExpanded = false;
 
   void _toggleFavoritesPanel() {
     setState(() {
       _isFavoritesPanelExpanded = !_isFavoritesPanelExpanded;
     });
+  }
+
+  void _toggleTypeFilter() {
+    setState(() {
+      _isTypeFilterExpanded = !_isTypeFilterExpanded;
+    });
+  }
+
+  String _capitalize(String s) {
+    if (s.isEmpty) return s;
+    return '${s[0].toUpperCase()}${s.substring(1).toLowerCase()}';
   }
 
   /// Builds a simplified, centered generation section divider flanked by hairline lines.
@@ -134,9 +146,12 @@ class _PokedexScreenState extends ConsumerState<PokedexScreen> {
                   padding: const EdgeInsets.only(
                       top: 8.0, bottom: 28.0, left: 16.0, right: 16.0),
                   children: [
-                    // 1. Type Filter Bar
-                    const TypeFilterBar(),
-                    const SizedBox(height: 12),
+                    // 1. Type Filter Bar (collapsed by default)
+                    TypeFilterBar(
+                      isExpanded: _isTypeFilterExpanded,
+                      onToggle: _toggleTypeFilter,
+                    ),
+                    const SizedBox(height: 8),
 
                     // 2. Persistent Collapsible Favorites Panel
                     FavoritesPanel(
@@ -161,8 +176,8 @@ class _PokedexScreenState extends ConsumerState<PokedexScreen> {
                               const SizedBox(height: 12),
                               Text(
                                 activeType != null
-                                    ? 'No Pokémon found matching type "$activeType".'
-                                    : 'No Pokémon found.',
+                                    ? 'No Pok\u00e9mon found matching type "${_capitalize(activeType)}".'
+                                    : 'No Pok\u00e9mon found.',
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(
                                   fontSize: 14,
