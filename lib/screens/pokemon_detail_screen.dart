@@ -125,7 +125,7 @@ class PokemonDetailScreen extends ConsumerWidget {
                     children: [
                       // High-res sprite
                       SizedBox(
-                        height: 190,
+                        height: 225,
                         child: Center(
                           child: pokemon.imageUrl.isNotEmpty
                               ? Image.network(
@@ -179,35 +179,38 @@ class PokemonDetailScreen extends ConsumerWidget {
 
                       // Primary Title: Nickname/Name with snug inline pencil edit icon
                       Center(
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Text(
-                              hasNickname ? nickname : pokemon.displayName,
-                              style: const TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF0F172A),
-                                letterSpacing: -0.5,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            InkWell(
-                              borderRadius: BorderRadius.circular(8),
-                              onTap: () =>
-                                  NicknameDialog.show(context, pokemon),
-                              child: const Padding(
-                                padding: EdgeInsets.all(3.0),
-                                child: Icon(
-                                  Icons.edit_rounded,
-                                  size: 16,
-                                  color: Color(0xFF64748B),
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 14.0),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Text(
+                                hasNickname ? nickname : pokemon.displayName,
+                                style: const TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF0F172A),
+                                  letterSpacing: -0.5,
                                 ),
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 4),
+                              InkWell(
+                                borderRadius: BorderRadius.circular(8),
+                                onTap: () =>
+                                    NicknameDialog.show(context, pokemon),
+                                child: const Padding(
+                                  padding: EdgeInsets.all(3.0),
+                                  child: Icon(
+                                    Icons.edit_rounded,
+                                    size: 16,
+                                    color: Color(0xFF64748B),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
 

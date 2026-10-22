@@ -66,7 +66,7 @@ class _NicknameDialogState extends ConsumerState<NicknameDialog> {
           .setNickname(widget.pokemon.id, text);
       showPokedexToast(
         context,
-        'Nickname set to "$text"',
+        'Nickname set to "$text"!',
         icon: const Icon(Icons.check_circle_rounded,
             size: 16, color: Color(0xFF22C55E)),
       );
@@ -78,7 +78,7 @@ class _NicknameDialogState extends ConsumerState<NicknameDialog> {
     ref.read(nicknamesProvider.notifier).removeNickname(widget.pokemon.id);
     showPokedexToast(
       context,
-      'Nickname removed for ${widget.pokemon.displayName}',
+      'Nickname removed for ${widget.pokemon.displayName}.',
       icon: const Icon(Icons.delete_outline_rounded,
           size: 16, color: Color(0xFFEF4444)),
     );

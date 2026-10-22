@@ -42,8 +42,8 @@ The application architecture replaces `package:provider` with `package:flutter_r
 
 ### 2. UI Components & Shadcn-Inspired Aesthetics
 - **[lib/widgets/pokeball_icon.dart](file:///C:/Users/HP/Documents/GitHub/Flutter%20Midterm%20Exam/lib/widgets/pokeball_icon.dart)**: Custom Canvas-painted Pokéball component supporting an outlined slate inactive state and an authentic two-tone red/white filled active state.
-- **[lib/widgets/favorites_panel.dart](file:///C:/Users/HP/Documents/GitHub/Flutter%20Midterm%20Exam/lib/widgets/favorites_panel.dart)**: Retractable top drawer utilizing `AnimatedSize` with `Curves.easeOutCubic`, horizontal cards with quick-remove buttons, and a clean empty state.
-- **[lib/widgets/type_filter_bar.dart](file:///C:/Users/HP/Documents/GitHub/Flutter%20Midterm%20Exam/lib/widgets/type_filter_bar.dart)**: Horizontal pill badge list with 12px (0.75rem) rounded corners, subtle shadows, and an animated clear action positioned for accessible tap targets.
+- **[lib/widgets/favorites_panel.dart](file:///C:/Users/HP/Documents/GitHub/Flutter%20Midterm%20Exam/lib/widgets/favorites_panel.dart)**: Persistent collapsible card situated beneath the Type Filter Bar utilizing `AnimatedSize` with `Curves.easeOutCubic`, horizontal cards with circular quick-remove buttons, and a clean empty state.
+- **[lib/widgets/type_filter_bar.dart](file:///C:/Users/HP/Documents/GitHub/Flutter%20Midterm%20Exam/lib/widgets/type_filter_bar.dart)**: Centered pill badge list with 12px (0.75rem) rounded corners, dynamic filtered count status indicator beneath the header, and an animated clear action positioned for accessible tap targets.
 - **[lib/widgets/nickname_dialog.dart](file:///C:/Users/HP/Documents/GitHub/Flutter%20Midterm%20Exam/lib/widgets/nickname_dialog.dart)**: Shadcn-inspired modal dialog featuring text input, autofocus, Save, and destructive Remove actions.
 - **[lib/widgets/pokemon_card.dart](file:///C:/Users/HP/Documents/GitHub/Flutter%20Midterm%20Exam/lib/widgets/pokemon_card.dart)**: Borderless PokémonDB card layout integrating title/subtitle nickname hierarchy and animated Pokéball favorite toggle.
 

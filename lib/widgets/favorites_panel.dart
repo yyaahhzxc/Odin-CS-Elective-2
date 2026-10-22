@@ -33,148 +33,153 @@ class FavoritesPanel extends ConsumerWidget {
     final favoritePokemons =
         allPokemons.where((p) => favorites.contains(p.id)).toList();
 
-    return AnimatedSize(
-      duration: const Duration(milliseconds: 240),
-      curve: Curves.easeOutCubic,
-      child: isExpanded
-          ? Container(
-              width: double.infinity,
-              decoration: const BoxDecoration(
-                color: Color(0xFFF8FAFC),
-                border: Border(
-                  bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1.0),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12.0),
+      padding: const EdgeInsets.all(14.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.0),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Persistent Header Row
+          Row(
+            children: [
+              const PokeballIcon(isFavorite: true, size: 16),
+              const SizedBox(width: 8),
+              const Text(
+                'Favorite Pokémon',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF0F172A),
+                  letterSpacing: -0.2,
                 ),
               ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 14.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Header row
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: Row(
-                        children: [
-                          const PokeballIcon(isFavorite: true, size: 16),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'Favorite Pokémon',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF0F172A),
-                              letterSpacing: -0.2,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 1),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFE2E8F0),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              '${favoritePokemons.length}',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF475569),
-                              ),
-                            ),
-                          ),
-                          const Spacer(),
-                          InkWell(
-                            borderRadius: BorderRadius.circular(8),
-                            onTap: onToggle,
-                            child: const Padding(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 2),
-                              child: Text(
-                                'Collapse',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF64748B),
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+              const SizedBox(width: 6),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE2E8F0),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '${favoritePokemons.length}',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF475569),
+                  ),
+                ),
+              ),
+              const Spacer(),
+              InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: onToggle,
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  child: Text(
+                    isExpanded ? 'Collapse' : 'Expand',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF64748B),
+                      fontWeight: FontWeight.w500,
                     ),
-                    const SizedBox(height: 10),
-
-                    // Content: Empty State vs Horizontal Scroll of Favorites
-                    if (favoritePokemons.isEmpty)
-                      Container(
-                        width: double.infinity,
-                        margin: const EdgeInsets.symmetric(horizontal: 16.0),
-                        padding: const EdgeInsets.symmetric(vertical: 18.0),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
-                        ),
-                        child: const Center(
-                          child: Text(
-                            'No favorite Pokémon added yet.\nTap the Pokéball icon on any Pokémon to favorite.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Color(0xFF64748B),
-                              height: 1.4,
-                            ),
-                          ),
-                        ),
-                      )
-                    else
-                      SizedBox(
-                        height: 96,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          physics: const BouncingScrollPhysics(),
-                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                          itemCount: favoritePokemons.length,
-                          separatorBuilder: (context, index) =>
-                              const SizedBox(width: 8),
-                          itemBuilder: (context, index) {
-                            final pokemon = favoritePokemons[index];
-                            final nickname = nicknames[pokemon.id];
-
-                            return _FavoriteCompactCard(
-                              pokemon: pokemon,
-                              nickname: nickname,
-                              onRemove: () {
-                                ref
-                                    .read(favoritesProvider.notifier)
-                                    .removeFavorite(pokemon.id);
-                                showPokedexToast(
-                                  context,
-                                  'Removed ${pokemon.displayName} from favorites',
-                                  icon: const PokeballIcon(isFavorite: false, size: 16),
-                                );
-                              },
-                              onTap: () {
-                                ref
-                                    .read(selectedPokemonProvider.notifier)
-                                    .selectPokemon(pokemon);
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        const PokemonDetailScreen(),
-                                  ),
-                                );
-                              },
-                            );
-                          },
-                        ),
-                      ),
-                  ],
+                  ),
                 ),
               ),
-            )
-          : const SizedBox.shrink(),
+            ],
+          ),
+
+          // Collapsible Content
+          AnimatedSize(
+            duration: const Duration(milliseconds: 240),
+            curve: Curves.easeOutCubic,
+            child: isExpanded
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 12),
+                      if (favoritePokemons.isEmpty)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 18.0),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                          ),
+                          child: const Center(
+                            child: Text(
+                              'No favorite Pokémon added yet.\nTap the Pokéball icon on any Pokémon to favorite.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF64748B),
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        SizedBox(
+                          height: 96,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            physics: const BouncingScrollPhysics(),
+                            itemCount: favoritePokemons.length,
+                            separatorBuilder: (context, index) =>
+                                const SizedBox(width: 8),
+                            itemBuilder: (context, index) {
+                              final pokemon = favoritePokemons[index];
+                              final nickname = nicknames[pokemon.id];
+
+                              return _FavoriteCompactCard(
+                                pokemon: pokemon,
+                                nickname: nickname,
+                                onRemove: () {
+                                  ref
+                                      .read(favoritesProvider.notifier)
+                                      .removeFavorite(pokemon.id);
+                                  showPokedexToast(
+                                    context,
+                                    'Removed ${pokemon.displayName} from favorites',
+                                    icon: const PokeballIcon(
+                                        isFavorite: false, size: 16),
+                                  );
+                                },
+                                onTap: () {
+                                  ref
+                                      .read(selectedPokemonProvider.notifier)
+                                      .selectPokemon(pokemon);
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const PokemonDetailScreen(),
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                        ),
+                    ],
+                  )
+                : const SizedBox.shrink(),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -271,17 +276,22 @@ class _FavoriteCompactCard extends StatelessWidget {
               ),
 
               // Quick Remove Button
-              IconButton(
-                icon: const Icon(
-                  Icons.close_rounded,
-                  size: 16,
-                  color: Color(0xFF94A3B8),
+              InkWell(
+                borderRadius: BorderRadius.circular(14),
+                onTap: onRemove,
+                child: Container(
+                  width: 26,
+                  height: 26,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFF1F5F9),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.close_rounded,
+                    size: 14,
+                    color: Color(0xFF64748B),
+                  ),
                 ),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
-                splashRadius: 16,
-                tooltip: 'Remove from favorites',
-                onPressed: onRemove,
               ),
             ],
           ),

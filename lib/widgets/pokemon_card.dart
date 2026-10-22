@@ -74,8 +74,8 @@ class PokemonCard extends ConsumerWidget {
                         showPokedexToast(
                           context,
                           !isFavorite
-                              ? 'Added ${pokemon.displayName} to favorites'
-                              : 'Removed ${pokemon.displayName} from favorites',
+                              ? 'Added ${pokemon.displayName} to Favorites!'
+                              : 'Removed ${pokemon.displayName} from Favorites.',
                           icon: PokeballIcon(isFavorite: !isFavorite, size: 16),
                         );
                       },

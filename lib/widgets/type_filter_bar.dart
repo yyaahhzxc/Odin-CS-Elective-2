@@ -40,6 +40,8 @@ class TypeFilterBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final activeFilter = ref.watch(selectedTypeFilterProvider);
     final notifier = ref.read(selectedTypeFilterProvider.notifier);
+    final filteredPokemons = ref.watch(filteredPokemonsProvider);
+    final filteredCount = filteredPokemons.length;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12.0),
@@ -61,6 +63,7 @@ class TypeFilterBar extends ConsumerWidget {
         children: [
           // Header Row
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const Icon(
                 Icons.filter_list_rounded,
@@ -68,16 +71,34 @@ class TypeFilterBar extends ConsumerWidget {
                 color: Color(0xFF0F172A),
               ),
               const SizedBox(width: 8),
-              const Text(
-                'Filter by Type',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF0F172A),
-                  letterSpacing: -0.2,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Filter by Type',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0F172A),
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    if (activeFilter != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        '$filteredCount filtered ${_capitalize(activeFilter)}-type Pokémon found',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
-              const Spacer(),
               if (activeFilter != null)
                 InkWell(
                   borderRadius: BorderRadius.circular(8),
@@ -114,6 +135,7 @@ class TypeFilterBar extends ConsumerWidget {
 
           // Naturally Displayed Type Chips with Color-Coded Outline / Fill
           Wrap(
+            alignment: WrapAlignment.center,
             spacing: 6.0,
             runSpacing: 6.0,
             children: [
@@ -189,6 +211,11 @@ class TypeFilterBar extends ConsumerWidget {
       default:
         return const Color(0xFF888888);
     }
+  }
+
+  static String _capitalize(String s) {
+    if (s.isEmpty) return s;
+    return '${s[0].toUpperCase()}${s.substring(1).toLowerCase()}';
   }
 }
 

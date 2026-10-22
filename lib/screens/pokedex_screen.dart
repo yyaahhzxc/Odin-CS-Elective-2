@@ -5,7 +5,6 @@ import '../providers/pokemon_provider.dart';
 import '../widgets/error_view.dart';
 import '../widgets/favorites_panel.dart';
 import '../widgets/loading_view.dart';
-import '../widgets/pokeball_icon.dart';
 import '../widgets/pokemon_card.dart';
 import '../widgets/type_filter_bar.dart';
 
@@ -24,7 +23,7 @@ class PokedexScreen extends ConsumerStatefulWidget {
 }
 
 class _PokedexScreenState extends ConsumerState<PokedexScreen> {
-  bool _isFavoritesPanelExpanded = false;
+  bool _isFavoritesPanelExpanded = true;
 
   void _toggleFavoritesPanel() {
     setState(() {
@@ -70,7 +69,6 @@ class _PokedexScreenState extends ConsumerState<PokedexScreen> {
   @override
   Widget build(BuildContext context) {
     final asyncPokemons = ref.watch(pokemonListProvider);
-    final favorites = ref.watch(favoritesProvider);
     final activeType = ref.watch(selectedTypeFilterProvider);
     final filteredPokemons = ref.watch(filteredPokemonsProvider);
 
@@ -86,52 +84,6 @@ class _PokedexScreenState extends ConsumerState<PokedexScreen> {
           child: Container(
             color: const Color(0xFFE2E8F0),
             height: 1.0,
-          ),
-        ),
-        leading: Tooltip(
-          message: _isFavoritesPanelExpanded
-              ? 'Collapse Favorites'
-              : 'Expand Favorites',
-          child: InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: _toggleFavoritesPanel,
-            child: Center(
-              child: Stack(
-                clipBehavior: Clip.none,
-                alignment: Alignment.center,
-                children: [
-                  PokeballIcon(
-                    isFavorite: favorites.isNotEmpty,
-                    size: 20,
-                  ),
-                  if (favorites.isNotEmpty)
-                    Positioned(
-                      top: -4,
-                      right: -6,
-                      child: Container(
-                        padding: const EdgeInsets.all(2.5),
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFEF4444),
-                          shape: BoxShape.circle,
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 14,
-                          minHeight: 14,
-                        ),
-                        child: Text(
-                          '${favorites.length}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
           ),
         ),
         title: const Text(
@@ -157,100 +109,95 @@ class _PokedexScreenState extends ConsumerState<PokedexScreen> {
           const SizedBox(width: 8),
         ],
       ),
-      body: Column(
-        children: [
-          // 1. Retractable Favorites Panel (Collapsible)
-          FavoritesPanel(
-            isExpanded: _isFavoritesPanelExpanded,
-            onToggle: _toggleFavoritesPanel,
-          ),
+      body: asyncPokemons.when(
+        loading: () => const LoadingView(),
+        error: (err, _) => ErrorView(
+          errorMessage: err.toString().replaceFirst('Exception: ', ''),
+          onRetry: () {
+            ref
+                .read(pokemonListProvider.notifier)
+                .fetchPokemons(forceRefresh: true);
+          },
+        ),
+        data: (_) {
+          return RefreshIndicator(
+            color: const Color(0xFF0F172A),
+            backgroundColor: Colors.white,
+            onRefresh: () => ref
+                .read(pokemonListProvider.notifier)
+                .fetchPokemons(forceRefresh: true),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 860),
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.only(
+                      top: 8.0, bottom: 28.0, left: 16.0, right: 16.0),
+                  children: [
+                    // 1. Type Filter Bar
+                    const TypeFilterBar(),
+                    const SizedBox(height: 12),
 
-          // 2. Main Content Area with Type Filter Bar and Pokemon Grid
-          Expanded(
-            child: asyncPokemons.when(
-              loading: () => const LoadingView(),
-              error: (err, _) => ErrorView(
-                errorMessage: err.toString().replaceFirst('Exception: ', ''),
-                onRetry: () {
-                  ref
-                      .read(pokemonListProvider.notifier)
-                      .fetchPokemons(forceRefresh: true);
-                },
-              ),
-              data: (_) {
-                return RefreshIndicator(
-                  color: const Color(0xFF0F172A),
-                  backgroundColor: Colors.white,
-                  onRefresh: () => ref
-                      .read(pokemonListProvider.notifier)
-                      .fetchPokemons(forceRefresh: true),
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 860),
-                      child: ListView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.only(
-                            top: 8.0, bottom: 28.0, left: 16.0, right: 16.0),
-                        children: [
-                          // Type Filter Bar
-                          const TypeFilterBar(),
-                          const SizedBox(height: 12),
+                    // 2. Persistent Collapsible Favorites Panel
+                    FavoritesPanel(
+                      isExpanded: _isFavoritesPanelExpanded,
+                      onToggle: _toggleFavoritesPanel,
+                    ),
+                    const SizedBox(height: 12),
 
-                          // Empty filtered results check
-                          if (filteredPokemons.isEmpty)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 48, horizontal: 20),
-                              child: Center(
-                                child: Column(
-                                  children: [
-                                    const Icon(
-                                      Icons.filter_list_off_rounded,
-                                      size: 40,
-                                      color: Color(0xFF94A3B8),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      activeType != null
-                                          ? 'No Pokémon found matching type "$activeType".'
-                                          : 'No Pokémon found.',
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500,
-                                        color: Color(0xFF64748B),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    OutlinedButton(
-                                      style: OutlinedButton.styleFrom(
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                        ),
-                                        side: const BorderSide(
-                                            color: Color(0xFFCBD5E1)),
-                                      ),
-                                      onPressed: () => ref
-                                          .read(selectedTypeFilterProvider
-                                              .notifier)
-                                          .clearFilter(),
-                                      child: const Text('Clear Filter'),
-                                    ),
-                                  ],
+                    // 3. Empty filtered results check
+                    if (filteredPokemons.isEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 48, horizontal: 20),
+                        child: Center(
+                          child: Column(
+                            children: [
+                              const Icon(
+                                Icons.filter_list_off_rounded,
+                                size: 40,
+                                color: Color(0xFF94A3B8),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                activeType != null
+                                    ? 'No Pokémon found matching type "$activeType".'
+                                    : 'No Pokémon found.',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF64748B),
                                 ),
                               ),
-                            )
-                          else
-                            ..._buildPokemonSections(filteredPokemons),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
+                              const SizedBox(height: 12),
+                              OutlinedButton(
+                                style: OutlinedButton.styleFrom(
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius:
+                                        BorderRadius.circular(12),
+                                  ),
+                                  side: const BorderSide(
+                                      color: Color(0xFFCBD5E1)),
+                                ),
+                                onPressed: () => ref
+                                    .read(selectedTypeFilterProvider
+                                        .notifier)
+                                    .clearFilter(),
+                                child: const Text('Clear Filter'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    else
+                      ..._buildPokemonSections(filteredPokemons),
+                  ],
+                ),
+              ),
             ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
