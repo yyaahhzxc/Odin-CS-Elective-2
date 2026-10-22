@@ -6,12 +6,7 @@ import '../widgets/pokeball_icon.dart';
 import '../widgets/pokedex_toast.dart';
 import '../widgets/type_badge.dart';
 
-/// Screen displaying comprehensive details of an individual Pokemon.
-///
-/// Refactored to Riverpod architecture:
-/// - Reads selected Pokemon from [selectedPokemonProvider].
-/// - Displays Pokeball favorite button with live toggle functionality.
-/// - Shows nickname management card allowing adding, editing, or removing nicknames.
+/// Detail screen displaying selected Pokémon info, metadata, and nicknames.
 class PokemonDetailScreen extends ConsumerWidget {
   const PokemonDetailScreen({super.key});
 
@@ -61,7 +56,10 @@ class PokemonDetailScreen extends ConsumerWidget {
         backgroundColor: Colors.white,
         elevation: 0,
         scrolledUnderElevation: 0,
-        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF0F172A)),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1.0),
           child: Container(
@@ -69,16 +67,8 @@ class PokemonDetailScreen extends ConsumerWidget {
             height: 1.0,
           ),
         ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF0F172A)),
-          tooltip: 'Back to Pokédex',
-          onPressed: () {
-            ref.read(selectedPokemonProvider.notifier).clearSelection();
-            Navigator.of(context).pop();
-          },
-        ),
         title: Text(
-          hasNickname ? nickname : pokemon.displayName,
+          pokemon.displayName,
           style: const TextStyle(
             color: Color(0xFF0F172A),
             fontSize: 18,
@@ -88,15 +78,16 @@ class PokemonDetailScreen extends ConsumerWidget {
         ),
         actions: [
           IconButton(
-            tooltip: isFavorite ? 'Remove Favorite' : 'Mark as Favorite',
-            icon: PokeballIcon(isFavorite: isFavorite, size: 20),
+            key: const Key('detail_favorite_button'),
+            icon: PokeballIcon(isFavorite: isFavorite, size: 22),
+            tooltip: isFavorite ? 'Remove from Favorites' : 'Add to Favorites',
             onPressed: () {
               ref.read(favoritesProvider.notifier).toggleFavorite(pokemon.id);
               showPokedexToast(
                 context,
                 !isFavorite
-                    ? 'Added ${pokemon.displayName} to favorites'
-                    : 'Removed ${pokemon.displayName} from favorites',
+                    ? 'Added ${hasNickname ? nickname : pokemon.displayName} to Favorites!'
+                    : 'Removed ${hasNickname ? nickname : pokemon.displayName} from Favorites.',
                 icon: PokeballIcon(isFavorite: !isFavorite, size: 16),
               );
             },
@@ -104,16 +95,15 @@ class PokemonDetailScreen extends ConsumerWidget {
           const SizedBox(width: 8),
         ],
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 520),
-          child: SingleChildScrollView(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
+      body: SingleChildScrollView(
+        padding:
+            const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // 1. Artwork Card
                 Container(
                   padding: const EdgeInsets.all(24.0),
                   decoration: BoxDecoration(
@@ -123,7 +113,6 @@ class PokemonDetailScreen extends ConsumerWidget {
                   ),
                   child: Column(
                     children: [
-                      // High-res sprite
                       SizedBox(
                         height: 225,
                         child: Center(
@@ -164,8 +153,6 @@ class PokemonDetailScreen extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(height: 14),
-
-                      // Monospace Dex Number
                       Text(
                         pokemon.formattedId,
                         style: const TextStyle(
@@ -176,8 +163,6 @@ class PokemonDetailScreen extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(height: 4),
-
-                      // Primary Title: Nickname/Name with snug inline pencil edit icon
                       Center(
                         child: Padding(
                           padding: const EdgeInsets.only(left: 14.0),
@@ -213,8 +198,6 @@ class PokemonDetailScreen extends ConsumerWidget {
                           ),
                         ),
                       ),
-
-                      // Subtitle: Original species name if custom nickname is present
                       if (hasNickname) ...[
                         const SizedBox(height: 2),
                         Text(
@@ -227,8 +210,6 @@ class PokemonDetailScreen extends ConsumerWidget {
                         ),
                       ],
                       const SizedBox(height: 12),
-
-                      // Elemental Type Badges (Larger display)
                       Wrap(
                         spacing: 8.0,
                         runSpacing: 8.0,
@@ -241,8 +222,6 @@ class PokemonDetailScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-
-                // 2. Metadata Card (Generation, Region, Dex Number)
                 Container(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 18.0, vertical: 16.0),

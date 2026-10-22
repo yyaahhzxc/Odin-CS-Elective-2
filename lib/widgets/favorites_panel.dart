@@ -6,13 +6,7 @@ import '../screens/pokemon_detail_screen.dart';
 import 'pokeball_icon.dart';
 import 'pokedex_toast.dart';
 
-/// Retractable panel displaying favorited Pokemon throughout the app.
-///
-/// Features:
-/// - Smooth animated size expansion/collapse with [Curves.easeOutCubic].
-/// - Displays horizontally scrollable compact cards for favorited Pokemon.
-/// - Allows immediate removal from favorites via Pokeball tap.
-/// - Shows a clean Shadcn empty state when no Pokemon are favorited.
+/// Collapsible panel displaying horizontally scrollable favorited Pokémon.
 class FavoritesPanel extends ConsumerWidget {
   final bool isExpanded;
   final VoidCallback onToggle;
@@ -49,39 +43,49 @@ class FavoritesPanel extends ConsumerWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Persistent Header Row
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const PokeballIcon(isFavorite: true, size: 16),
-              const SizedBox(width: 8),
-              const Text(
-                'Favorite Pokémon',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF0F172A),
-                  letterSpacing: -0.2,
+              InkWell(
+                key: const Key('toggle_favorites_title_button'),
+                borderRadius: BorderRadius.circular(8),
+                onTap: onToggle,
+                splashColor: Colors.transparent,
+                highlightColor: Colors.transparent,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Favorites',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0F172A),
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 7, vertical: 1.5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${favorites.length}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF475569),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 6),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE2E8F0),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  '${favoritePokemons.length}',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF475569),
-                  ),
-                ),
-              ),
-              const Spacer(),
               InkWell(
                 key: const Key('toggle_favorites_button'),
                 borderRadius: BorderRadius.circular(8),
@@ -114,8 +118,6 @@ class FavoritesPanel extends ConsumerWidget {
               ),
             ],
           ),
-
-          // Collapsible Content
           AnimatedSize(
             duration: const Duration(milliseconds: 240),
             curve: Curves.easeOutCubic,
@@ -229,7 +231,6 @@ class _FavoriteCompactCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              // High-res sprite
               SizedBox(
                 width: 48,
                 height: 48,
@@ -245,8 +246,6 @@ class _FavoriteCompactCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-
-              // Title / Subtitle hierarchy
               Expanded(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -287,8 +286,6 @@ class _FavoriteCompactCard extends StatelessWidget {
                   ],
                 ),
               ),
-
-              // Quick Remove Button
               InkWell(
                 borderRadius: BorderRadius.circular(14),
                 onTap: onRemove,

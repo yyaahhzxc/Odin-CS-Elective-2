@@ -2,16 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/pokemon_provider.dart';
 
-/// Clean type filter bar displaying all elemental types naturally with color-coded styling.
-///
-/// Features:
-/// - Collapsible by default with smooth [Curves.easeOutCubic] animation.
-/// - Header displays count of filtered Pokémon when active.
-/// - Unselected chips: Color-coded outline with white background and matching color text.
-/// - Selected chips: Color-coded filled background with crisp white text.
-/// - Arranged in canonical reference order:
-///   Normal, Fire, Water, Electric, Grass, Ice, Fighting, Poison, Ground, Flying,
-///   Psychic, Bug, Rock, Ghost, Dragon, Dark, Steel, Fairy.
+/// Collapsible elemental type filter bar with color-coded chips.
 class TypeFilterBar extends ConsumerWidget {
   final bool isExpanded;
   final VoidCallback? onToggle;
@@ -22,7 +13,7 @@ class TypeFilterBar extends ConsumerWidget {
     this.onToggle,
   });
 
-  /// The 18 official Pokémon elemental types in the exact reference order.
+  /// Official Pokémon types in canonical reference order.
   static const List<String> orderedTypes = [
     'Normal',
     'Fire',
@@ -67,19 +58,15 @@ class TypeFilterBar extends ConsumerWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Header Row
           Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Icon(
-                Icons.filter_list_rounded,
-                size: 18,
-                color: Color(0xFF0F172A),
-              ),
-              const SizedBox(width: 8),
               Expanded(
                 child: InkWell(
+                  key: const Key('toggle_type_filter_title_button'),
+                  borderRadius: BorderRadius.circular(8),
                   onTap: onToggle,
                   splashColor: Colors.transparent,
                   highlightColor: Colors.transparent,
@@ -143,8 +130,6 @@ class TypeFilterBar extends ConsumerWidget {
               ),
             ],
           ),
-
-          // Collapsible Content
           AnimatedSize(
             duration: const Duration(milliseconds: 240),
             curve: Curves.easeOutCubic,
@@ -158,7 +143,6 @@ class TypeFilterBar extends ConsumerWidget {
                         spacing: 6.0,
                         runSpacing: 6.0,
                         children: [
-                          // ALL option chip
                           _ColorCodedTypeChip(
                             key: const Key('type_chip_all'),
                             label: 'ALL',
@@ -166,8 +150,6 @@ class TypeFilterBar extends ConsumerWidget {
                             isActive: activeFilter == null,
                             onTap: () => notifier.clearFilter(),
                           ),
-
-                          // 18 Elemental Type Chips in canonical order
                           ...orderedTypes.map((type) {
                             final isSelected =
                                 activeFilter?.toLowerCase() == type.toLowerCase();
@@ -192,7 +174,6 @@ class TypeFilterBar extends ConsumerWidget {
     );
   }
 
-  /// Maps canonical Pokémon types to their official hex colors.
   static Color _getTypeColor(String type) {
     switch (type.toLowerCase()) {
       case 'grass':
@@ -242,7 +223,6 @@ class TypeFilterBar extends ConsumerWidget {
   }
 }
 
-/// Interactive chip: Outline when unselected, Filled when selected.
 class _ColorCodedTypeChip extends StatefulWidget {
   final String label;
   final Color chipColor;

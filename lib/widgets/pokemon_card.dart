@@ -8,14 +8,7 @@ import 'pokeball_icon.dart';
 import 'pokedex_toast.dart';
 import 'type_badge.dart';
 
-/// A minimalist, borderless Pokemon card styled after PokemonDB with Shadcn touches.
-///
-/// Features:
-/// - Nickname priority: If a nickname exists, it is displayed as the primary title
-///   with the actual Pokemon name as the subtitle.
-/// - Pokeball indicator: Filled active / Outlined inactive with isolated tap handling
-///   and a subtle scale micro-animation.
-/// - Edit nickname action accessible directly from card long-press or edit button.
+/// Card component displaying Pokémon sprite, ID, name, types, and favorite button.
 class PokemonCard extends ConsumerWidget {
   final Pokemon pokemon;
 
@@ -49,7 +42,6 @@ class PokemonCard extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Top Action Row (Dex ID on left, Pokeball favorite on right)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4.0),
                 child: Row(
@@ -83,8 +75,6 @@ class PokemonCard extends ConsumerWidget {
                   ],
                 ),
               ),
-
-              // 1. Centered High-Resolution Official Artwork Sprite
               SizedBox(
                 height: 85,
                 child: Center(
@@ -123,8 +113,6 @@ class PokemonCard extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 8),
-
-              // 2. Primary Title: Custom Nickname (if set) OR Original Pokemon Name
               Text(
                 hasNickname ? nickname : pokemon.displayName,
                 style: const TextStyle(
@@ -137,8 +125,6 @@ class PokemonCard extends ConsumerWidget {
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
               ),
-
-              // 3. Subtitle: Actual Pokemon Name (if custom nickname is present)
               if (hasNickname) ...[
                 const SizedBox(height: 1),
                 Text(
@@ -154,8 +140,6 @@ class PokemonCard extends ConsumerWidget {
                 ),
               ],
               const SizedBox(height: 6),
-
-              // 4. Elemental Type Badges
               Wrap(
                 spacing: 4.0,
                 runSpacing: 4.0,
@@ -172,7 +156,6 @@ class PokemonCard extends ConsumerWidget {
   }
 }
 
-/// Interactive Pokeball favorite button with Shadcn-style micro-scale animation.
 class _FavoriteButton extends StatefulWidget {
   final bool isFavorite;
   final VoidCallback onTap;

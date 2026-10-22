@@ -4,13 +4,7 @@ import '../models/pokemon.dart';
 import '../providers/pokemon_provider.dart';
 import 'pokedex_toast.dart';
 
-/// Modal dialog styled after Shadcn UI dialog components.
-///
-/// Features:
-/// - 12px (0.75rem) corner radius with subtle border and elevation.
-/// - Text field for entering or editing a custom nickname.
-/// - Dynamic background placeholder text customized per starter type (Fire, Water, Grass, etc.).
-/// - Primary save action and destructive removal action.
+/// Modal dialog for editing or removing a Pokémon's custom nickname.
 class NicknameDialog extends ConsumerStatefulWidget {
   final Pokemon pokemon;
 
@@ -19,7 +13,6 @@ class NicknameDialog extends ConsumerStatefulWidget {
     required this.pokemon,
   });
 
-  /// Displays the modal dialog over the active navigator.
   static Future<void> show(BuildContext context, Pokemon pokemon) {
     return showDialog<void>(
       context: context,
@@ -51,9 +44,8 @@ class _NicknameDialogState extends ConsumerState<NicknameDialog> {
     super.dispose();
   }
 
-  /// Returns tailored suggested nickname placeholder/hint text based on the Pokémon's elemental type.
   String _getSuggestedNicknameHint(Pokemon pokemon) {
-    final types = pokemon.types.map((t) => t.toLowerCase()).toList();
+    final types = pokemon.types.map((t) => t.toLowerCase()).toSet();
     if (types.contains('fire')) {
       return 'e.g. Blaze, Ember, Pyro...';
     } else if (types.contains('water')) {
@@ -121,7 +113,6 @@ class _NicknameDialogState extends ConsumerState<NicknameDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Header
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -160,8 +151,6 @@ class _NicknameDialogState extends ConsumerState<NicknameDialog> {
                 ],
               ),
               const SizedBox(height: 18),
-
-              // Input Field
               TextField(
                 controller: _controller,
                 autofocus: true,
@@ -202,8 +191,6 @@ class _NicknameDialogState extends ConsumerState<NicknameDialog> {
                 onSubmitted: (_) => _saveNickname(),
               ),
               const SizedBox(height: 20),
-
-              // Action Buttons
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [

@@ -8,13 +8,7 @@ import '../widgets/loading_view.dart';
 import '../widgets/pokemon_card.dart';
 import '../widgets/type_filter_bar.dart';
 
-/// Main screen displaying the 27 starter Pokemon across Generations 1 to 9.
-///
-/// Refactored to Riverpod architecture (Exam Requirement):
-/// - Manages loading, error, and success states through [pokemonListProvider].
-/// - Pull-to-refresh and AppBar refresh recall the existing [fetchPokemons] method.
-/// - Integrated retractable Favorites Panel in the AppBar with live count badge.
-/// - Type Filter Bar allowing selection and clearing of elemental types.
+/// Main Pokédex screen displaying starter Pokémon grouped by generation.
 class PokedexScreen extends ConsumerStatefulWidget {
   const PokedexScreen({super.key});
 
@@ -43,7 +37,6 @@ class _PokedexScreenState extends ConsumerState<PokedexScreen> {
     return '${s[0].toUpperCase()}${s.substring(1).toLowerCase()}';
   }
 
-  /// Builds a simplified, centered generation section divider flanked by hairline lines.
   Widget _buildGenerationHeader(int gen, String region) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20.0),
@@ -146,21 +139,16 @@ class _PokedexScreenState extends ConsumerState<PokedexScreen> {
                   padding: const EdgeInsets.only(
                       top: 8.0, bottom: 28.0, left: 16.0, right: 16.0),
                   children: [
-                    // 1. Type Filter Bar (collapsed by default)
                     TypeFilterBar(
                       isExpanded: _isTypeFilterExpanded,
                       onToggle: _toggleTypeFilter,
                     ),
                     const SizedBox(height: 8),
-
-                    // 2. Persistent Collapsible Favorites Panel
                     FavoritesPanel(
                       isExpanded: _isFavoritesPanelExpanded,
                       onToggle: _toggleFavoritesPanel,
                     ),
                     const SizedBox(height: 12),
-
-                    // 3. Empty filtered results check
                     if (filteredPokemons.isEmpty)
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -176,8 +164,8 @@ class _PokedexScreenState extends ConsumerState<PokedexScreen> {
                               const SizedBox(height: 12),
                               Text(
                                 activeType != null
-                                    ? 'No Pok\u00e9mon found matching type "${_capitalize(activeType)}".'
-                                    : 'No Pok\u00e9mon found.',
+                                    ? 'No Pokémon found matching type "${_capitalize(activeType)}".'
+                                    : 'No Pokémon found.',
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(
                                   fontSize: 14,
@@ -217,8 +205,6 @@ class _PokedexScreenState extends ConsumerState<PokedexScreen> {
     );
   }
 
-  /// Groups Pokemon by generation and returns structured generation blocks
-  /// organized into a consistent 3-item row layout.
   List<Widget> _buildPokemonSections(List<Pokemon> pokemons) {
     final Map<int, List<Pokemon>> generationMap = {};
     for (final pokemon in pokemons) {
@@ -231,7 +217,6 @@ class _PokedexScreenState extends ConsumerState<PokedexScreen> {
       final starters = generationMap[gen] ?? [];
       final region = starters.isNotEmpty ? starters.first.regionName : '';
 
-      // Partition starters into rows of exactly 3
       final rows = <List<Pokemon>>[];
       for (var i = 0; i < starters.length; i += 3) {
         final end = (i + 3 < starters.length) ? i + 3 : starters.length;
