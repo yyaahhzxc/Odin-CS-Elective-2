@@ -64,6 +64,35 @@ class Product {
   /// Formatted Philippine Peso price string with comma separator.
   String get formattedPrice => '₱${AppTheme.formatPrice(price)}';
 
+  /// Deserializes database record from Supabase table payload.
+  factory Product.fromJson(Map<String, dynamic> json) {
+    return Product(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      price: (json['price'] as num).toDouble(),
+      imagePath: json['image_path'] as String? ?? '',
+      category: json['category'] as String? ?? '',
+      description: json['description'] as String? ?? '',
+      soldCount: (json['sold_count'] as num?)?.toInt() ?? 0,
+      stock: (json['stock'] as num?)?.toInt() ?? 0,
+      variants: const [],
+    );
+  }
+
+  /// Serializes instance into a key-value mapping for Supabase inserts or updates.
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'price': price,
+      'image_path': imagePath,
+      'category': category,
+      'description': description,
+      'sold_count': soldCount,
+      'stock': stock,
+    };
+  }
+
   /// Returns all images available for this product.
   List<String> get allImages {
     if (images.isNotEmpty) return images;
