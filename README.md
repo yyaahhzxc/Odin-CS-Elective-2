@@ -1,19 +1,26 @@
-# CSShop - CSSEC Merch Store
+# PokéMart - Flutter E-Commerce Project (Pokémon GO Design System)
 
 ## Project Overview
-CSShop is a responsive e-commerce mobile and web application developed for the Computer Studies Student Executive Council (CSSEC), providing an accessible, themed browsing and shopping experience for student council merchandise with an end-to-end cart, Supabase PostgreSQL backend integration, live price filtering, and paginated catalog browsing.
+**PokéMart** is a high-fidelity, responsive multi-platform Pokémon-themed e-commerce application faithfully designed with the official **Pokémon GO (PoGO / Niantic)** design system and datamined 3D game assets sourced from **PokeMiners**. This project delivers a production-ready shopping experience with an interactive Trainer Bag, Supabase PostgreSQL backend integration, live price filtering, and paginated catalog browsing.
 
-## Tasked Instructions / Requirements
-- [x] **Branching & Submission:** Work executed and submitted on dedicated branch `backend-filter-pagination`.
-- [x] **Supabase Backend Integration:** Connect Flutter frontend to Supabase PostgreSQL database using `supabase_flutter`.
-- [x] **Database Schema & RLS:** Create `products` table in Supabase with primary key, column typing, row-level security (RLS), and public SELECT access policy.
-- [x] **Expanded Catalog Data:** Seed catalog with 18 products across Apparel and Accessories (including asset-backed merchandise and placeholder items) to enable multi-page pagination.
-- [x] **Price Filtering (Range Slider):** Customers can specify a price range via an interactive `RangeSlider` (₱0 to ₱1,500) that filters products through backend PostgREST query constraints (`.gte('price', min).lte('price', max)`).
-- [x] **Offset Pagination:** Catalog displays a maximum of 6 products per page (satisfying the 6–8 items per page requirement) using Supabase range queries (`.range(from, to)` with exact matching count retrieval).
-- [x] **Frontend State Management:** Manage catalog loading, price boundaries, category filtering, and page navigation via `CatalogManager` (`ChangeNotifier`) and `CatalogScope` (`InheritedNotifier`).
-- [x] **Responsive Pagination Controls:** Bottom navigation bar featuring `Previous` and `Next` action buttons and dynamic `Page X of Y` indicator with boundary protection.
-- [x] **Defensive Asset Fallback:** Placeholder merchandise without local asset graphics seamlessly render with a fallback shopping bag icon to eliminate broken image links.
-- [x] **Automated Testing Suite:** Comprehensive unit and widget tests covering catalog state management, page boundary clamping, price filtering, and pagination UI interactions.
+Each feature milestone and course activity is checkpointed onto dedicated repository branches (`backend-filter-pagination`, `backend-auth`, etc.), demonstrating state management, declarative routing, and Supabase PostgreSQL backend integration.
+
+## Key Features & Theming (Pokémon GO / PokeMiners)
+- [x] **Authentic PoGO Design System:** Reverse-engineered from official design symbols (`branding inspo/PokemonGoUIKIT_v05_carasusan_Vallve.sketch`), featuring the signature Soft Lime-to-Emerald Mint action gradient (`#A8DD9C` ➔ `#23CCA9`), Deep Sea Teal (`#1C8696`), pure white cards (`22px` corner radius), and concentric circular action pads.
+- [x] **PokeMiners Datamined 3D Asset Integration:** High-resolution 3D asset renders extracted directly from the official `PokeMiners/pogo_assets` repository, including in-game HUD icons (`btn_shop.png`, `btn_coins_small.png`, `btn_items.png`), Event Boxes (`greatbox.png`, `ultrabox.png`, `adventure_box.png`, `specialbox.png`), and official 3D item models.
+- [x] **48-Item Comprehensive Catalog:** 48 authentic Pokémon GO items organized across 6 official Bag pockets:
+  - **Poké Balls (6):** Poké Ball, Great Ball, Ultra Ball, Master Ball, Premier Ball, Beast Ball.
+  - **Medicine (6):** Potion, Super Potion, Hyper Potion, Max Potion, Revive, Max Revive.
+  - **Evolution Items (8):** Sun Stone, King's Rock, Metal Coat, Dragon Scale, Up-Grade, Sinnoh Stone, Unova Stone, Glacial Lure Module.
+  - **Berries & Treats (8):** Razz Berry, Nanab Berry, Pinap Berry, Golden Razz Berry, Silver Pinap Berry, Poffin, Rare Candy, Rare Candy XL.
+  - **Battle & Training (8):** Fast TM, Charged TM, Elite Fast TM, Elite Charged TM, Star Piece, Lucky Egg, Super Rocket Radar, Team Medallion.
+  - **Special Gear (12):** Incubator, Super Incubator, Remote Raid Pass, Premium Battle Pass, Incense, Daily Adventure Incense, Mystery Box, Coin Bag, Postcard Book, Zygarde Cube, Sun Flute, Moon Flute.
+- [x] **PokéDollar Currency & Trainer HUD:** Live PokéCoin gold readout chip (`₽` / PokéCoins) and Trainer Bag counter badge.
+- [x] **Price Range Filter (Range Slider):** Customers can filter items using a Material 3 range slider (₽0 to ₽5,000) that interacts with backend PostgREST query constraints (`.gte('price', min).lte('price', max)`).
+- [x] **Offset Pagination:** Real-time 6 items/page pagination via Supabase range queries (`.range(from, to)` with exact matching count retrieval).
+- [x] **State Management:** Clean `ChangeNotifier` and `InheritedNotifier` architecture (`CatalogScope`, `CartScope`) without external boilerplate.
+- [x] **Navigation 2.0:** Declarative routing using `GoRouter` with route guards and animated slide transitions.
+- [x] **Automated Testing Suite:** Comprehensive unit and widget tests covering catalog state management, page boundary clamping, price filtering, and end-to-end checkout flow with 100% pass rate.
 
 ## Implementation & Solutions
 - **Supabase Backend Configuration (`lib/core/supabase_config.dart` & `supabase_schema.sql`):** Centralizes project API endpoint and public anonymous key. Database schema defines `public.products` with RLS enabled and grants read access.

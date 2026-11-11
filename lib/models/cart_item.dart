@@ -46,9 +46,9 @@ class CartItem {
   /// Maximum available inventory for this item / variant.
   int get availableStock => variant?.stock ?? product.stock;
 
-  /// Formatted unit price string in Philippine Peso with comma separator.
-  String get formattedUnitPrice => '₱${AppTheme.formatPrice(unitPrice)}';
+  /// Formatted unit price string in PokéDollars with comma separator.
+  String get formattedUnitPrice => '₽${AppTheme.formatPrice(unitPrice)}';
 
-  /// Computed formatted subtotal string in Philippine Peso with comma separator.
-  String get formattedSubtotal => '₱${AppTheme.formatPrice(subtotal)}';
+  /// Computed formatted subtotal string in PokéDollars with comma separator.
+  String get formattedSubtotal => '₽${AppTheme.formatPrice(subtotal)}';
 }

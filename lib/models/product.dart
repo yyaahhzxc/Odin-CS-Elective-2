@@ -61,8 +61,8 @@ class Product {
     this.variants = const [],
   });
 
-  /// Formatted Philippine Peso price string with comma separator.
-  String get formattedPrice => '₱${AppTheme.formatPrice(price)}';
+  /// Formatted PokéDollar price string with comma separator.
+  String get formattedPrice => '₽${AppTheme.formatPrice(price)}';
 
   /// Deserializes database record from Supabase table payload.
   factory Product.fromJson(Map<String, dynamic> json) {

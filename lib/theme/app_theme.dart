@@ -1,35 +1,94 @@
 import 'package:flutter/material.dart';
 
-/// Centralized design system and theme configuration for CSShop.
+/// Centralized design system and theme configuration for PokéMart.
 ///
-/// Implements Material 3 with customized color palettes matching
-/// the Ateneo de Davao CSSEC (Computer Studies Student Executive Council)
-/// violet branding, supporting both Light and Dark display modes.
+/// Faithfully modeled after the Pokémon GO (PoGO / Niantic) Design System:
+/// - Reverse-engineered from official PoGO UI Kit Sketch assets
+/// - Signature two-stop Mint Gradient (#A8DD9C -> #23CCA9)
+/// - Deep Sea Teal (#1C8696) borders and dark glyph accents
+/// - Concentric circular action buttons and stadium pill cards
+/// - Ultra-light frosted mint canvas (#F0FFF1) with pure white card pedestals
 class AppTheme {
   // Private constructor to prevent direct instantiation.
   AppTheme._();
 
-  // Core brand colors derived from CSSEC identity.
-  static const Color primaryViolet = Color(0xFF6D28D9); // Vibrant Violet
-  static const Color secondaryViolet = Color(0xFF8B5CF6);
-  static const Color accentCyan = Color(0xFF06B6D4);
+  // ---------------------------------------------------------------------------
+  // Core Pokémon GO Brand Color Tokens (from UI Kit Sketch Master Symbols)
+  // ---------------------------------------------------------------------------
+  static const Color pogoTealPrimary = Color(0xFF1C8696); // Deep Sea Teal / Niantic Teal (67 refs)
+  static const Color pogoMintStart = Color(0xFFA8DD9C); // Spring Lime / Mint Gradient Start
+  static const Color pogoMintEnd = Color(0xFF23CCA9); // Vibrant Emerald Mint / Gradient End
+  static const Color pogoLimeStart = Color(0xFFAEFBA8); // Electric Lime (Back/Cancel Button)
+  static const Color pogoCyanEnd = Color(0xFF5FEED1); // Radiant Cyan Mint (Back/Cancel Button)
 
-  // Light theme surface and background neutrals.
-  static const Color lightBackground = Color(0xFFF8FAFC);
-  static const Color lightCardBackground = Color(0xFFFFFFFF);
-  static const Color lightBorder = Color(0xFFE2E8F0);
+  // Canvas & Surface Tints
+  static const Color pogoScaffoldBg = Color(0xFFF0FFF1); // Frosted Ultra-light Mint Scaffold
+  static const Color pogoCardBg = Color(0xFFFFFFFF); // Pure White Card Surface
+  static const Color pogoCardMintPad = Color(0xFFE8F8EE); // Circular Asset Pedestal Pad
+  static const Color pogoBorder = Color(0xFFE0EAE5); // Subtle Card Outline
+  static const Color pogoBorderDarker = Color(0xFFD7D7D7); // Divider / Inactive Border
 
-  // Dark theme surface and background neutrals.
-  static const Color darkBackground = Color(0xFF0F172A);
-  static const Color darkCardBackground = Color(0xFF1E293B);
-  static const Color darkBorder = Color(0xFF334155);
+  // Text & Neutrals
+  static const Color pogoTextPrimary = Color(0xFF1E2833); // High-contrast Deep Charcoal
+  static const Color pogoTextSecondary = Color(0xFF7E8C88); // Muted Slate Gray
+  static const Color pogoTextSubtle = Color(0xFF969696); // Helper Caption Gray
 
-  // Semantic status, badge, and rating colors.
-  static const Color inStockColor = Color(0xFF16A34A);
-  static const Color inStockContainer = Color(0xFFDCFCE7);
-  static const Color ratingStarColor = Color(0xFFF59E0B);
+  // Accents & Semantics
+  static const Color pogoValorRed = Color(0xFFFF3844); // Poké Ball top / Alert / Danger
+  static const Color pogoCoinGold = Color(0xFFF5A623); // PokéCoin / Funds / Rating Star
+  static const Color pogoPokeStopBlue = Color(0xFF28AEFF); // PokéStop / Tech Blue Accent
+  static const Color pogoStardustPurple = Color(0xFF8A4FFF); // Stardust / Special Item Accent
 
-  /// Formats a number with comma as thousands separator (e.g., 4200 -> "4,200", 100000 -> "100,000").
+  // Stadium Night Mode Palette
+  static const Color darkScaffoldBg = Color(0xFF0D1E24); // Night Deep Blue-Teal
+  static const Color darkCardBg = Color(0xFF152A32); // Dark Slate Card
+  static const Color darkBorder = Color(0xFF1F3E4A); // Subtle Night Border
+  static const Color darkTextPrimary = Color(0xFFF0FFF1); // Mint White Text
+  static const Color darkTextSecondary = Color(0xFF8BA5AE); // Muted Slate Blue
+
+  // Backward-compatibility aliases for existing references and test suites
+  static const Color swordCerulean = pogoTealPrimary;
+  static const Color swordPrimary = pogoTealPrimary;
+  static const Color shieldCrimson = pogoValorRed;
+  static const Color shieldAccent = pogoValorRed;
+  static const Color bagGold = pogoCoinGold;
+  static const Color bagGoldLight = Color(0xFFFDE8C5);
+  static const Color rotomOrange = pogoCoinGold;
+  static const Color galarSlate = pogoTextPrimary;
+  static const Color galarCardWhite = pogoCardBg;
+  static const Color galarScaffoldBg = pogoScaffoldBg;
+  static const Color galarBorder = pogoBorder;
+  static const Color galarTextSecondary = pogoTextSecondary;
+  static const Color healthGreen = pogoMintEnd;
+  static const Color inStockColor = pogoMintEnd;
+  static const Color ratingStar = pogoCoinGold;
+  static const Color ratingStarColor = pogoCoinGold;
+
+  // ---------------------------------------------------------------------------
+  // Gradients
+  // ---------------------------------------------------------------------------
+  /// Official PoGO action capsule gradient (Button Evolve / Power Up / Checkout).
+  static const LinearGradient mintActionGradient = LinearGradient(
+    colors: [pogoMintStart, pogoMintEnd],
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+  );
+
+  /// Official PoGO floating action gradient (Back Button / Cancel Button / Floating Badge).
+  static const LinearGradient floatingButtonGradient = LinearGradient(
+    colors: [pogoLimeStart, pogoCyanEnd],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  /// Top Hero horizon banner gradient.
+  static const LinearGradient horizonHeroGradient = LinearGradient(
+    colors: [Color(0xFF1C8696), Color(0xFF23CCA9)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  /// Formats a number with comma as thousands separator (e.g., 325976 -> "325,976").
   static String formatPrice(num price) {
     final str = price.toStringAsFixed(0);
     return str.replaceAllMapped(
@@ -41,93 +100,108 @@ class AppTheme {
   /// Light Theme definition applied at the MaterialApp level.
   static ThemeData get lightTheme {
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: primaryViolet,
+      seedColor: pogoTealPrimary,
       brightness: Brightness.light,
-      primary: primaryViolet,
-      secondary: secondaryViolet,
-      surface: lightBackground,
+      primary: pogoTealPrimary,
+      secondary: pogoMintEnd,
+      tertiary: pogoCoinGold,
+      surface: pogoCardBg,
+      surfaceContainerLowest: pogoScaffoldBg,
+      surfaceContainerHighest: pogoCardMintPad,
+      outline: pogoBorder,
+      onPrimary: Colors.white,
+      onSecondary: pogoTextPrimary,
+      onSurface: pogoTextPrimary,
     );
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: lightBackground,
+      scaffoldBackgroundColor: pogoScaffoldBg,
 
-      // AppBar styling
+      // AppBar styling - Clean PoGO white header
       appBarTheme: const AppBarTheme(
-        backgroundColor: lightBackground,
-        foregroundColor: Color(0xFF0F172A),
+        backgroundColor: pogoCardBg,
+        foregroundColor: pogoTextPrimary,
         elevation: 0,
-        scrolledUnderElevation: 1,
+        scrolledUnderElevation: 2,
+        shadowColor: Color(0x1A1C8696),
         centerTitle: false,
         titleTextStyle: TextStyle(
-          color: Color(0xFF0F172A),
+          color: pogoTextPrimary,
           fontSize: 20,
-          fontWeight: FontWeight.w700,
-          letterSpacing: -0.5,
+          fontWeight: FontWeight.w900,
+          letterSpacing: -0.3,
         ),
       ),
 
-      // Card styling for product cards and profile header
+      // Card styling - 22px rounded PoGO card surface with clean mint shadow
       cardTheme: CardThemeData(
-        color: lightCardBackground,
+        color: pogoCardBg,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: lightBorder, width: 1),
+          borderRadius: BorderRadius.circular(22),
+          side: const BorderSide(color: pogoBorder, width: 1.5),
         ),
         margin: EdgeInsets.zero,
         clipBehavior: Clip.antiAlias,
       ),
 
-      // Button styling
+      // Button styling - PoGO Stadium Capsule CTA
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: primaryViolet,
+          backgroundColor: pogoTealPrimary,
           foregroundColor: Colors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(28),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           textStyle: const TextStyle(
             fontSize: 15,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.5,
           ),
         ),
       ),
 
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: primaryViolet,
-          side: const BorderSide(color: primaryViolet, width: 1.5),
+          foregroundColor: pogoTealPrimary,
+          side: const BorderSide(color: pogoTealPrimary, width: 1.5),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(28),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          textStyle: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.3,
+          ),
         ),
       ),
 
       // Text styling
       textTheme: const TextTheme(
         headlineMedium: TextStyle(
-          fontSize: 22,
-          fontWeight: FontWeight.w800,
-          color: Color(0xFF0F172A),
+          fontSize: 24,
+          fontWeight: FontWeight.w900,
+          color: pogoTextPrimary,
           letterSpacing: -0.5,
         ),
         titleMedium: TextStyle(
           fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: Color(0xFF0F172A),
+          fontWeight: FontWeight.w800,
+          color: pogoTextPrimary,
         ),
         bodyMedium: TextStyle(
           fontSize: 14,
-          color: Color(0xFF475569),
+          color: Color(0xFF4A5568),
+          height: 1.45,
         ),
         bodySmall: TextStyle(
           fontSize: 12,
-          color: Color(0xFF64748B),
+          color: pogoTextSecondary,
         ),
       ),
     );
@@ -136,93 +210,104 @@ class AppTheme {
   /// Dark Theme definition applied at the MaterialApp level.
   static ThemeData get darkTheme {
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: primaryViolet,
+      seedColor: pogoTealPrimary,
       brightness: Brightness.dark,
-      primary: secondaryViolet,
-      secondary: accentCyan,
-      surface: darkBackground,
+      primary: pogoMintEnd,
+      secondary: pogoCyanEnd,
+      tertiary: pogoCoinGold,
+      surface: darkCardBg,
+      surfaceContainerLowest: darkScaffoldBg,
+      surfaceContainerHighest: Color(0xFF1D3742),
+      outline: darkBorder,
+      onPrimary: pogoTextPrimary,
+      onSecondary: pogoTextPrimary,
+      onSurface: darkTextPrimary,
     );
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: darkBackground,
+      scaffoldBackgroundColor: darkScaffoldBg,
 
-      // AppBar styling
       appBarTheme: const AppBarTheme(
-        backgroundColor: darkBackground,
-        foregroundColor: Color(0xFFF8FAFC),
+        backgroundColor: darkCardBg,
+        foregroundColor: darkTextPrimary,
         elevation: 0,
-        scrolledUnderElevation: 1,
+        scrolledUnderElevation: 2,
+        shadowColor: Color(0x33000000),
         centerTitle: false,
         titleTextStyle: TextStyle(
-          color: Color(0xFFF8FAFC),
+          color: darkTextPrimary,
           fontSize: 20,
-          fontWeight: FontWeight.w700,
-          letterSpacing: -0.5,
+          fontWeight: FontWeight.w900,
+          letterSpacing: -0.3,
         ),
       ),
 
-      // Card styling for product cards and profile header
       cardTheme: CardThemeData(
-        color: darkCardBackground,
+        color: darkCardBg,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: darkBorder, width: 1),
+          borderRadius: BorderRadius.circular(22),
+          side: const BorderSide(color: darkBorder, width: 1.5),
         ),
         margin: EdgeInsets.zero,
         clipBehavior: Clip.antiAlias,
       ),
 
-      // Button styling
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: secondaryViolet,
-          foregroundColor: Colors.white,
+          backgroundColor: pogoMintEnd,
+          foregroundColor: pogoTextPrimary,
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(28),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           textStyle: const TextStyle(
             fontSize: 15,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.5,
           ),
         ),
       ),
 
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: secondaryViolet,
-          side: const BorderSide(color: secondaryViolet, width: 1.5),
+          foregroundColor: pogoMintEnd,
+          side: const BorderSide(color: pogoMintEnd, width: 1.5),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(28),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          textStyle: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.3,
+          ),
         ),
       ),
 
-      // Text styling
       textTheme: const TextTheme(
         headlineMedium: TextStyle(
-          fontSize: 22,
-          fontWeight: FontWeight.w800,
-          color: Color(0xFFF8FAFC),
+          fontSize: 24,
+          fontWeight: FontWeight.w900,
+          color: darkTextPrimary,
           letterSpacing: -0.5,
         ),
         titleMedium: TextStyle(
           fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: Color(0xFFF8FAFC),
+          fontWeight: FontWeight.w800,
+          color: darkTextPrimary,
         ),
         bodyMedium: TextStyle(
           fontSize: 14,
-          color: Color(0xFF94A3B8),
+          color: Color(0xFFA0B5BD),
+          height: 1.45,
         ),
         bodySmall: TextStyle(
           fontSize: 12,
-          color: Color(0xFF64748B),
+          color: darkTextSecondary,
         ),
       ),
     );

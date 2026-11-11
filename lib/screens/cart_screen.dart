@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../models/cart_item.dart';
 import '../state/cart_state.dart';
+import '../theme/app_theme.dart';
 
 /// Screen displaying the items in the customer's shopping cart.
 ///
@@ -286,19 +287,31 @@ class _CartItemCard extends StatelessWidget {
                 height: 72,
                 color: colorScheme.surfaceContainerHighest.withAlpha(80),
                 child: hasImage
-                    ? Image.asset(
-                        item.imagePath,
-                        fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) => Icon(
-                          Icons.shopping_bag_outlined,
-                          size: 32,
-                          color: colorScheme.primary,
-                        ),
-                      )
-                    : Icon(
-                        Icons.shopping_bag_outlined,
+                    ? (item.imagePath.startsWith('http')
+                        ? Image.network(
+                            item.imagePath,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Icon(
+                              Icons.catching_pokemon,
+                              size: 32,
+                              color: AppTheme.swordPrimary,
+                            ),
+                          )
+                        : Image.asset(
+                            item.imagePath,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Icon(
+                              Icons.catching_pokemon,
+                              size: 32,
+                              color: AppTheme.swordPrimary,
+                            ),
+                          ))
+                    : const Icon(
+                        Icons.catching_pokemon,
                         size: 32,
-                        color: colorScheme.primary,
+                        color: AppTheme.swordPrimary,
                       ),
               ),
             ),
@@ -464,12 +477,37 @@ class _OrderSummaryCard extends StatelessWidget {
               ],
             ),
             const Divider(height: 24),
-            SizedBox(
+            Container(
               width: double.infinity,
               height: 48,
+              decoration: BoxDecoration(
+                gradient: AppTheme.mintActionGradient,
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.pogoMintEnd.withAlpha(80),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
               child: ElevatedButton.icon(
                 icon: const Icon(Icons.shopping_bag_outlined),
-                label: const Text('Proceed to Checkout'),
+                label: const Text(
+                  'Proceed to Checkout',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(28),
+                  ),
+                ),
                 onPressed: onCheckout,
               ),
             ),
@@ -534,16 +572,41 @@ class _MobileCheckoutBar extends StatelessWidget {
                 ],
               ),
             ),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.arrow_forward),
-              label: const Text('Proceed to Checkout'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 12,
-                ),
+            Container(
+              decoration: BoxDecoration(
+                gradient: AppTheme.mintActionGradient,
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.pogoMintEnd.withAlpha(80),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
               ),
-              onPressed: onCheckout,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.arrow_forward),
+                label: const Text(
+                  'Proceed to Checkout',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(28),
+                  ),
+                ),
+                onPressed: onCheckout,
+              ),
             ),
           ],
         ),

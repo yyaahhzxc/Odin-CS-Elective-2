@@ -21,8 +21,8 @@ class CartManager extends ChangeNotifier {
   double get totalAmount =>
       _items.fold(0.0, (total, item) => total + item.subtotal);
 
-  /// Formatted running total string in Philippine Peso with comma separator.
-  String get formattedTotal => '₱${AppTheme.formatPrice(totalAmount)}';
+  /// Formatted running total string in PokéDollars with comma separator.
+  String get formattedTotal => '₽${AppTheme.formatPrice(totalAmount)}';
 
   /// Indicates whether the cart is empty.
   bool get isEmpty => _items.isEmpty;

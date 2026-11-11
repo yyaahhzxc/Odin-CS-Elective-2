@@ -40,7 +40,7 @@ class SupabaseService {
     if (SupabaseConfig.isConfigured && _client != null) {
       try {
         PostgrestFilterBuilder<PostgrestList> filter =
-            _client.from('products').select();
+            _client.from('products').select().neq('category', 'Archived');
 
         if (category != null && category != 'All') {
           filter = filter.eq('category', category);
@@ -98,8 +98,7 @@ class SupabaseService {
       final categoryMatch = category == null || category == 'All' || p.category == category;
       final priceMatch = p.price >= minPrice && p.price <= maxPrice;
       return categoryMatch && priceMatch;
-    }).toList()
-      ..sort((a, b) => a.id.compareTo(b.id));
+    }).toList();
 
     final totalCount = filtered.length;
     final startIndex = (page - 1) * pageSize;

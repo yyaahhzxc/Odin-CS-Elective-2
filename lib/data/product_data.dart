@@ -1,336 +1,751 @@
 import '../models/product.dart';
 
-/// Static repository containing the initial CSSEC merchandise catalog.
+/// Static repository containing the authentic PokéMart (Galar Region) merchandise catalog.
+///
+/// Curated with official high-resolution 3D rendered assets from PokeMiners/pogo_assets
+/// across 6 authentic Pokémon Sword & Shield Bag pockets.
 const List<Product> mockProducts = [
+  // ---------------------------------------------------------------------------
+  // POKÉ BALLS (6 Items)
+  // ---------------------------------------------------------------------------
   Product(
-    id: 'prod-001',
-    name: 'CS T-Shirt',
-    price: 350.0,
-    imagePath: 'assets/images/001-shirt/shirt_black_front.png',
+    id: 'poke-ball',
+    name: 'Poké Ball',
+    price: 200.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/pokeball_sprite.png',
     images: [
-      'assets/images/001-shirt/shirt_black_front.png',
-      'assets/images/001-shirt/shirt_black_back.png',
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/pokeball_sprite.png',
     ],
-    category: 'Apparel',
+    category: 'Poké Balls',
     description:
-        'Official CS T-Shirt Merch for IT Week 2026: Iridescence. Premium cotton blend featuring front chest print and full back graphic art.',
-    soldCount: 142,
-    stock: 50,
-    variants: [
-      ProductVariant(
-        id: 'prod-001-v1',
-        name: 'Black',
-        imagePath: 'assets/images/001-shirt/shirt_black_front.png',
-        images: [
-          'assets/images/001-shirt/shirt_black_front.png',
-          'assets/images/001-shirt/shirt_black_back.png',
-        ],
-      ),
-      ProductVariant(
-        id: 'prod-001-v2',
-        name: 'White',
-        imagePath: 'assets/images/001-shirt/shirt_white_front.png',
-        images: [
-          'assets/images/001-shirt/shirt_white_front.png',
-          'assets/images/001-shirt/shirt_white_back.png',
-        ],
-      ),
-      ProductVariant(
-        id: 'prod-001-v3',
-        name: 'Violet',
-        imagePath: 'assets/images/001-shirt/shirt_violet_front.png',
-        images: [
-          'assets/images/001-shirt/shirt_violet_front.png',
-          'assets/images/001-shirt/shirt_violet_back.png',
-        ],
-      ),
-    ],
+        'A device for catching wild Pokémon. It is thrown like a ball comfortably at a target, expanding into a capsule to capture.',
+    soldCount: 950,
+    stock: 999,
   ),
   Product(
-    id: 'prod-002',
-    name: 'Palarong Atenista CS Jacket',
-    price: 1200.0,
-    imagePath: 'assets/images/002-jacket/jacket_variant_1.png',
+    id: 'great-ball',
+    name: 'Great Ball',
+    price: 600.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/greatball_sprite.png',
     images: [
-      'assets/images/002-jacket/jacket_variant_1.png',
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/greatball_sprite.png',
     ],
-    category: 'Apparel',
+    category: 'Poké Balls',
     description:
-        'Heavyweight wool-blend varsity bomber jacket with custom CS embroidered chest patch and ribbed contrast trims.',
-    soldCount: 88,
-    stock: 25,
-    variants: [
-      ProductVariant(
-        id: 'prod-002-v1',
-        name: 'Varsity Violet (White Panel)',
-        imagePath: 'assets/images/002-jacket/jacket_variant_1.png',
-        images: [
-          'assets/images/002-jacket/jacket_variant_1.png',
-        ],
-      ),
-      ProductVariant(
-        id: 'prod-002-v2',
-        name: 'Stealth Violet (Purple Panel)',
-        price: 1250.0,
-        imagePath: 'assets/images/002-jacket/jacket_variant_2.png',
-        images: [
-          'assets/images/002-jacket/jacket_variant_2.png',
-        ],
-      ),
-    ],
-  ),
-  Product(
-    id: 'prod-003',
-    name: 'Palarong Atenista CS Jersey',
-    price: 350,
-    imagePath: 'assets/images/003-jersey/sleeved_purple_front.png',
-    images: [
-      'assets/images/003-jersey/sleeved_purple_front.png',
-      'assets/images/003-jersey/sleeved_purple_back.png',
-    ],
-    category: 'Apparel',
-    description:
-        'Breathable dry-fit jersey, designed to be worn for Palarong Atenista 2026. Includes custom naming and jersey number on the back.',
-    soldCount: 95,
-    stock: 30,
-    variants: [
-      ProductVariant(
-        id: 'prod-003-v1',
-        name: 'Sleeved Jersey (Purple)',
-        images: [
-          'assets/images/003-jersey/sleeved_purple_front.png',
-          'assets/images/003-jersey/sleeved_purple_back.png',
-        ],
-      ),
-      ProductVariant(
-        id: 'prod-003-v2',
-        name: 'Sleeved White',
-        price: 999999,
-        images: [
-          'assets/images/003-jersey/sleeved_white_front.png',
-          'assets/images/003-jersey/sleeved_white_back.png',
-        ],
-      ),
-    ],
-  ),
-  Product(
-    id: 'prod-004',
-    name: 'CS Button Pin',
-    price: 50.0,
-    imagePath: 'assets/images/004-pin/pin_robot.png',
-    images: [
-      'assets/images/004-pin/pin_robot.png',
-    ],
-    category: 'Accessories',
-    description:
-        'Official IT Week 2026 button pin with glossy finish and sturdy safety pin backing.',
-    soldCount: 310,
-    stock: 120,
-    variants: [
-      ProductVariant(
-        id: 'prod-004-v1',
-        name: 'Robot Companion',
-        imagePath: 'assets/images/004-pin/pin_robot.png',
-        images: [
-          'assets/images/004-pin/pin_robot.png',
-        ],
-      ),
-      ProductVariant(
-        id: 'prod-004-v2',
-        name: 'CS Student',
-        imagePath: 'assets/images/004-pin/pin_student.png',
-        images: [
-          'assets/images/004-pin/pin_student.png',
-        ],
-      ),
-    ],
-  ),
-  Product(
-    id: 'prod-005',
-    name: 'CS Stickers',
-    price: 15.0,
-    imagePath: 'assets/images/005-sticker/sticker_frog_hood.png',
-    images: [
-      'assets/images/005-sticker/sticker_frog_hood.png',
-    ],
-    category: 'Accessories',
-    description:
-        'Waterproof die-cut vinyl sticker with laminate finish, ideal for laptops, water bottles, and gear.',
+        'A good, high-performance Ball that provides a higher Pokémon catch rate than a standard Poké Ball.',
     soldCount: 540,
-    stock: 200,
-    variants: [
-      ProductVariant(
-        id: 'prod-005-v1',
-        name: 'Frog Hood Chibi',
-        imagePath: 'assets/images/005-sticker/sticker_frog_hood.png',
-        images: [
-          'assets/images/005-sticker/sticker_frog_hood.png',
-        ],
-      ),
-      ProductVariant(
-        id: 'prod-005-v2',
-        name: 'Exhausted Student',
-        imagePath: 'assets/images/005-sticker/sticker_exhausted_student.png',
-        images: [
-          'assets/images/005-sticker/sticker_exhausted_student.png',
-        ],
-      ),
-    ],
+    stock: 600,
   ),
   Product(
-    id: 'prod-006',
-    name: 'CS Keychain',
-    price: 75.0,
-    imagePath: 'assets/images/006-keychain/keychain_chibi.png',
+    id: 'ultra-ball',
+    name: 'Ultra Ball',
+    price: 1200.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/ultraball_sprite.png',
     images: [
-      'assets/images/006-keychain/keychain_chibi.png',
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/ultraball_sprite.png',
     ],
-    category: 'Accessories',
+    category: 'Poké Balls',
     description:
-        'Durable clear acrylic keychain featuring the official CS mascot with vibrant double-sided print and silver swivel clasp.',
-    soldCount: 265,
-    stock: 80,
-    variants: [
-      ProductVariant(
-        id: 'prod-006-v1',
-        name: 'CS Mascot Chibi',
-        imagePath: 'assets/images/006-keychain/keychain_chibi.png',
-        images: [
-          'assets/images/006-keychain/keychain_chibi.png',
-        ],
-      ),
-    ],
+        'An ultra-high-performance Ball providing a higher catch rate than a Great Ball. Ideal for challenging wild encounters in Galar.',
+    soldCount: 380,
+    stock: 450,
   ),
   Product(
-    id: 'prod-007',
-    name: 'CSSEC Lanyard (Iridescence)',
-    price: 120.0,
-    imagePath: '',
-    category: 'Accessories',
+    id: 'master-ball',
+    name: 'Master Ball',
+    price: 5000.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/masterball_sprite.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/masterball_sprite.png',
+    ],
+    category: 'Poké Balls',
     description:
-        'Satin ribbon lanyard with CSSEC 2026 Iridescence graphics, metal clip, and safety breakaway buckle.',
+        'The best Ball with the ultimate level of performance. With it, you will catch any wild Pokémon without fail.',
+    soldCount: 12,
+    stock: 10,
+  ),
+  Product(
+    id: 'premier-ball',
+    name: 'Premier Ball',
+    price: 1000.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/premierball_sprite.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/premierball_sprite.png',
+    ],
+    category: 'Poké Balls',
+    description:
+        'A somewhat rare Poké Ball made as a commemorative item to celebrate an event or special milestone.',
+    soldCount: 160,
+    stock: 200,
+  ),
+  Product(
+    id: 'beast-ball',
+    name: 'Beast Ball',
+    price: 4000.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/beastball_sprite.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/beastball_sprite.png',
+    ],
+    category: 'Poké Balls',
+    description:
+        'A special Poké Ball designed to catch Ultra Beasts. It has a low success rate for catching standard Pokémon.',
     soldCount: 45,
-    stock: 80,
-  ),
-  Product(
-    id: 'prod-008',
-    name: 'CSSEC Embroidered Cap',
-    price: 280.0,
-    imagePath: '',
-    category: 'Apparel',
-    description:
-        'Classic baseball cap featuring embroidered CSSEC crest with adjustable brass metal strap.',
-    soldCount: 30,
-    stock: 40,
-  ),
-  Product(
-    id: 'prod-009',
-    name: 'CSSEC Canvas Tote Bag',
-    price: 220.0,
-    imagePath: '',
-    category: 'Accessories',
-    description:
-        'Heavy duty 12oz canvas tote bag with reinforced straps, built for laptops and textbooks.',
-    soldCount: 65,
     stock: 50,
   ),
+
+  // ---------------------------------------------------------------------------
+  // MEDICINE (6 Items)
+  // ---------------------------------------------------------------------------
   Product(
-    id: 'prod-010',
-    name: 'CSSEC Insulated Water Bottle',
-    price: 650.0,
-    imagePath: '',
-    category: 'Accessories',
+    id: 'potion',
+    name: 'Potion',
+    price: 300.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0101.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0101.png',
+    ],
+    category: 'Medicine',
     description:
-        'Double-wall vacuum insulated 750ml stainless steel water bottle with laser-engraved CS monogram.',
-    soldCount: 28,
-    stock: 35,
+        'A spray-type medicine for treating wounds. It restores the HP of one Pokémon by 60 points.',
+    soldCount: 780,
+    stock: 500,
   ),
   Product(
-    id: 'prod-011',
-    name: 'CSSEC Windbreaker Jacket',
-    price: 950.0,
-    imagePath: '',
-    category: 'Apparel',
+    id: 'super-potion',
+    name: 'Super Potion',
+    price: 700.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0102.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0102.png',
+    ],
+    category: 'Medicine',
     description:
-        'Lightweight water-resistant windbreaker jacket with reflective accents and zippered hood.',
-    soldCount: 18,
-    stock: 20,
+        'A high-potency spray-type medicine for treating wounds. Restores the HP of one Pokémon by 120 points.',
+    soldCount: 520,
+    stock: 350,
   ),
   Product(
-    id: 'prod-012',
-    name: 'CSSEC Oversized Hoodie',
-    price: 890.0,
-    imagePath: '',
-    category: 'Apparel',
+    id: 'hyper-potion',
+    name: 'Hyper Potion',
+    price: 1200.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0103.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0103.png',
+    ],
+    category: 'Medicine',
     description:
-        'Heavyweight fleece hoodie in violet with dropped shoulders and spacious kangaroo pocket.',
-    soldCount: 52,
-    stock: 25,
+        'An advanced therapeutic spray. Restores the HP of a single Pokémon by up to 200 points.',
+    soldCount: 340,
+    stock: 250,
   ),
   Product(
-    id: 'prod-013',
-    name: 'CSSEC Enamel Lapel Pin',
-    price: 75.0,
-    imagePath: '',
-    category: 'Accessories',
+    id: 'max-potion',
+    name: 'Max Potion',
+    price: 2500.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0104.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0104.png',
+    ],
+    category: 'Medicine',
     description:
-        'Gold-plated hard enamel pin with dual clutch backing, ideal for bags and ID straps.',
-    soldCount: 80,
-    stock: 70,
+        'A fully restorative spray-type medicine that completely heals all HP for a single Pokémon.',
+    soldCount: 160,
+    stock: 120,
   ),
   Product(
-    id: 'prod-014',
-    name: 'CSSEC Desk Mat / Mousepad',
-    price: 450.0,
-    imagePath: '',
-    category: 'Accessories',
+    id: 'revive',
+    name: 'Revive',
+    price: 1500.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0201.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0201.png',
+    ],
+    category: 'Medicine',
     description:
-        'Extended 900x400mm gaming mousepad with anti-fray stitched edges and micro-woven surface.',
-    soldCount: 40,
-    stock: 30,
+        'A medicine that can be used to revive a fainted Pokémon and restore half of its maximum HP.',
+    soldCount: 450,
+    stock: 200,
   ),
   Product(
-    id: 'prod-015',
-    name: 'CSSEC Tech Cable Organizer',
-    price: 320.0,
-    imagePath: '',
-    category: 'Accessories',
+    id: 'max-revive',
+    name: 'Max Revive',
+    price: 4000.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0202.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0202.png',
+    ],
+    category: 'Medicine',
     description:
-        'Water-resistant compact pouch with elastic loops and mesh dividers for chargers and dongles.',
-    soldCount: 22,
+        'A rare and potent medicine that revives a fainted Pokémon and fully restores all of its maximum HP.',
+    soldCount: 90,
+    stock: 50,
+  ),
+
+  // ---------------------------------------------------------------------------
+  // EVOLUTION (8 Items)
+  // ---------------------------------------------------------------------------
+  Product(
+    id: 'sun-stone',
+    name: 'Sun Stone',
+    price: 3000.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Bag_Sun_Stone_Sprite.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Bag_Sun_Stone_Sprite.png',
+    ],
+    category: 'Evolution',
+    description:
+        'A peculiar stone that can make certain species of Pokémon evolve. It burns as red as the evening sun.',
+    soldCount: 85,
+    stock: 60,
+  ),
+  Product(
+    id: 'kings-rock',
+    name: "King's Rock",
+    price: 3000.0,
+    imagePath:
+        "https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Bag_King's_Rock_Sprite.png",
+    images: [
+      "https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Bag_King's_Rock_Sprite.png",
+    ],
+    category: 'Evolution',
+    description:
+        'An item to be held by a Pokémon. When the holder inflicts damage, there is a chance the target will flinch.',
+    soldCount: 70,
     stock: 45,
   ),
   Product(
-    id: 'prod-016',
-    name: 'CSSEC Crewneck Sweatshirt',
-    price: 750.0,
-    imagePath: '',
-    category: 'Apparel',
+    id: 'metal-coat',
+    name: 'Metal Coat',
+    price: 3000.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Bag_Metal_Coat_Sprite.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Bag_Metal_Coat_Sprite.png',
+    ],
+    category: 'Evolution',
     description:
-        'Soft-touch pre-shrunk fleece sweater with minimalist typographic CSSEC chest emblem.',
-    soldCount: 34,
+        'A special metallic film that can make certain species of Pokémon evolve. It also boosts Steel-type moves.',
+    soldCount: 95,
+    stock: 50,
+  ),
+  Product(
+    id: 'dragon-scale',
+    name: 'Dragon Scale',
+    price: 3000.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Bag_Dragon_Scale_Sprite.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Bag_Dragon_Scale_Sprite.png',
+    ],
+    category: 'Evolution',
+    description:
+        'A very tough and stiff scale that can make certain Dragon-type Pokémon evolve.',
+    soldCount: 65,
+    stock: 40,
+  ),
+  Product(
+    id: 'up-grade',
+    name: 'Up-Grade',
+    price: 3000.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Bag_Up-Grade_Sprite.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Bag_Up-Grade_Sprite.png',
+    ],
+    category: 'Evolution',
+    description:
+        'A transparent device overflowing with all sorts of data. It was produced by Silph Co. to upgrade Porygon.',
+    soldCount: 50,
+    stock: 35,
+  ),
+  Product(
+    id: 'sinnoh-stone',
+    name: 'Sinnoh Stone',
+    price: 5000.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Bag_Sinnoh_Stone_Sprite.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Bag_Sinnoh_Stone_Sprite.png',
+    ],
+    category: 'Evolution',
+    description:
+        'A special stone originally found in the Sinnoh region that can make certain species of Pokémon evolve.',
+    soldCount: 130,
+    stock: 80,
+  ),
+  Product(
+    id: 'unova-stone',
+    name: 'Unova Stone',
+    price: 5000.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Bag_Unova_Stone_Sprite.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Bag_Unova_Stone_Sprite.png',
+    ],
+    category: 'Evolution',
+    description:
+        'A rare stone originally discovered in the Unova region that makes certain species of Pokémon evolve.',
+    soldCount: 110,
+    stock: 70,
+  ),
+  Product(
+    id: 'meteorite',
+    name: 'Meteorite',
+    price: 4500.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_Meteorite.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_Meteorite.png',
+    ],
+    category: 'Evolution',
+    description:
+        'A glowing celestial stone charged with cosmic energy from outer space, enabling Rayquaza to learn Dragon Ascent.',
+    soldCount: 40,
     stock: 25,
   ),
+
+  // ---------------------------------------------------------------------------
+  // BERRIES & TREATS (8 Items)
+  // ---------------------------------------------------------------------------
   Product(
-    id: 'prod-017',
-    name: 'CSSEC Reversible Bucket Hat',
-    price: 260.0,
-    imagePath: '',
-    category: 'Apparel',
+    id: 'razz-berry',
+    name: 'Razz Berry',
+    price: 100.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0701.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0701.png',
+    ],
+    category: 'Berries & Treats',
     description:
-        'Two-tone reversible cotton twill bucket hat in deep purple and stealth black.',
-    soldCount: 15,
-    stock: 30,
+        'Feed this to a wild Pokémon to make it calmer and easier to catch on your next throw.',
+    soldCount: 620,
+    stock: 800,
   ),
   Product(
-    id: 'prod-018',
-    name: 'CSSEC Etched Metal Bookmark',
-    price: 50.0,
-    imagePath: '',
-    category: 'Accessories',
+    id: 'bluk-berry',
+    name: 'Bluk Berry',
+    price: 100.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0702.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0702.png',
+    ],
+    category: 'Berries & Treats',
     description:
-        'Laser-cut stainless steel bookmark with decorative violet tassel.',
-    soldCount: 90,
+        'A blue berry with a juicy texture. Widely used for cooking savory curries in Galar camps.',
+    soldCount: 410,
+    stock: 600,
+  ),
+  Product(
+    id: 'nanab-berry',
+    name: 'Nanab Berry',
+    price: 100.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0703.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0703.png',
+    ],
+    category: 'Berries & Treats',
+    description:
+        'Feed this to a Pokémon to calm its movements, preventing it from darting or dodging around.',
+    soldCount: 390,
+    stock: 500,
+  ),
+  Product(
+    id: 'wepear-berry',
+    name: 'Wepear Berry',
+    price: 100.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0704.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0704.png',
+    ],
+    category: 'Berries & Treats',
+    description:
+        'A crisp, crunchy berry with an astringent flavor that makes curry tangy and flavorful.',
+    soldCount: 280,
+    stock: 400,
+  ),
+  Product(
+    id: 'pinap-berry',
+    name: 'Pinap Berry',
+    price: 150.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0705.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0705.png',
+    ],
+    category: 'Berries & Treats',
+    description:
+        'Feed this to a wild Pokémon to increase the amount of Candy and item rewards you gain upon capture.',
+    soldCount: 540,
+    stock: 650,
+  ),
+  Product(
+    id: 'golden-razz-berry',
+    name: 'Golden Razz Berry',
+    price: 500.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0706.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0706.png',
+    ],
+    category: 'Berries & Treats',
+    description:
+        'A wondrous golden berry that drastically increases the catch rate of any wild Pokémon.',
+    soldCount: 310,
+    stock: 300,
+  ),
+  Product(
+    id: 'silver-pinap-berry',
+    name: 'Silver Pinap Berry',
+    price: 600.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0707.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0707.png',
+    ],
+    category: 'Berries & Treats',
+    description:
+        'A lustrous silver berry that both eases capture and doubles the reward upon catching.',
+    soldCount: 220,
+    stock: 250,
+  ),
+  Product(
+    id: 'poffin',
+    name: 'Poffin',
+    price: 800.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/poffin.3.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/poffin.3.png',
+    ],
+    category: 'Berries & Treats',
+    description:
+        'A delicious snack pastry baked for Pokémon to maximize their friendship, bond, and mood.',
+    soldCount: 340,
+    stock: 200,
+  ),
+
+  // ---------------------------------------------------------------------------
+  // BATTLE & TRAINING (8 Items)
+  // ---------------------------------------------------------------------------
+  Product(
+    id: 'fast-tm',
+    name: 'Fast TM',
+    price: 4000.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_1201.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_1201.png',
+    ],
+    category: 'Battle & Training',
+    description:
+        'A Technical Machine that teaches a Pokémon a new fast move to adapt to any battle scenario.',
+    soldCount: 145,
+    stock: 90,
+  ),
+  Product(
+    id: 'charged-tm',
+    name: 'Charged TM',
+    price: 4000.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_1202.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_1202.png',
+    ],
+    category: 'Battle & Training',
+    description:
+        'A Technical Machine that teaches a Pokémon a new charged attack move.',
+    soldCount: 160,
+    stock: 90,
+  ),
+  Product(
+    id: 'elite-fast-tm',
+    name: 'Elite Fast TM',
+    price: 5000.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_1203.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_1203.png',
+    ],
+    category: 'Battle & Training',
+    description:
+        'An elite Technical Machine that allows you to choose any fast move for a Pokémon, including legacy moves.',
+    soldCount: 35,
+    stock: 20,
+  ),
+  Product(
+    id: 'elite-charged-tm',
+    name: 'Elite Charged TM',
+    price: 5000.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_1204.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_1204.png',
+    ],
+    category: 'Battle & Training',
+    description:
+        'An elite Technical Machine that lets you pick any charged move for a Pokémon, including event-exclusive moves.',
+    soldCount: 40,
+    stock: 20,
+  ),
+  Product(
+    id: 'rare-candy',
+    name: 'Rare Candy',
+    price: 2000.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_1301.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_1301.png',
+    ],
+    category: 'Battle & Training',
+    description:
+        'A candy packed with energy. When consumed by a Pokémon, it instantly raises its level by one.',
+    soldCount: 480,
+    stock: 350,
+  ),
+  Product(
+    id: 'rare-candy-xl',
+    name: 'Rare Candy XL',
+    price: 5000.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/RareXLCandy_PSD.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/RareXLCandy_PSD.png',
+    ],
+    category: 'Battle & Training',
+    description:
+        'A supreme candy that surges with tremendous power, raising a Pokémon\'s stats beyond normal limits.',
+    soldCount: 95,
+    stock: 60,
+  ),
+  Product(
+    id: 'star-piece',
+    name: 'Star Piece',
+    price: 2500.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/starpiece.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/starpiece.png',
+    ],
+    category: 'Battle & Training',
+    description:
+        'A small shard of a beautiful gem. Shines with starlight and boosts earnings by 50% for 30 minutes.',
+    soldCount: 210,
+    stock: 120,
+  ),
+  Product(
+    id: 'lucky-egg',
+    name: 'Lucky Egg',
+    price: 3000.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/luckyegg.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/luckyegg.png',
+    ],
+    category: 'Battle & Training',
+    description:
+        'An egg filled with happiness. Grants double experience points to the trainer for 30 minutes.',
+    soldCount: 270,
+    stock: 150,
+  ),
+
+  // ---------------------------------------------------------------------------
+  // SPECIAL GEAR (12 Items)
+  // ---------------------------------------------------------------------------
+  Product(
+    id: 'incense',
+    name: 'Incense',
+    price: 1000.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Incense_0.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Incense_0.png',
+    ],
+    category: 'Special Gear',
+    description:
+        'An aromatic incense that attracts wild Pokémon to your location for 60 minutes.',
+    soldCount: 320,
+    stock: 200,
+  ),
+  Product(
+    id: 'daily-adventure-incense',
+    name: 'Daily Adventure Incense',
+    price: 2500.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/dailyWalking_incense.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/dailyWalking_incense.png',
+    ],
+    category: 'Special Gear',
+    description:
+        'A special incense that attracts rare and elusive Pokémon while walking for 15 minutes.',
+    soldCount: 180,
+    stock: 100,
+  ),
+  Product(
+    id: 'egg-incubator',
+    name: 'Egg Incubator',
+    price: 1500.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/EggIncubatorUnlimited_Empty.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/EggIncubatorUnlimited_Empty.png',
+    ],
+    category: 'Special Gear',
+    description:
+        'A state-of-the-art incubation capsule that warms and hatches Pokémon eggs as you travel.',
+    soldCount: 230,
+    stock: 150,
+  ),
+  Product(
+    id: 'super-incubator',
+    name: 'Super Incubator',
+    price: 3000.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/EggIncubatorSuper_Empty.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/EggIncubatorSuper_Empty.png',
+    ],
+    category: 'Special Gear',
+    description:
+        'A high-performance incubator with thermal enhancers that hatches eggs 33% faster.',
+    soldCount: 195,
+    stock: 110,
+  ),
+  Product(
+    id: 'premium-battle-pass',
+    name: 'Premium Battle Pass',
+    price: 1000.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_1402.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_1402.png',
+    ],
+    category: 'Special Gear',
+    description:
+        'A digital pass that grants entry to championship Raid Battles and competitive Battle Leagues.',
+    soldCount: 410,
+    stock: 300,
+  ),
+  Product(
+    id: 'remote-raid-pass',
+    name: 'Remote Raid Pass',
+    price: 2500.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_1408.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_1408.png',
+    ],
+    category: 'Special Gear',
+    description:
+        'An electronic pass enabling trainers to participate in distant Raid Battles from anywhere in Galar.',
+    soldCount: 560,
+    stock: 400,
+  ),
+  Product(
+    id: 'lure-module',
+    name: 'Lure Module',
+    price: 1000.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/TroyKey.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/TroyKey.png',
+    ],
+    category: 'Special Gear',
+    description:
+        'A module that attracts wild Pokémon to a PokéStop or beacon for 30 minutes.',
+    soldCount: 290,
+    stock: 220,
+  ),
+  Product(
+    id: 'glacial-lure-module',
+    name: 'Glacial Lure Module',
+    price: 1500.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/TroyKey_glacial.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/TroyKey_glacial.png',
+    ],
+    category: 'Special Gear',
+    description:
+        'A frosty module that attracts Water- and Ice-type Pokémon and enables special evolutions.',
+    soldCount: 140,
+    stock: 90,
+  ),
+  Product(
+    id: 'magnetic-lure-module',
+    name: 'Magnetic Lure Module',
+    price: 1500.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/TroyKey_magnetic.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/TroyKey_magnetic.png',
+    ],
+    category: 'Special Gear',
+    description:
+        'An electric module that attracts Electric-, Steel-, and Rock-type Pokémon.',
+    soldCount: 135,
+    stock: 90,
+  ),
+  Product(
+    id: 'mossy-lure-module',
+    name: 'Mossy Lure Module',
+    price: 1500.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/TroyKey_moss.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/TroyKey_moss.png',
+    ],
+    category: 'Special Gear',
+    description:
+        'A lush botanical module that attracts Grass-, Bug-, and Poison-type Pokémon.',
+    soldCount: 125,
+    stock: 90,
+  ),
+  Product(
+    id: 'rainy-lure-module',
+    name: 'Rainy Lure Module',
+    price: 1500.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/TroyKey_rainy.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/TroyKey_rainy.png',
+    ],
+    category: 'Special Gear',
+    description:
+        'A moist, weather-mimicking module that attracts Water-, Bug-, and Electric-type Pokémon.',
+    soldCount: 115,
+    stock: 80,
+  ),
+  Product(
+    id: 'purified-gem',
+    name: 'Purified Gem',
+    price: 2000.0,
+    imagePath:
+        'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_ShadowGem.png',
+    images: [
+      'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_ShadowGem.png',
+    ],
+    category: 'Special Gear',
+    description:
+        'A crystal gem refined from shadow shards, used to subdue enraged Pokémon in battle.',
+    soldCount: 150,
     stock: 100,
   ),
 ];

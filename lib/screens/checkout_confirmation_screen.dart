@@ -31,7 +31,7 @@ class _CheckoutConfirmationScreenState
   void initState() {
     super.initState();
     _orderNumber =
-        'CSSEC-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+        'GALAR-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
     _orderTimestamp = DateTime.now();
 
     // Snapshot cart items and clear the active cart
@@ -120,12 +120,37 @@ class _CheckoutConfirmationScreenState
                 const SizedBox(height: 28),
 
                 // Return to catalog action button
-                SizedBox(
+                Container(
                   width: double.infinity,
                   height: 48,
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.mintActionGradient,
+                    borderRadius: BorderRadius.circular(28),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.pogoMintEnd.withAlpha(80),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
                   child: ElevatedButton.icon(
-                    icon: const Icon(Icons.shopping_bag_outlined),
-                    label: const Text('Continue Shopping'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(28),
+                      ),
+                    ),
+                    icon: const Icon(Icons.catching_pokemon),
+                    label: const Text(
+                      'Return to PokéMart',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
                     onPressed: () => context.go('/'),
                   ),
                 ),
@@ -204,7 +229,7 @@ class _OrderReceiptCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'CSSEC Merch Booth',
+                      'Galar Pokémon Center Mart',
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -254,20 +279,33 @@ class _OrderReceiptCard extends StatelessWidget {
                           color: colorScheme.surfaceContainerHighest
                               .withAlpha(80),
                           child: item.imagePath.isNotEmpty
-                              ? Image.asset(
-                                  item.imagePath,
-                                  fit: BoxFit.contain,
-                                  errorBuilder: (context, error, stackTrace) =>
-                                      Icon(
-                                    Icons.shopping_bag_outlined,
-                                    size: 20,
-                                    color: colorScheme.primary,
-                                  ),
-                                )
-                              : Icon(
-                                  Icons.shopping_bag_outlined,
+                              ? (item.imagePath.startsWith('http')
+                                  ? Image.network(
+                                      item.imagePath,
+                                      fit: BoxFit.contain,
+                                      errorBuilder:
+                                          (context, error, stackTrace) =>
+                                              const Icon(
+                                        Icons.catching_pokemon,
+                                        size: 20,
+                                        color: AppTheme.swordPrimary,
+                                      ),
+                                    )
+                                  : Image.asset(
+                                      item.imagePath,
+                                      fit: BoxFit.contain,
+                                      errorBuilder:
+                                          (context, error, stackTrace) =>
+                                              const Icon(
+                                        Icons.catching_pokemon,
+                                        size: 20,
+                                        color: AppTheme.swordPrimary,
+                                      ),
+                                    ))
+                              : const Icon(
+                                  Icons.catching_pokemon,
                                   size: 20,
-                                  color: colorScheme.primary,
+                                  color: AppTheme.swordPrimary,
                                 ),
                         ),
                       ),
@@ -329,7 +367,7 @@ class _OrderReceiptCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '₱${AppTheme.formatPrice(totalAmount)}',
+                  '₽${AppTheme.formatPrice(totalAmount)}',
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: colorScheme.primary,

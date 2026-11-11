@@ -1,6 +1,7 @@
 -- ==============================================================================
--- CSShop Supabase Schema & Seed Script
--- Activity: CS Elective 2 | Supabase-Flutter Activity (Price Filter + Pagination)
+-- PokéMart Supabase Schema & Seed Script (Sword & Shield / Galar Region)
+-- Activity: CS Elective 2 | Flutter E-Commerce Project
+-- High-Resolution 3D Datamined Assets (PokeMiners/pogo_assets)
 -- ==============================================================================
 
 -- 1. Create Products Table
@@ -17,8 +18,6 @@ CREATE TABLE IF NOT EXISTS public.products (
 );
 
 -- 2. Configure Row Level Security (RLS)
--- As covered in lecture slides 30 & 41, RLS is enabled by default.
--- We must explicitly grant read access to anonymous public users.
 ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Allow public read access on products" ON public.products;
@@ -27,31 +26,59 @@ ON public.products
 FOR SELECT
 USING (true);
 
--- 3. Seed Initial & Placeholder Products (18 Total Products for Pagination Testing)
+-- 3. Seed PokéMart Galar Inventory (48 Authentic High-Res Items across 6 SwSh Bag Pockets)
 INSERT INTO public.products (id, name, price, image_path, category, description, sold_count, stock)
 VALUES
-    -- Base catalog items with assets
-    ('prod-001', 'CS T-Shirt', 350.00, 'assets/images/001-shirt/shirt_black_front.png', 'Apparel', 'Official CS T-Shirt Merch for IT Week 2026: Iridescence. Premium cotton blend featuring front chest print and full back graphic art.', 142, 50),
-    ('prod-002', 'Palarong Atenista CS Jacket', 1200.00, 'assets/images/002-jacket/jacket_variant_1.png', 'Apparel', 'Heavyweight wool-blend varsity bomber jacket with custom CS embroidered chest patch and ribbed contrast trims.', 88, 25),
-    ('prod-003', 'Palarong Atenista CS Jersey', 350.00, 'assets/images/003-jersey/sleeved_purple_front.png', 'Apparel', 'Breathable dry-fit jersey, designed to be worn for Palarong Atenista 2026. Includes custom naming and jersey number on the back.', 95, 30),
-    ('prod-004', 'CSSEC Button Pin', 40.00, 'assets/images/004-pin/pin_variant_1.png', 'Accessories', 'High-gloss acrylic button pin with safety pin clasp, featuring exclusive CSSEC IT Week 2026 badge graphics.', 210, 100),
-    ('prod-005', 'CSSEC Vinyl Sticker Pack', 45.00, 'assets/images/005-sticker/sticker_variant_1.png', 'Accessories', 'Waterproof die-cut vinyl sticker pack with matte UV laminate finish. Scratch-resistant for laptops, tumblers, and notebooks.', 320, 150),
-    ('prod-006', 'CS Mascot Acrylic Keychain', 80.00, 'assets/images/006-keychain/mascot_keychain.png', 'Accessories', 'Double-sided transparent acrylic charm keychain featuring the official CS mascot with silver keyring attachment.', 175, 60),
-
-    -- Additional placeholder items (no image assets, testing pagination & price filtering)
-    ('prod-007', 'CSSEC Lanyard (Iridescence)', 120.00, '', 'Accessories', 'Satin ribbon lanyard with CSSEC 2026 Iridescence graphics, metal clip, and safety breakaway buckle.', 45, 80),
-    ('prod-008', 'CSSEC Embroidered Cap', 280.00, '', 'Apparel', 'Classic baseball cap featuring embroidered CSSEC crest with adjustable brass metal strap.', 30, 40),
-    ('prod-009', 'CSSEC Canvas Tote Bag', 220.00, '', 'Accessories', 'Heavy duty 12oz canvas tote bag with reinforced straps, built for laptops and textbooks.', 65, 50),
-    ('prod-010', 'CSSEC Insulated Water Bottle', 650.00, '', 'Accessories', 'Double-wall vacuum insulated 750ml stainless steel water bottle with laser-engraved CS monogram.', 28, 35),
-    ('prod-011', 'CSSEC Windbreaker Jacket', 950.00, '', 'Apparel', 'Lightweight water-resistant windbreaker jacket with reflective accents and zippered hood.', 18, 20),
-    ('prod-012', 'CSSEC Oversized Hoodie', 890.00, '', 'Apparel', 'Heavyweight fleece hoodie in violet with dropped shoulders and spacious kangaroo pocket.', 52, 25),
-    ('prod-013', 'CSSEC Enamel Lapel Pin', 75.00, '', 'Accessories', 'Gold-plated hard enamel pin with dual clutch backing, ideal for bags and ID straps.', 80, 70),
-    ('prod-014', 'CSSEC Desk Mat / Mousepad', 450.00, '', 'Accessories', 'Extended 900x400mm gaming mousepad with anti-fray stitched edges and micro-woven surface.', 40, 30),
-    ('prod-015', 'CSSEC Tech Cable Organizer', 320.00, '', 'Accessories', 'Water-resistant compact pouch with elastic loops and mesh dividers for chargers and dongles.', 22, 45),
-    ('prod-016', 'CSSEC Crewneck Sweatshirt', 750.00, '', 'Apparel', 'Soft-touch pre-shrunk fleece sweater with minimalist typographic CSSEC chest emblem.', 34, 25),
-    ('prod-017', 'CSSEC Reversible Bucket Hat', 260.00, '', 'Apparel', 'Two-tone reversible cotton twill bucket hat in deep purple and stealth black.', 15, 30),
-    ('prod-018', 'CSSEC Etched Metal Bookmark', 50.00, '', 'Accessories', 'Laser-cut stainless steel bookmark with decorative violet tassel.', 90, 100)
-ON CONFLICT (id) DO UPDATE SET
+  ('poke-ball', 'Poké Ball', 200.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/pokeball_sprite.png', 'Poké Balls', 'A device for catching wild Pokémon. It is thrown like a ball comfortably at a target, expanding into a capsule to capture.', 950, 999),
+  ('great-ball', 'Great Ball', 600.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/greatball_sprite.png', 'Poké Balls', 'A good, high-performance Ball that provides a higher Pokémon catch rate than a standard Poké Ball.', 540, 600),
+  ('ultra-ball', 'Ultra Ball', 1200.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/ultraball_sprite.png', 'Poké Balls', 'An ultra-high-performance Ball providing a higher catch rate than a Great Ball. Ideal for challenging wild encounters in Galar.', 380, 450),
+  ('master-ball', 'Master Ball', 5000.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/masterball_sprite.png', 'Poké Balls', 'The best Ball with the ultimate level of performance. With it, you will catch any wild Pokémon without fail.', 12, 10),
+  ('premier-ball', 'Premier Ball', 1000.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/premierball_sprite.png', 'Poké Balls', 'A somewhat rare Poké Ball made as a commemorative item to celebrate an event or special milestone.', 160, 200),
+  ('beast-ball', 'Beast Ball', 4000.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/beastball_sprite.png', 'Poké Balls', 'A special Poké Ball designed to catch Ultra Beasts. It has a low success rate for catching standard Pokémon.', 45, 50),
+  ('potion', 'Potion', 300.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0101.png', 'Medicine', 'A spray-type medicine for treating wounds. It restores the HP of one Pokémon by 60 points.', 780, 500),
+  ('super-potion', 'Super Potion', 700.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0102.png', 'Medicine', 'A high-potency spray-type medicine for treating wounds. Restores the HP of one Pokémon by 120 points.', 520, 350),
+  ('hyper-potion', 'Hyper Potion', 1200.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0103.png', 'Medicine', 'An advanced therapeutic spray. Restores the HP of a single Pokémon by up to 200 points.', 340, 250),
+  ('max-potion', 'Max Potion', 2500.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0104.png', 'Medicine', 'A fully restorative spray-type medicine that completely heals all HP for a single Pokémon.', 160, 120),
+  ('revive', 'Revive', 1500.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0201.png', 'Medicine', 'A medicine that can be used to revive a fainted Pokémon and restore half of its maximum HP.', 450, 200),
+  ('max-revive', 'Max Revive', 4000.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0202.png', 'Medicine', 'A rare and potent medicine that revives a fainted Pokémon and fully restores all of its maximum HP.', 90, 50),
+  ('sun-stone', 'Sun Stone', 3000.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Bag_Sun_Stone_Sprite.png', 'Evolution', 'A peculiar stone that can make certain species of Pokémon evolve. It burns as red as the evening sun.', 85, 60),
+  ('kings-rock', 'King''s Rock', 3000.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Bag_King''s_Rock_Sprite.png', 'Evolution', 'An item to be held by a Pokémon. When the holder inflicts damage, there is a chance the target will flinch.', 70, 45),
+  ('metal-coat', 'Metal Coat', 3000.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Bag_Metal_Coat_Sprite.png', 'Evolution', 'A special metallic film that can make certain species of Pokémon evolve. It also boosts Steel-type moves.', 95, 50),
+  ('dragon-scale', 'Dragon Scale', 3000.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Bag_Dragon_Scale_Sprite.png', 'Evolution', 'A very tough and stiff scale that can make certain Dragon-type Pokémon evolve.', 65, 40),
+  ('up-grade', 'Up-Grade', 3000.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Bag_Up-Grade_Sprite.png', 'Evolution', 'A transparent device overflowing with all sorts of data. It was produced by Silph Co. to upgrade Porygon.', 50, 35),
+  ('sinnoh-stone', 'Sinnoh Stone', 5000.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Bag_Sinnoh_Stone_Sprite.png', 'Evolution', 'A special stone originally found in the Sinnoh region that can make certain species of Pokémon evolve.', 130, 80),
+  ('unova-stone', 'Unova Stone', 5000.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Bag_Unova_Stone_Sprite.png', 'Evolution', 'A rare stone originally discovered in the Unova region that makes certain species of Pokémon evolve.', 110, 70),
+  ('meteorite', 'Meteorite', 4500.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_Meteorite.png', 'Evolution', 'A glowing celestial stone charged with cosmic energy from outer space, enabling Rayquaza to learn Dragon Ascent.', 40, 25),
+  ('razz-berry', 'Razz Berry', 100.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0701.png', 'Berries & Treats', 'Feed this to a wild Pokémon to make it calmer and easier to catch on your next throw.', 620, 800),
+  ('bluk-berry', 'Bluk Berry', 100.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0702.png', 'Berries & Treats', 'A blue berry with a juicy texture. Widely used for cooking savory curries in Galar camps.', 410, 600),
+  ('nanab-berry', 'Nanab Berry', 100.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0703.png', 'Berries & Treats', 'Feed this to a Pokémon to calm its movements, preventing it from darting or dodging around.', 390, 500),
+  ('wepear-berry', 'Wepear Berry', 100.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0704.png', 'Berries & Treats', 'A crisp, crunchy berry with an astringent flavor that makes curry tangy and flavorful.', 280, 400),
+  ('pinap-berry', 'Pinap Berry', 150.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0705.png', 'Berries & Treats', 'Feed this to a wild Pokémon to increase the amount of Candy and item rewards you gain upon capture.', 540, 650),
+  ('golden-razz-berry', 'Golden Razz Berry', 500.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0706.png', 'Berries & Treats', 'A wondrous golden berry that drastically increases the catch rate of any wild Pokémon.', 310, 300),
+  ('silver-pinap-berry', 'Silver Pinap Berry', 600.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0707.png', 'Berries & Treats', 'A lustrous silver berry that both eases capture and doubles the reward upon catching.', 220, 250),
+  ('poffin', 'Poffin', 800.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/poffin.3.png', 'Berries & Treats', 'A delicious snack pastry baked for Pokémon to maximize their friendship, bond, and mood.', 340, 200),
+  ('fast-tm', 'Fast TM', 4000.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_1201.png', 'Battle & Training', 'A Technical Machine that teaches a Pokémon a new fast move to adapt to any battle scenario.', 145, 90),
+  ('charged-tm', 'Charged TM', 4000.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_1202.png', 'Battle & Training', 'A Technical Machine that teaches a Pokémon a new charged attack move.', 160, 90),
+  ('elite-fast-tm', 'Elite Fast TM', 5000.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_1203.png', 'Battle & Training', 'An elite Technical Machine that allows you to choose any fast move for a Pokémon, including legacy moves.', 35, 20),
+  ('elite-charged-tm', 'Elite Charged TM', 5000.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_1204.png', 'Battle & Training', 'An elite Technical Machine that lets you pick any charged move for a Pokémon, including event-exclusive moves.', 40, 20),
+  ('rare-candy', 'Rare Candy', 2000.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_1301.png', 'Battle & Training', 'A candy packed with energy. When consumed by a Pokémon, it instantly raises its level by one.', 480, 350),
+  ('rare-candy-xl', 'Rare Candy XL', 5000.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/RareXLCandy_PSD.png', 'Battle & Training', 'A supreme candy that surges with tremendous power, raising a Pokémon''s stats beyond normal limits.', 95, 60),
+  ('star-piece', 'Star Piece', 2500.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/starpiece.png', 'Battle & Training', 'A small shard of a beautiful gem. Shines with starlight and boosts earnings by 50% for 30 minutes.', 210, 120),
+  ('lucky-egg', 'Lucky Egg', 3000.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/luckyegg.png', 'Battle & Training', 'An egg filled with happiness. Grants double experience points to the trainer for 30 minutes.', 270, 150),
+  ('incense', 'Incense', 1000.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Incense_0.png', 'Special Gear', 'An aromatic incense that attracts wild Pokémon to your location for 60 minutes.', 320, 200),
+  ('daily-adventure-incense', 'Daily Adventure Incense', 2500.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/dailyWalking_incense.png', 'Special Gear', 'A special incense that attracts rare and elusive Pokémon while walking for 15 minutes.', 180, 100),
+  ('egg-incubator', 'Egg Incubator', 1500.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/EggIncubatorUnlimited_Empty.png', 'Special Gear', 'A state-of-the-art incubation capsule that warms and hatches Pokémon eggs as you travel.', 230, 150),
+  ('super-incubator', 'Super Incubator', 3000.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/EggIncubatorSuper_Empty.png', 'Special Gear', 'A high-performance incubator with thermal enhancers that hatches eggs 33% faster.', 195, 110),
+  ('premium-battle-pass', 'Premium Battle Pass', 1000.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_1402.png', 'Special Gear', 'A digital pass that grants entry to championship Raid Battles and competitive Battle Leagues.', 410, 300),
+  ('remote-raid-pass', 'Remote Raid Pass', 2500.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_1408.png', 'Special Gear', 'An electronic pass enabling trainers to participate in distant Raid Battles from anywhere in Galar.', 560, 400),
+  ('lure-module', 'Lure Module', 1000.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/TroyKey.png', 'Special Gear', 'A module that attracts wild Pokémon to a PokéStop or beacon for 30 minutes.', 290, 220),
+  ('glacial-lure-module', 'Glacial Lure Module', 1500.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/TroyKey_glacial.png', 'Special Gear', 'A frosty module that attracts Water- and Ice-type Pokémon and enables special evolutions.', 140, 90),
+  ('magnetic-lure-module', 'Magnetic Lure Module', 1500.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/TroyKey_magnetic.png', 'Special Gear', 'An electric module that attracts Electric-, Steel-, and Rock-type Pokémon.', 135, 90),
+  ('mossy-lure-module', 'Mossy Lure Module', 1500.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/TroyKey_moss.png', 'Special Gear', 'A lush botanical module that attracts Grass-, Bug-, and Poison-type Pokémon.', 125, 90),
+  ('rainy-lure-module', 'Rainy Lure Module', 1500.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/TroyKey_rainy.png', 'Special Gear', 'A moist, weather-mimicking module that attracts Water-, Bug-, and Electric-type Pokémon.', 115, 80),
+  ('purified-gem', 'Purified Gem', 2000.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_ShadowGem.png', 'Special Gear', 'A crystal gem refined from shadow shards, used to subdue enraged Pokémon in battle.', 150, 100)
+ON CONFLICT (id) DO UPDATE 
+SET 
     name = EXCLUDED.name,
     price = EXCLUDED.price,
     image_path = EXCLUDED.image_path,
@@ -59,4 +86,3 @@ ON CONFLICT (id) DO UPDATE SET
     description = EXCLUDED.description,
     sold_count = EXCLUDED.sold_count,
     stock = EXCLUDED.stock;
-

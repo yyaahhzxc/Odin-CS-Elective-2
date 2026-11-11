@@ -16,7 +16,7 @@ class CatalogManager extends ChangeNotifier {
   int _totalCount = 0;
 
   String _selectedCategory = 'All';
-  RangeValues _priceRange = const RangeValues(0, 1500);
+  RangeValues _priceRange = const RangeValues(0, 5000);
 
   CatalogManager({SupabaseService? service})
       : _service = service ?? SupabaseService();

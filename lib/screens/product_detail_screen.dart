@@ -71,7 +71,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         ? '${widget.product.name} - ${activeVariant.name}'
         : widget.product.name;
     final displayPrice = activeVariant?.price != null
-        ? '₱${AppTheme.formatPrice(activeVariant!.price!)}'
+        ? '₽${AppTheme.formatPrice(activeVariant!.price!)}'
         : widget.product.formattedPrice;
     final displayDescription =
         activeVariant?.description ?? widget.product.description;
@@ -97,10 +97,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           IconButton(
             icon: Badge(
               isLabelVisible: cart.isNotEmpty,
+              backgroundColor: AppTheme.pogoValorRed,
               label: Text('${cart.totalItemCount}'),
-              child: const Icon(Icons.shopping_cart_outlined),
+              child: const Icon(Icons.shopping_bag_outlined),
             ),
-            tooltip: 'Shopping Cart',
+            tooltip: 'Trainer Bag / Cart',
             onPressed: () {
               _bannerTimer?.cancel();
               context.go('/cart');
@@ -303,26 +304,40 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  // Product image if available, else clean placeholder icon
+                  // Product image if available, else clean Poké Ball placeholder icon
                   hasRealImage
-                      ? Image.asset(
-                          activeImagePath,
-                          fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Center(
-                              child: Icon(
-                                Icons.shopping_bag_outlined,
-                                size: 80,
-                                color: colorScheme.primary,
-                              ),
-                            );
-                          },
-                        )
-                      : Center(
+                      ? (activeImagePath.startsWith('http')
+                          ? Image.network(
+                              activeImagePath,
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Center(
+                                  child: Icon(
+                                    Icons.catching_pokemon,
+                                    size: 80,
+                                    color: AppTheme.pogoTealPrimary,
+                                  ),
+                                );
+                              },
+                            )
+                          : Image.asset(
+                              activeImagePath,
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Center(
+                                  child: Icon(
+                                    Icons.catching_pokemon,
+                                    size: 80,
+                                    color: AppTheme.pogoTealPrimary,
+                                  ),
+                                );
+                              },
+                            ))
+                      : const Center(
                           child: Icon(
-                            Icons.shopping_bag_outlined,
+                            Icons.catching_pokemon,
                             size: 80,
-                            color: colorScheme.primary,
+                            color: AppTheme.pogoTealPrimary,
                           ),
                         ),
 
@@ -497,23 +512,41 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               fit: StackFit.expand,
                               children: [
                                 thumbPath.isNotEmpty
-                                    ? Image.asset(
-                                        thumbPath,
-                                        fit: BoxFit.cover,
-                                        errorBuilder:
-                                            (context, error, stackTrace) {
-                                          return Center(
-                                            child: Icon(
-                                              Icons.photo_outlined,
-                                              size: 18,
-                                              color: isSelected
-                                                  ? colorScheme.primary
-                                                  : colorScheme
-                                                      .onSurfaceVariant,
-                                            ),
-                                          );
-                                        },
-                                      )
+                                    ? (thumbPath.startsWith('http')
+                                        ? Image.network(
+                                            thumbPath,
+                                            fit: BoxFit.contain,
+                                            errorBuilder:
+                                                (context, error, stackTrace) {
+                                              return Center(
+                                                child: Icon(
+                                                  Icons.photo_outlined,
+                                                  size: 18,
+                                                  color: isSelected
+                                                      ? colorScheme.primary
+                                                      : colorScheme
+                                                          .onSurfaceVariant,
+                                                ),
+                                              );
+                                            },
+                                          )
+                                        : Image.asset(
+                                            thumbPath,
+                                            fit: BoxFit.cover,
+                                            errorBuilder:
+                                                (context, error, stackTrace) {
+                                              return Center(
+                                                child: Icon(
+                                                  Icons.photo_outlined,
+                                                  size: 18,
+                                                  color: isSelected
+                                                      ? colorScheme.primary
+                                                      : colorScheme
+                                                          .onSurfaceVariant,
+                                                ),
+                                              );
+                                            },
+                                          ))
                                     : Center(
                                         child: Icon(
                                           Icons.photo_outlined,
@@ -595,23 +628,41 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                   fit: StackFit.expand,
                                   children: [
                                     variantImage.isNotEmpty
-                                        ? Image.asset(
-                                            variantImage,
-                                            fit: BoxFit.cover,
-                                            errorBuilder:
-                                                (context, error, stackTrace) {
-                                              return Center(
-                                                child: Icon(
-                                                  Icons.image_outlined,
-                                                  size: 20,
-                                                  color: isSelected
-                                                      ? colorScheme.primary
-                                                      : colorScheme
-                                                          .onSurfaceVariant,
-                                                ),
-                                              );
-                                            },
-                                          )
+                                        ? (variantImage.startsWith('http')
+                                            ? Image.network(
+                                                variantImage,
+                                                fit: BoxFit.contain,
+                                                errorBuilder:
+                                                    (context, error, stackTrace) {
+                                                  return Center(
+                                                    child: Icon(
+                                                      Icons.image_outlined,
+                                                      size: 20,
+                                                      color: isSelected
+                                                          ? colorScheme.primary
+                                                          : colorScheme
+                                                              .onSurfaceVariant,
+                                                    ),
+                                                  );
+                                                },
+                                              )
+                                            : Image.asset(
+                                                variantImage,
+                                                fit: BoxFit.cover,
+                                                errorBuilder:
+                                                    (context, error, stackTrace) {
+                                                  return Center(
+                                                    child: Icon(
+                                                      Icons.image_outlined,
+                                                      size: 20,
+                                                      color: isSelected
+                                                          ? colorScheme.primary
+                                                          : colorScheme
+                                                              .onSurfaceVariant,
+                                                    ),
+                                                  );
+                                                },
+                                              ))
                                         : Center(
                                             child: Icon(
                                               Icons.image_outlined,

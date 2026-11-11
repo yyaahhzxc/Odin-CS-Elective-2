@@ -7,7 +7,7 @@ import 'state/cart_state.dart';
 import 'state/catalog_state.dart';
 import 'theme/app_theme.dart';
 
-/// Entry point of the CSShop Flutter application.
+/// Entry point of the PokéMart Flutter application.
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -19,7 +19,7 @@ void main() async {
     );
   }
 
-  runApp(const CSShopApp());
+  runApp(const PokeMartApp());
 }
 
 /// Root widget of the application.
@@ -27,22 +27,29 @@ void main() async {
 /// Implemented as a [StatefulWidget] to manage the global [ThemeMode]
 /// (Light vs. Dark mode) dynamically across the entire application lifecycle,
 /// while providing scoped state via [CatalogScope] and [CartScope].
-class CSShopApp extends StatefulWidget {
-  const CSShopApp({super.key});
+class PokeMartApp extends StatefulWidget {
+  final CatalogManager? catalogManager;
+  final CartManager? cartManager;
+
+  const PokeMartApp({
+    super.key,
+    this.catalogManager,
+    this.cartManager,
+  });
 
   @override
-  State<CSShopApp> createState() => _CSShopAppState();
+  State<PokeMartApp> createState() => _PokeMartAppState();
 }
 
-class _CSShopAppState extends State<CSShopApp> {
+class _PokeMartAppState extends State<PokeMartApp> {
   // Application-wide theme mode state
   ThemeMode _themeMode = ThemeMode.light;
 
   // Centralized shopping cart manager instance
-  final CartManager _cartManager = CartManager();
+  late final CartManager _cartManager;
 
   // Centralized product catalog & pagination manager instance
-  final CatalogManager _catalogManager = CatalogManager();
+  late final CatalogManager _catalogManager;
 
   late final GoRouter _router;
 
@@ -50,8 +57,13 @@ class _CSShopAppState extends State<CSShopApp> {
   void initState() {
     super.initState();
 
-    // Initial fetch of catalog products from Supabase
-    _catalogManager.fetchCatalog();
+    _cartManager = widget.cartManager ?? CartManager();
+    _catalogManager = widget.catalogManager ?? CatalogManager();
+
+    // Initial fetch of catalog products from Supabase if not preloaded
+    if (_catalogManager.products.isEmpty) {
+      _catalogManager.fetchCatalog();
+    }
 
     // Initialize Navigation 2.0 router with callback hooks and cart manager
     _router = AppRouter.createRouter(
@@ -63,8 +75,8 @@ class _CSShopAppState extends State<CSShopApp> {
 
   @override
   void dispose() {
-    _catalogManager.dispose();
-    _cartManager.dispose();
+    if (widget.catalogManager == null) _catalogManager.dispose();
+    if (widget.cartManager == null) _cartManager.dispose();
     super.dispose();
   }
 
@@ -83,7 +95,7 @@ class _CSShopAppState extends State<CSShopApp> {
       child: CartScope(
         notifier: _cartManager,
         child: MaterialApp.router(
-          title: 'CSShop - CSSEC Merch',
+          title: 'PokéMart - Galar Region',
           debugShowCheckedModeBanner: false,
 
           // Centralized Design Theming applied globally
