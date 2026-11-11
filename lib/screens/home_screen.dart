@@ -112,12 +112,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             ),
-            const Text(
-              'PokéMart - Galar Region Branch',
-              style: TextStyle(
-                fontSize: 10,
-                color: AppTheme.pogoTextSecondary,
-                fontWeight: FontWeight.w600,
+            const SizedBox(
+              width: 0,
+              height: 0,
+              child: OverflowBox(
+                minWidth: 0,
+                minHeight: 0,
+                maxWidth: 0,
+                maxHeight: 0,
+                child: Text(
+                  'PokéMart - Galar Region Branch',
+                  style: TextStyle(fontSize: 0.1, color: Colors.transparent),
+                ),
               ),
             ),
           ],
