@@ -30,6 +30,13 @@ class CartManager extends ChangeNotifier {
   /// Indicates whether the cart contains at least one item.
   bool get isNotEmpty => _items.isNotEmpty;
 
+  /// Returns the total quantity of a specific product currently in the cart.
+  int quantityOf(Product product) {
+    return _items
+        .where((item) => item.product.id == product.id)
+        .fold(0, (total, item) => total + item.quantity);
+  }
+
   /// Adds a product and chosen variant to the cart, or increases its quantity if already present.
   void addItem(Product product, ProductVariant? variant, int quantity) {
     final compositeId = '${product.id}_${variant?.id ?? 'base'}';

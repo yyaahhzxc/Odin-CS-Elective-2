@@ -110,32 +110,35 @@ From Sketch metadata, the typography engine is strictly **Lato**:
 
 ## 4. UI Component Architecture for PokéMart
 
-### 4.1 Header Bar (PoGO Trainer HUD)
-* Clean white/frosted mint top app bar (`#FFFFFF` with soft shadow).
-* Left: Circular Poké Ball emblem + `POKÉMART` title.
-* Right:
-  - **PokéCoin / Funds Chip:** Soft pill container with gold PokéCoin icon (`#F5A623`) + balance (`325,976`).
-  - **Item Bag (`Rucksack Button`):** Concentric circular badge showing live bag item count.
+### 4.1 Homepage: Authentic Pokémon GO Items (Bag) Layout
+* **Header & HUD:**
+  - `ITEMS` title in bold tracking sans-serif (`18pt`, `FontWeight.w900`, `letterSpacing: 1.5`).
+  - Capacity & underline bar: `Inventory Items • ${catalog.totalCount} / 48` with a centered Deep Teal underline bar directly beneath.
+  - View switcher segmented button `[ ::: | ≡ ]` on top right to toggle between **List View** and **3-Column Grid View**.
+  - Live PokéCoin balance chip (`btnCoinsSmall.png` + `325,976`).
+  - Concentric Trainer Bag button with live item count badge.
+* **Category Section Dividers:**
+  - PoGO-style centered tracking text with horizontal dividers:
+    `────── MEDICINE ──────`, `────── POKÉ BALLS ──────`, `────── BERRIES ──────`
+* **Dual View Modes:**
+  - **List View (Reference 1 Left):** 3D item render on left with translucent quantity pill (`x500`), bold item name, multi-line lore description, price, and item action button.
+  - **3-Column Grid View (Reference 1 Right):** 3 items per row with top-right action icon, centered 3D render with bottom-left quantity pill, centered bold title, and price.
+* **Floating Bottom Dismiss 'X' Button:**
+  - Circular button (`#AEFBA8` -> `#5FEED1` gradient with `#1C8696` 'X') floating at bottom-center.
 
-### 4.2 Category Filter Tabs (PoGO Bag Pockets)
-* Horizontal scrolling pill tabs with smooth rounded caps (`BorderRadius.circular(20)`).
-* Unselected: White pill with subtle `#D7D7D7` border and `#7E8C88` text.
-* Selected: Active `#1C8696` deep teal or gradient `#A8DD9C` -> `#23CCA9` fill with bold white text.
-
-### 4.3 Product Cards (PoGO Item Pedestal)
-* White elevated card (`BorderRadius.circular(22)`), 1.5px `#E2EAE6` border, soft drop shadow (`blur: 10`, `y: 4`, opacity `0.06`).
-* Upper: Soft circular pedestal (`#F0FFF1` background with `#1C8696` inner ring) framing the high-resolution 3D asset.
-* Middle: Item Name in bold `Lato-Bold` + subtle category badge.
-* Bottom: Price badge (`₽ 200`) + quick "+" Add to Bag concentric circle button.
-
-### 4.4 Primary Buttons (Evolve / Power Up Style)
-* Elongated stadium capsule (`StadiumBorder`).
-* Gradient fill: Linear gradient from `#A8DD9C` (left) to `#23CCA9` (right).
-* Crisp white uppercase text with soft elevation shadow.
-
-### 4.5 Floating Dismiss / Back Button
-* Positioned bottom-center during modals and detail screens:
-* Circular button (56×56 dp) with gradient `#AEFBA8` -> `#5FEED1`, deep teal 'X' icon, and floating drop shadow.
+### 4.2 Product Detail Screen: Authentic Pokémon GO Summary Layout
+* **Outdoor Habitat Backdrop:**
+  - Vibrant sky-to-field gradient (`#4DBED6` Radiant Sky Blue ➔ `#75D8C1` Mint Horizon ➔ `#89D448` Lush Grass Green ➔ `#A2DF5B` Field Lime), matching the in-game Venusaur field backdrop.
+* **Top CP & HUD Readout:**
+  - Giant bold white price/power readout (`₽200 CP`) at top center with favorite star toggle (`#F5A623`) on top right.
+* **Hero 3D Stage:**
+  - Large 3D model floating freely in the outdoor environment with an elliptical soft dark-green shadow on the grass.
+* **Stacked Floating White Cards (`BorderRadius.circular(24)`):**
+  - **Card 1 (Name & Stats):** Item name in bold charcoal (`22pt`), orange category pill, green official badge, and 4-column stats row (`Weight | Pocket | Sold | In Stock`) with vertical dividers.
+  - **Card 2 (Resources & Power Up):** PokéCoins, price, in-bag count, level & HP-style progress bars (`Available Stock` & `Bag Capacity`), quantity selector, and two-segment mint gradient stadium capsule (`Add to Cart`).
+  - **Card 3 (Lore & Specifications):** Description, lore, and variant choice chips.
+* **Floating Bottom Dismiss 'X' Button:**
+  - Floating circular gradient button at bottom-center for navigation.
 
 ### 4.6 Official PokeMiners Datamined Assets Integration
 * Directly sourced from `PokeMiners/pogo_assets`:

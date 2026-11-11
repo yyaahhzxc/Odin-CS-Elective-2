@@ -1,18 +1,22 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../core/pogo_assets.dart';
 import '../models/product.dart';
 import '../state/cart_state.dart';
 import '../theme/app_theme.dart';
 
-/// Screen displaying details for a selected product.
-///
-/// Implemented as a [StatefulWidget] to manage the selected variant,
-/// multiple image views (e.g. front and back angles), and the quantity counter.
-///
-/// Features a responsive layout:
-/// - Tablet / Desktop (>= 700px): 2-column side-by-side layout (Shopee style)
-/// - Mobile (< 700px): Single-column vertical layout
+/// Screen displaying details for a selected product modeled after the authentic
+/// Pokémon GO Pokémon Summary / Detail interface (Image 2 reference):
+/// - Outdoor habitat backdrop gradient (Radiant Sky Blue -> Field Grass Green)
+/// - Top CP / Price readout (e.g. `₽200 CP`) with gold favorite star
+/// - Prominent floating 3D item asset on the grass stage with soft grounding shadow
+/// - Floating rounded white cards:
+///   1. Header Card (Name, category pill, authentic 4-column stats row)
+///   2. Resource & Action Card (PokéCoins, progress bars, quantity counter, and
+///      dual-segment mint gradient "Add to Cart" capsule button)
+///   3. Description & Lore Card (Moveset style with variant chips)
+/// - Floating dismiss 'X' button at bottom-center
 class ProductDetailScreen extends StatefulWidget {
   final Product product;
 
@@ -26,19 +30,15 @@ class ProductDetailScreen extends StatefulWidget {
 }
 
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
-  // tracks the currently selected variant index
   int _selectedVariantIndex = 0;
-
-  // tracks the currently selected image index (for front, back, etc.)
-  int _selectedImageIndex = 0;
-
-  // item quantity
   int _quantity = 1;
 
-  // floating notification banner state
+  // Floating notification banner state
   bool _showBanner = false;
   String _bannerMessage = '';
   Timer? _bannerTimer;
+
+  bool _isFavorite = false;
 
   @override
   void dispose() {
@@ -52,24 +52,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     final colorScheme = theme.colorScheme;
     final cart = CartScope.of(context);
 
-    // active variant object
+    // Active variant object
     final hasVariants = widget.product.variants.isNotEmpty;
     final activeVariant =
         hasVariants ? widget.product.variants[_selectedVariantIndex] : null;
 
-    // active images: uses variant-specific images if provided, else falls back to product images
-    final activeImages = activeVariant?.allImages.isNotEmpty == true
-        ? activeVariant!.allImages
-        : widget.product.allImages;
-
-    // safe image index bounds check
-    final currentImageIndex =
-        _selectedImageIndex < activeImages.length ? _selectedImageIndex : 0;
-
-    // active display values: uses variant-specific values if defined, else inherits from base product
     final displayName = activeVariant != null
         ? '${widget.product.name} - ${activeVariant.name}'
         : widget.product.name;
+    final unitPrice = activeVariant?.price ?? widget.product.price;
     final displayPrice = activeVariant?.price != null
         ? '₽${AppTheme.formatPrice(activeVariant!.price!)}'
         : widget.product.formattedPrice;
@@ -77,187 +68,753 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         activeVariant?.description ?? widget.product.description;
     final displayStock = activeVariant?.stock ?? widget.product.stock;
 
-    // appbar
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.product.name),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          tooltip: 'Back to Menu',
-          onPressed: () {
-            _bannerTimer?.cancel();
-            if (context.canPop()) {
-              context.pop();
-            } else {
-              context.go('/');
-            }
-          },
-        ),
-        actions: [
-          IconButton(
-            icon: Badge(
-              isLabelVisible: cart.isNotEmpty,
-              backgroundColor: AppTheme.pogoValorRed,
-              label: Text('${cart.totalItemCount}'),
-              child: const Icon(Icons.shopping_bag_outlined),
-            ),
-            tooltip: 'Trainer Bag / Cart',
-            onPressed: () {
-              _bannerTimer?.cancel();
-              context.go('/cart');
-            },
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
+    final String imagePath = (activeVariant?.imagePath != null &&
+            activeVariant!.imagePath!.isNotEmpty)
+        ? activeVariant.imagePath!
+        : widget.product.imagePath;
 
-      // body: responsive layout with top floating confirmation banner
+    final isNetworkImage = imagePath.startsWith('http');
+    final hasRealImage = imagePath.isNotEmpty;
+
+    final totalPrice = unitPrice * _quantity;
+
+    return Scaffold(
       body: Stack(
         children: [
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final isTablet = constraints.maxWidth >= 700;
+          // 1. Natural Pokémon GO outdoor habitat backdrop gradient (Image 2)
+          Container(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF4DBED6), // Radiant Sky Cyan
+                  Color(0xFF75D8C1), // Mint Horizon
+                  Color(0xFF89D448), // Lush Grass Green
+                  Color(0xFFA2DF5B), // Vibrant Field Lime
+                ],
+                stops: [0.0, 0.28, 0.65, 1.0],
+              ),
+            ),
+          ),
 
-              if (isTablet) {
-                // Tablet / Desktop 2-column layout (Shopee e-commerce style)
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 1050),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Left Column: Square Highlight Image + Thumbnail Gallery
-                          SizedBox(
-                            width: 380,
-                            child: _buildImageGallery(
-                              context,
-                              colorScheme,
-                              activeVariant,
-                              activeImages,
-                              currentImageIndex,
-                              hasVariants,
+          // 2. Scrollable content: Top HUD, floating 3D model, stacked white cards
+          SafeArea(
+            bottom: false,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.only(bottom: 90),
+              child: Column(
+                children: [
+                  // Top Navigation & HUD Bar
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Circular back button
+                        GestureDetector(
+                          onTap: () {
+                            _bannerTimer?.cancel();
+                            if (context.canPop()) {
+                              context.pop();
+                            } else {
+                              context.go('/');
+                            }
+                          },
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withAlpha(210),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withAlpha(25),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.arrow_back,
+                              color: AppTheme.pogoTealPrimary,
+                              size: 22,
                             ),
                           ),
-                          const SizedBox(width: 32),
+                        ),
 
-                          // Right Column: Product Information & Action Buttons
-                          Expanded(
-                            child: _buildProductDetails(
-                              context,
-                              theme,
-                              colorScheme,
-                              activeVariant,
-                              displayName,
-                              displayPrice,
-                              displayDescription,
-                              displayStock,
-                              hasVariants,
-                              isTablet: true,
+                        // Center: CP / Price readout (like "825 CP" in Image 2)
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '$displayPrice CP',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 28,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.5,
+                                shadows: [
+                                  Shadow(
+                                    color: Colors.black26,
+                                    blurRadius: 6,
+                                    offset: Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        // Right actions: Favorite star & Trainer Bag button
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _isFavorite = !_isFavorite;
+                                });
+                              },
+                              child: Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withAlpha(210),
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withAlpha(25),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Icon(
+                                  _isFavorite ? Icons.star : Icons.star_border,
+                                  color: AppTheme.pogoCoinGold,
+                                  size: 24,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            // Bag button with live counter badge
+                            GestureDetector(
+                              onTap: () {
+                                _bannerTimer?.cancel();
+                                context.go('/cart');
+                              },
+                              child: Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withAlpha(210),
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withAlpha(25),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Center(
+                                  child: Badge(
+                                    isLabelVisible: cart.isNotEmpty,
+                                    backgroundColor: AppTheme.pogoValorRed,
+                                    label: Text('${cart.totalItemCount}'),
+                                    child: const Icon(
+                                      Icons.shopping_bag_outlined,
+                                      color: AppTheme.pogoTealPrimary,
+                                      size: 22,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Hero 3D Item Stage: Floating unobstructed in nature (Image 2)
+                  SizedBox(
+                    height: 220,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        // Soft grounding shadow on the field
+                        Positioned(
+                          bottom: 12,
+                          child: Container(
+                            width: 140,
+                            height: 20,
+                            decoration: BoxDecoration(
+                              color: Colors.black.withAlpha(35),
+                              borderRadius: BorderRadius.all(
+                                Radius.elliptical(140, 20),
+                              ),
+                            ),
+                          ),
+                        ),
+                        // 3D Item render
+                        Center(
+                          child: hasRealImage
+                              ? (isNetworkImage
+                                  ? Image.network(
+                                      imagePath,
+                                      height: 180,
+                                      fit: BoxFit.contain,
+                                      errorBuilder: (_, _, _) => const Icon(
+                                        Icons.catching_pokemon,
+                                        size: 110,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : Image.asset(
+                                      imagePath,
+                                      height: 180,
+                                      fit: BoxFit.contain,
+                                      errorBuilder: (_, _, _) => const Icon(
+                                        Icons.catching_pokemon,
+                                        size: 110,
+                                        color: Colors.white,
+                                      ),
+                                    ))
+                              : const Icon(
+                                  Icons.catching_pokemon,
+                                  size: 110,
+                                  color: Colors.white,
+                                ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // 3. Floating White Rounded Card 1: Name, Badges & 4-Column Stats Row
+                  Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    child: Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withAlpha(18),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+                      child: Column(
+                        children: [
+                          // Item Name in bold charcoal with edit icon
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  displayName,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w900,
+                                    color: AppTheme.pogoTextPrimary,
+                                    letterSpacing: -0.3,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Icon(
+                                Icons.edit,
+                                size: 14,
+                                color: colorScheme.outline,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+
+                          // Top Badges Row (like TopIV / Lvl50 in Image 2)
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF39C38), // Orange pill
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  widget.product.category.toUpperCase(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF4AC490), // Green pill
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Text(
+                                  'POKÉMART OFFICIAL',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+
+                          // 4-Column Stats Row (Weight | Type | Sold | Stock) with vertical dividers
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              _buildStatColumn(
+                                icon: Icons.scale_outlined,
+                                title: '0.25 kg',
+                                subtitle: 'WEIGHT',
+                              ),
+                              _buildVerticalDivider(),
+                              _buildStatColumn(
+                                icon: Icons.category_outlined,
+                                title: widget.product.category,
+                                subtitle: 'POCKET',
+                              ),
+                              _buildVerticalDivider(),
+                              _buildStatColumn(
+                                icon: Icons.local_fire_department_outlined,
+                                title: '${widget.product.soldCount}',
+                                subtitle: 'SOLD',
+                              ),
+                              _buildVerticalDivider(),
+                              _buildStatColumn(
+                                icon: Icons.inventory_2_outlined,
+                                title: '$displayStock',
+                                subtitle: 'IN STOCK',
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // 4. Floating White Rounded Card 2: Resources, Progress Bars & "Add to Cart" Capsule
+                  Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    child: Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withAlpha(18),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+                      child: Column(
+                        children: [
+                          // Top Resources Row (like Stardust / Candy in Image 2)
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              _buildResourceChip(
+                                imageAsset: PogoAssets.btnCoinsSmall,
+                                label: '325,976',
+                                caption: 'POKÉCOINS',
+                              ),
+                              _buildVerticalDivider(),
+                              _buildResourceChip(
+                                icon: Icons.monetization_on,
+                                iconColor: AppTheme.pogoCoinGold,
+                                label: displayPrice,
+                                caption: 'ITEM PRICE',
+                              ),
+                              _buildVerticalDivider(),
+                              _buildResourceChip(
+                                icon: Icons.backpack_outlined,
+                                iconColor: AppTheme.pogoTealPrimary,
+                                label: '${cart.quantityOf(widget.product)}',
+                                caption: 'IN YOUR BAG',
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+
+                          // Level & HP Style Progress Bars (Image 2)
+                          _buildProgressBar(
+                            label: '$displayStock / 100 Available',
+                            progress: (displayStock / 100).clamp(0.0, 1.0),
+                            activeColor: const Color(0xFF4AC490),
+                          ),
+                          const SizedBox(height: 8),
+                          _buildProgressBar(
+                            label: '${cart.totalItemCount} / 50 Bag Capacity',
+                            progress:
+                                (cart.totalItemCount / 50).clamp(0.0, 1.0),
+                            activeColor: AppTheme.pogoTealPrimary,
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Quantity Selector
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text(
+                                'Order Quantity:',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppTheme.pogoTextPrimary,
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: AppTheme.pogoScaffoldBg,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: AppTheme.pogoTealPrimary
+                                        .withAlpha(50),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.remove, size: 16),
+                                      color: AppTheme.pogoTealPrimary,
+                                      onPressed: _quantity > 1
+                                          ? () => setState(() => _quantity--)
+                                          : null,
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 10),
+                                      child: Text(
+                                        '$_quantity',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 15,
+                                          color: AppTheme.pogoTextPrimary,
+                                        ),
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.add, size: 16),
+                                      color: AppTheme.pogoTealPrimary,
+                                      onPressed: _quantity < displayStock
+                                          ? () => setState(() => _quantity++)
+                                          : null,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+
+                          // Two-Segment Stadium Action Capsule: "POWER UP" style -> "Add to Cart"
+                          GestureDetector(
+                            onTap: () {
+                              cart.addItem(
+                                  widget.product, activeVariant, _quantity);
+                              final variantNote = activeVariant != null
+                                  ? ' (${activeVariant.name})'
+                                  : '';
+
+                              _bannerTimer?.cancel();
+                              setState(() {
+                                _bannerMessage =
+                                    'Added $_quantity × ${widget.product.name}$variantNote to cart';
+                                _showBanner = true;
+                                _quantity = 1;
+                              });
+
+                              _bannerTimer =
+                                  Timer(const Duration(seconds: 4), () {
+                                if (mounted) {
+                                  setState(() => _showBanner = false);
+                                }
+                              });
+                            },
+                            child: Container(
+                              width: double.infinity,
+                              height: 52,
+                              decoration: BoxDecoration(
+                                gradient: AppTheme.mintActionGradient,
+                                borderRadius: BorderRadius.circular(30),
+                                border: Border.all(
+                                  color: Colors.white.withAlpha(160),
+                                  width: 1.5,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color:
+                                        AppTheme.pogoMintEnd.withAlpha(100),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                children: [
+                                  // Left segment: price total
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withAlpha(50),
+                                      borderRadius: const BorderRadius.only(
+                                        topLeft: Radius.circular(30),
+                                        bottomLeft: Radius.circular(30),
+                                      ),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        '₽${AppTheme.formatPrice(totalPrice)}',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  // Right segment: Action text
+                                  Expanded(
+                                    child: Center(
+                                      child: Text(
+                                        'Add to Cart',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w900,
+                                          letterSpacing: 0.8,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
                   ),
-                );
-              } else {
-                // Mobile single-column layout
-                return SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Center(
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 420),
-                          child: _buildImageGallery(
-                            context,
-                            colorScheme,
-                            activeVariant,
-                            activeImages,
-                            currentImageIndex,
-                            hasVariants,
-                          ),
-                        ),
-                      ),
-                      _buildProductDetails(
-                        context,
-                        theme,
-                        colorScheme,
-                        activeVariant,
-                        displayName,
-                        displayPrice,
-                        displayDescription,
-                        displayStock,
-                        hasVariants,
-                        isTablet: false,
-                      ),
-                    ],
-                  ),
-                );
-              }
-            },
-          ),
 
-          // Floating top notification banner (theme-styled, auto-dismissing)
-          Positioned(
-            top: 12,
-            left: 16,
-            right: 16,
-            child: AnimatedSlide(
-              duration: const Duration(milliseconds: 320),
-              curve: Curves.easeOutCubic,
-              offset: _showBanner ? Offset.zero : const Offset(0, -1.6),
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 260),
-                opacity: _showBanner ? 1.0 : 0.0,
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 560),
+                  // 5. Floating White Rounded Card 3: Description, Lore & Variants
+                  Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
+                      width: double.infinity,
                       decoration: BoxDecoration(
-                        color: colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: colorScheme.outlineVariant,
-                        ),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
                         boxShadow: [
                           BoxShadow(
-                            color: colorScheme.shadow.withAlpha(40),
-                            blurRadius: 16,
+                            color: Colors.black.withAlpha(18),
+                            blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
                         ],
                       ),
-                      child: Row(
+                      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          CircleAvatar(
-                            radius: 16,
-                            backgroundColor: colorScheme.primary.withAlpha(30),
-                            child: Icon(
-                              Icons.check_rounded,
-                              size: 18,
-                              color: colorScheme.primary,
+                          // Moveset / Description header
+                          Row(
+                            children: const [
+                              Icon(
+                                Icons.auto_stories_outlined,
+                                size: 16,
+                                color: AppTheme.pogoTealPrimary,
+                              ),
+                              SizedBox(width: 6),
+                              Text(
+                                'DESCRIPTION & SPECIFICATIONS',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1.2,
+                                  color: AppTheme.pogoTextSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            displayDescription,
+                            style: const TextStyle(
+                              fontSize: 13.5,
+                              height: 1.45,
+                              color: AppTheme.pogoTextPrimary,
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              _bannerMessage,
+
+                          // Variants pills
+                          if (hasVariants) ...[
+                            const SizedBox(height: 14),
+                            const Text(
+                              'Select Variation:',
                               style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: colorScheme.onSurface,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.pogoTextSecondary,
                               ),
                             ),
-                          ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: List.generate(
+                                widget.product.variants.length,
+                                (index) {
+                                  final isSelected =
+                                      _selectedVariantIndex == index;
+                                  final variant =
+                                      widget.product.variants[index];
+                                  return ChoiceChip(
+                                    selected: isSelected,
+                                    label: Text(variant.name),
+                                    labelStyle: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w800,
+                                      color: isSelected
+                                          ? Colors.white
+                                          : AppTheme.pogoTextPrimary,
+                                    ),
+                                    selectedColor: AppTheme.pogoTealPrimary,
+                                    backgroundColor: AppTheme.pogoScaffoldBg,
+                                    onSelected: (selected) {
+                                      if (selected) {
+                                        setState(() {
+                                          _selectedVariantIndex = index;
+                                        });
+                                      }
+                                    },
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
                         ],
                       ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // 3. Floating notification banner at top
+          if (_showBanner)
+            Positioned(
+              top: 50,
+              left: 20,
+              right: 20,
+              child: Material(
+                elevation: 6,
+                borderRadius: BorderRadius.circular(20),
+                color: AppTheme.pogoTealPrimary,
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.check_circle,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _bannerMessage,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(
+                          Icons.close,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                        onPressed: () {
+                          setState(() => _showBanner = false);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+          // 4. Floating dismiss 'X' button at bottom-center matching PoGO UI (Image 2)
+          Positioned(
+            bottom: 16,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: GestureDetector(
+                onTap: () {
+                  _bannerTimer?.cancel();
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go('/');
+                  }
+                },
+                child: Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: AppTheme.floatingButtonGradient,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withAlpha(50),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      Icons.close,
+                      color: AppTheme.pogoTealPrimary,
+                      size: 28,
                     ),
                   ),
                 ),
@@ -269,741 +826,128 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  /// Builds the square highlight image and the thumbnail strip underneath.
-  Widget _buildImageGallery(
-    BuildContext context,
-    ColorScheme colorScheme,
-    ProductVariant? activeVariant,
-    List<String> activeImages,
-    int currentImageIndex,
-    bool hasVariants,
-  ) {
-    final activeImagePath = activeImages.isNotEmpty
-        ? activeImages[currentImageIndex]
-        : widget.product.imagePath;
-    final hasRealImage = activeImagePath.isNotEmpty;
-
+  Widget _buildStatColumn({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Main square image
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: AspectRatio(
-            aspectRatio: 1.0, // forced 1:1 square ratio
-            child: Container(
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest.withAlpha(80),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: colorScheme.outlineVariant,
-                  width: 1,
-                ),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  // Product image if available, else clean Poké Ball placeholder icon
-                  hasRealImage
-                      ? (activeImagePath.startsWith('http')
-                          ? Image.network(
-                              activeImagePath,
-                              fit: BoxFit.contain,
-                              errorBuilder: (context, error, stackTrace) {
-                                return const Center(
-                                  child: Icon(
-                                    Icons.catching_pokemon,
-                                    size: 80,
-                                    color: AppTheme.pogoTealPrimary,
-                                  ),
-                                );
-                              },
-                            )
-                          : Image.asset(
-                              activeImagePath,
-                              fit: BoxFit.contain,
-                              errorBuilder: (context, error, stackTrace) {
-                                return const Center(
-                                  child: Icon(
-                                    Icons.catching_pokemon,
-                                    size: 80,
-                                    color: AppTheme.pogoTealPrimary,
-                                  ),
-                                );
-                              },
-                            ))
-                      : const Center(
-                          child: Icon(
-                            Icons.catching_pokemon,
-                            size: 80,
-                            color: AppTheme.pogoTealPrimary,
-                          ),
-                        ),
-
-                  // Active variant badge (clean name only, no id)
-                  if (activeVariant != null)
-                    Positioned(
-                      bottom: 12,
-                      left: 12,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: colorScheme.surface.withAlpha(220),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: colorScheme.outlineVariant,
-                          ),
-                        ),
-                        child: Text(
-                          activeVariant.name,
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: colorScheme.primary,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                  // Image navigation arrows for multi-photo variants
-                  if (activeImages.length > 1) ...[
-                    // Left arrow button
-                    Positioned(
-                      left: 8,
-                      top: 0,
-                      bottom: 0,
-                      child: Center(
-                        child: Material(
-                          color: colorScheme.surface.withAlpha(210),
-                          shape: const CircleBorder(),
-                          elevation: 2,
-                          child: InkWell(
-                            customBorder: const CircleBorder(),
-                            onTap: () {
-                              setState(() {
-                                _selectedImageIndex = (_selectedImageIndex -
-                                        1 +
-                                        activeImages.length) %
-                                    activeImages.length;
-                              });
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Icon(
-                                Icons.chevron_left_rounded,
-                                size: 22,
-                                color: colorScheme.onSurface,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    // Right arrow button
-                    Positioned(
-                      right: 8,
-                      top: 0,
-                      bottom: 0,
-                      child: Center(
-                        child: Material(
-                          color: colorScheme.surface.withAlpha(210),
-                          shape: const CircleBorder(),
-                          elevation: 2,
-                          child: InkWell(
-                            customBorder: const CircleBorder(),
-                            onTap: () {
-                              setState(() {
-                                _selectedImageIndex =
-                                    (_selectedImageIndex + 1) %
-                                        activeImages.length;
-                              });
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Icon(
-                                Icons.chevron_right_rounded,
-                                size: 22,
-                                color: colorScheme.onSurface,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-
-                  // Angle index indicator if multiple images exist
-                  if (activeImages.length > 1)
-                    Positioned(
-                      top: 12,
-                      right: 12,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: colorScheme.surface.withAlpha(220),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                            color: colorScheme.outlineVariant,
-                          ),
-                        ),
-                        child: Text(
-                          '${currentImageIndex + 1}/${activeImages.length}',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: colorScheme.onSurface,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: AppTheme.pogoTealPrimary),
+            const SizedBox(width: 4),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w900,
+                color: AppTheme.pogoTextPrimary,
               ),
             ),
-          ),
+          ],
         ),
-
-        // Thumbnails row under the main picture
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
-          child: SizedBox(
-            height: 64,
-            child: activeImages.length > 1
-                ? ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: activeImages.length,
-                    separatorBuilder: (context, index) =>
-                        const SizedBox(width: 8),
-                    itemBuilder: (context, index) {
-                      final isSelected = currentImageIndex == index;
-                      final label = index == 0
-                          ? 'Front'
-                          : (index == 1 ? 'Back' : 'View ${index + 1}');
-                      final thumbPath = activeImages[index];
-
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _selectedImageIndex = index;
-                          });
-                        },
-                        child: AspectRatio(
-                          aspectRatio: 1.0,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: colorScheme.surfaceContainerHighest
-                                  .withAlpha(80),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: isSelected
-                                    ? colorScheme.primary
-                                    : colorScheme.outlineVariant,
-                                width: isSelected ? 2.5 : 1,
-                              ),
-                            ),
-                            clipBehavior: Clip.antiAlias,
-                            child: Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                thumbPath.isNotEmpty
-                                    ? (thumbPath.startsWith('http')
-                                        ? Image.network(
-                                            thumbPath,
-                                            fit: BoxFit.contain,
-                                            errorBuilder:
-                                                (context, error, stackTrace) {
-                                              return Center(
-                                                child: Icon(
-                                                  Icons.photo_outlined,
-                                                  size: 18,
-                                                  color: isSelected
-                                                      ? colorScheme.primary
-                                                      : colorScheme
-                                                          .onSurfaceVariant,
-                                                ),
-                                              );
-                                            },
-                                          )
-                                        : Image.asset(
-                                            thumbPath,
-                                            fit: BoxFit.cover,
-                                            errorBuilder:
-                                                (context, error, stackTrace) {
-                                              return Center(
-                                                child: Icon(
-                                                  Icons.photo_outlined,
-                                                  size: 18,
-                                                  color: isSelected
-                                                      ? colorScheme.primary
-                                                      : colorScheme
-                                                          .onSurfaceVariant,
-                                                ),
-                                              );
-                                            },
-                                          ))
-                                    : Center(
-                                        child: Icon(
-                                          Icons.photo_outlined,
-                                          size: 18,
-                                          color: isSelected
-                                              ? colorScheme.primary
-                                              : colorScheme
-                                                  .onSurfaceVariant,
-                                        ),
-                                      ),
-                                Positioned(
-                                  bottom: 0,
-                                  left: 0,
-                                  right: 0,
-                                  child: Container(
-                                    color:
-                                        colorScheme.surface.withAlpha(210),
-                                    padding:
-                                        const EdgeInsets.symmetric(vertical: 2),
-                                    child: Text(
-                                      label,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 9,
-                                        fontWeight: isSelected
-                                            ? FontWeight.bold
-                                            : FontWeight.normal,
-                                        color: isSelected
-                                            ? colorScheme.primary
-                                            : colorScheme
-                                                .onSurfaceVariant,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  )
-                : (hasVariants
-                    ? ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: widget.product.variants.length,
-                        separatorBuilder: (context, index) =>
-                            const SizedBox(width: 8),
-                        itemBuilder: (context, index) {
-                          final isSelected = _selectedVariantIndex == index;
-                          final variant = widget.product.variants[index];
-                          final variantImage = variant.allImages.isNotEmpty
-                              ? variant.allImages.first
-                              : widget.product.imagePath;
-
-                          return GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _selectedVariantIndex = index;
-                                _selectedImageIndex = 0;
-                              });
-                            },
-                            child: AspectRatio(
-                              aspectRatio: 1.0,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: colorScheme.surfaceContainerHighest
-                                      .withAlpha(80),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: isSelected
-                                        ? colorScheme.primary
-                                        : colorScheme.outlineVariant,
-                                    width: isSelected ? 2.5 : 1,
-                                  ),
-                                ),
-                                clipBehavior: Clip.antiAlias,
-                                child: Stack(
-                                  fit: StackFit.expand,
-                                  children: [
-                                    variantImage.isNotEmpty
-                                        ? (variantImage.startsWith('http')
-                                            ? Image.network(
-                                                variantImage,
-                                                fit: BoxFit.contain,
-                                                errorBuilder:
-                                                    (context, error, stackTrace) {
-                                                  return Center(
-                                                    child: Icon(
-                                                      Icons.image_outlined,
-                                                      size: 20,
-                                                      color: isSelected
-                                                          ? colorScheme.primary
-                                                          : colorScheme
-                                                              .onSurfaceVariant,
-                                                    ),
-                                                  );
-                                                },
-                                              )
-                                            : Image.asset(
-                                                variantImage,
-                                                fit: BoxFit.cover,
-                                                errorBuilder:
-                                                    (context, error, stackTrace) {
-                                                  return Center(
-                                                    child: Icon(
-                                                      Icons.image_outlined,
-                                                      size: 20,
-                                                      color: isSelected
-                                                          ? colorScheme.primary
-                                                          : colorScheme
-                                                              .onSurfaceVariant,
-                                                    ),
-                                                  );
-                                                },
-                                              ))
-                                        : Center(
-                                            child: Icon(
-                                              Icons.image_outlined,
-                                              size: 20,
-                                              color: isSelected
-                                                  ? colorScheme.primary
-                                                  : colorScheme
-                                                      .onSurfaceVariant,
-                                            ),
-                                          ),
-                                    Positioned(
-                                      bottom: 0,
-                                      left: 0,
-                                      right: 0,
-                                      child: Container(
-                                        color:
-                                            colorScheme.surface.withAlpha(210),
-                                        padding:
-                                            const EdgeInsets.symmetric(vertical: 2),
-                                        child: Text(
-                                          variant.name,
-                                          textAlign: TextAlign.center,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            fontSize: 9,
-                                            fontWeight: isSelected
-                                                ? FontWeight.bold
-                                                : FontWeight.normal,
-                                            color: isSelected
-                                                ? colorScheme.primary
-                                                : colorScheme
-                                                    .onSurfaceVariant,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      )
-                    : const SizedBox.shrink()),
+        const SizedBox(height: 2),
+        Text(
+          subtitle,
+          style: const TextStyle(
+            fontSize: 9,
+            fontWeight: FontWeight.w800,
+            color: AppTheme.pogoTextSecondary,
+            letterSpacing: 0.5,
           ),
         ),
       ],
     );
   }
 
-  /// Builds the right-hand (or bottom) product information and action buttons.
-  Widget _buildProductDetails(
-    BuildContext context,
-    ThemeData theme,
-    ColorScheme colorScheme,
-    ProductVariant? activeVariant,
-    String displayName,
-    String displayPrice,
-    String displayDescription,
-    int displayStock,
-    bool hasVariants, {
-    required bool isTablet,
+  Widget _buildResourceChip({
+    String? imageAsset,
+    IconData? icon,
+    Color? iconColor,
+    required String label,
+    required String caption,
   }) {
-    return Padding(
-      padding: EdgeInsets.all(isTablet ? 8.0 : 16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Category tag
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 10,
-              vertical: 4,
-            ),
-            decoration: BoxDecoration(
-              color: colorScheme.primaryContainer,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              widget.product.category.toUpperCase(),
-              style: TextStyle(
-                color: colorScheme.onPrimaryContainer,
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-
-          // Product title
-          Text(
-            displayName,
-            style: theme.textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              fontSize: isTablet ? 26 : 22,
-            ),
-          ),
-          const SizedBox(height: 8),
-
-          // Rating and Sold count row (Shopee style)
-          Row(
-            children: [
-              const Icon(Icons.star, size: 16, color: AppTheme.ratingStarColor),
-              const SizedBox(width: 4),
-              const Text(
-                '5.0',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '|',
-                style: TextStyle(color: colorScheme.outlineVariant),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '${widget.product.soldCount} Sold',
-                style: TextStyle(
-                  color: colorScheme.onSurfaceVariant,
-                  fontSize: 13,
+    return Column(
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (imageAsset != null)
+              Image.network(
+                imageAsset,
+                width: 15,
+                height: 15,
+                fit: BoxFit.contain,
+                errorBuilder: (_, _, _) => const Icon(
+                  Icons.monetization_on,
+                  size: 15,
+                  color: AppTheme.pogoCoinGold,
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // Price and stock banner
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerHighest.withAlpha(50),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  displayPrice,
-                  style: TextStyle(
-                    fontSize: isTablet ? 28 : 24,
-                    fontWeight: FontWeight.bold,
-                    color: colorScheme.primary,
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppTheme.inStockColor.withAlpha(20),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: AppTheme.inStockColor.withAlpha(80),
-                    ),
-                  ),
-                  child: Text(
-                    '$displayStock in stock',
-                    style: const TextStyle(
-                      color: AppTheme.inStockColor,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Variant buttons section
-          if (hasVariants) ...[
-            const SizedBox(height: 20),
+              )
+            else if (icon != null)
+              Icon(icon, size: 15, color: iconColor),
+            const SizedBox(width: 4),
             Text(
-              'Color / Variation',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: List.generate(
-                widget.product.variants.length,
-                (index) {
-                  final isSelected = _selectedVariantIndex == index;
-                  final variant = widget.product.variants[index];
-
-                  return OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      backgroundColor: isSelected
-                          ? colorScheme.primary.withAlpha(25)
-                          : null,
-                      side: BorderSide(
-                        color: isSelected
-                            ? colorScheme.primary
-                            : colorScheme.outlineVariant,
-                        width: isSelected ? 2 : 1,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _selectedVariantIndex = index;
-                        _selectedImageIndex = 0; // reset image to first angle
-                      });
-                    },
-                    child: Text(
-                      variant.name,
-                      style: TextStyle(
-                        color: isSelected
-                            ? colorScheme.primary
-                            : colorScheme.onSurface,
-                        fontWeight: isSelected
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                      ),
-                    ),
-                  );
-                },
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+                color: AppTheme.pogoTextPrimary,
               ),
             ),
           ],
-
-          const Divider(height: 32),
-
-          // Description
-          Text(
-            'Description',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          caption,
+          style: const TextStyle(
+            fontSize: 9,
+            fontWeight: FontWeight.w800,
+            color: AppTheme.pogoTextSecondary,
+            letterSpacing: 0.5,
           ),
-          const SizedBox(height: 6),
-          Text(
-            displayDescription,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              height: 1.5,
-            ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProgressBar({
+    required String label,
+    required double progress,
+    required Color activeColor,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            color: activeColor,
           ),
-
-          const Divider(height: 32),
-
-          // Quantity selector
-          Row(
-            children: [
-              Text(
-                'Quantity',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(width: 24),
-              Container(
-                decoration: BoxDecoration(
-                  border: Border.all(color: colorScheme.outlineVariant),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.remove, size: 18),
-                      onPressed: _quantity > 1
-                          ? () {
-                              setState(() {
-                                _quantity--;
-                              });
-                            }
-                          : null,
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                      child: Text(
-                        '$_quantity',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.add, size: 18),
-                      onPressed: _quantity < displayStock
-                          ? () {
-                              setState(() {
-                                _quantity++;
-                              });
-                            }
-                          : null,
-                    ),
-                  ],
-                ),
-              ),
-            ],
+        ),
+        const SizedBox(height: 3),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: LinearProgressIndicator(
+            value: progress,
+            minHeight: 6,
+            backgroundColor: AppTheme.pogoScaffoldBg,
+            valueColor: AlwaysStoppedAnimation<Color>(activeColor),
           ),
+        ),
+      ],
+    );
+  }
 
-          const SizedBox(height: 28),
-
-          // Add to Cart button
-          SizedBox(
-            width: isTablet ? 300 : double.infinity,
-            height: 48,
-            child: ElevatedButton.icon(
-              icon: const Icon(Icons.add_shopping_cart_outlined),
-              label: const Text('Add to Cart'),
-              onPressed: () {
-                final cart = CartScope.of(context);
-                cart.addItem(widget.product, activeVariant, _quantity);
-                final variantNote = activeVariant != null
-                    ? ' (${activeVariant.name})'
-                    : '';
-
-                _bannerTimer?.cancel();
-                setState(() {
-                  _bannerMessage =
-                      'Added $_quantity × ${widget.product.name}$variantNote to cart';
-                  _showBanner = true;
-                  _quantity = 1; // Reset counter back to 1
-                });
-
-                // Auto-dismiss confirmation banner after 5 seconds
-                _bannerTimer = Timer(const Duration(seconds: 5), () {
-                  if (mounted) {
-                    setState(() {
-                      _showBanner = false;
-                    });
-                  }
-                });
-              },
-            ),
-          ),
-
-          const SizedBox(height: 24),
-        ],
-      ),
+  Widget _buildVerticalDivider() {
+    return Container(
+      width: 1,
+      height: 28,
+      color: Colors.grey.withAlpha(60),
     );
   }
 }

@@ -3,18 +3,21 @@ import 'package:go_router/go_router.dart';
 import '../models/product.dart';
 import '../theme/app_theme.dart';
 
-/// Product card designed with authentic Pokémon GO UI conventions:
-/// - 22px rounded white card with subtle mint shadow
-/// - Circular asset pedestal with concentric ring accents
-/// - High-resolution 3D datamined PokeMiners model render
-/// - PoGO category pill with pocket accent
-/// - PokéDollar price tag and quick "+" action circle
+/// Product card/tile designed with authentic Pokémon GO UI conventions:
+/// - List View: Matches the PoGO Items (Bag) list view (Image 1 left) with
+///   3D item asset, translucent quantity chip (x9), bold title, lore description,
+///   and right-aligned price and bag action.
+/// - Grid View: Matches the PoGO Items 3-column grid view (Image 1 right) with
+///   top-right action icon, centered 3D asset, bottom-left quantity chip, and
+///   centered item title and price.
 class ProductCard extends StatelessWidget {
   final Product product;
+  final bool isGrid;
 
   const ProductCard({
     super.key,
     required this.product,
+    this.isGrid = false,
   });
 
   @override
@@ -42,174 +45,292 @@ class ProductCard extends StatelessWidget {
       categoryAccentColor = AppTheme.pogoTealPrimary;
     }
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(22),
-        side: BorderSide(color: colorScheme.outline, width: 1.5),
-      ),
-      child: InkWell(
-        onTap: () {
-          context.go('/product/${product.id}');
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Product image: 1:1 ratio with PoGO circular pedestal
-              AspectRatio(
-                aspectRatio: 1.0,
-                child: Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: colorScheme.surfaceContainerHighest.withAlpha(160),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: colorScheme.outline.withAlpha(70),
-                      width: 1,
-                    ),
+    if (isGrid) {
+      return _buildGridView(context, theme, colorScheme, hasImage, isNetworkImage, categoryAccentColor);
+    } else {
+      return _buildListView(context, theme, colorScheme, hasImage, isNetworkImage, categoryAccentColor);
+    }
+  }
+
+  /// 3-Column Grid View item matching the authentic PoGO Bag grid layout (Image 1 right).
+  Widget _buildGridView(
+    BuildContext context,
+    ThemeData theme,
+    ColorScheme colorScheme,
+    bool hasImage,
+    bool isNetworkImage,
+    Color categoryAccentColor,
+  ) {
+    return InkWell(
+      onTap: () => context.go('/product/${product.id}'),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+        decoration: BoxDecoration(
+          color: colorScheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: colorScheme.outline.withAlpha(60),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Top action bar (trash/cart icon at top right)
+            Align(
+              alignment: Alignment.topRight,
+              child: Icon(
+                Icons.delete_outline,
+                size: 16,
+                color: AppTheme.pogoTextSecondary.withAlpha(160),
+              ),
+            ),
+
+            // Item graphic with bottom-left quantity pill (e.g. x500)
+            SizedBox(
+              width: 68,
+              height: 68,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  _buildItemImage(hasImage, isNetworkImage, 60),
+                  Positioned(
+                    bottom: 0,
+                    left: 2,
+                    child: _buildQuantityPill(),
                   ),
-                  clipBehavior: Clip.antiAlias,
-                  child: Stack(
-                    alignment: Alignment.center,
+                ],
+              ),
+            ),
+            const SizedBox(height: 6),
+
+            // Item Name centered underneath (bold, matching PoGO Lato)
+            Text(
+              product.name,
+              maxLines: 2,
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.pogoTextPrimary,
+                height: 1.15,
+              ),
+            ),
+            const SizedBox(height: 2),
+
+            // Price readout
+            Text(
+              product.formattedPrice,
+              style: theme.textTheme.labelSmall?.copyWith(
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+                color: AppTheme.pogoTealPrimary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// List View item matching the authentic PoGO Bag list layout (Image 1 left).
+  Widget _buildListView(
+    BuildContext context,
+    ThemeData theme,
+    ColorScheme colorScheme,
+    bool hasImage,
+    bool isNetworkImage,
+    Color categoryAccentColor,
+  ) {
+    return InkWell(
+      onTap: () => context.go('/product/${product.id}'),
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: colorScheme.surface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: colorScheme.outline.withAlpha(70),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(6),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Left: 3D Item graphic with bottom-left quantity chip (x9)
+            SizedBox(
+              width: 72,
+              height: 72,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  _buildItemImage(hasImage, isNetworkImage, 64),
+                  Positioned(
+                    bottom: 2,
+                    left: 2,
+                    child: _buildQuantityPill(),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 14),
+
+            // Middle: Name and Lore description
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
                     children: [
-                      // Concentric subtle circular pedestal ring (as seen in PoGO Shop)
-                      Container(
-                        width: 84,
-                        height: 84,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white.withAlpha(180),
-                          border: Border.all(
-                            color: categoryAccentColor.withAlpha(40),
-                            width: 2,
+                      Expanded(
+                        child: Text(
+                          product.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontSize: 15.5,
+                            fontWeight: FontWeight.w900,
+                            color: AppTheme.pogoTextPrimary,
+                            letterSpacing: -0.2,
                           ),
                         ),
                       ),
-                      Center(
-                        child: hasImage
-                            ? (isNetworkImage
-                                ? Image.network(
-                                    product.imagePath,
-                                    width: 76,
-                                    height: 76,
-                                    fit: BoxFit.contain,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return const Icon(
-                                        Icons.catching_pokemon,
-                                        size: 40,
-                                        color: AppTheme.pogoTealPrimary,
-                                      );
-                                    },
-                                  )
-                                : Image.asset(
-                                    product.imagePath,
-                                    width: 76,
-                                    height: 76,
-                                    fit: BoxFit.contain,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return const Icon(
-                                        Icons.catching_pokemon,
-                                        size: 40,
-                                        color: AppTheme.pogoTealPrimary,
-                                      );
-                                    },
-                                  ))
-                            : const Icon(
-                                Icons.catching_pokemon,
-                                size: 40,
-                                color: AppTheme.pogoTealPrimary,
-                              ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: categoryAccentColor.withAlpha(25),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          product.category.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 8.5,
+                            fontWeight: FontWeight.w900,
+                            color: categoryAccentColor,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              // PoGO rounded category pill badge
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                decoration: BoxDecoration(
-                  color: categoryAccentColor.withAlpha(25),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: categoryAccentColor.withAlpha(60),
-                    width: 1,
+                  const SizedBox(height: 3),
+                  Text(
+                    product.description,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontSize: 12,
+                      color: AppTheme.pogoTextSecondary,
+                      height: 1.3,
+                    ),
                   ),
-                ),
-                child: Text(
-                  product.category.toUpperCase(),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: categoryAccentColor,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 9,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 4),
-
-              // Product name (capped at 2 lines)
-              SizedBox(
-                height: 32,
-                child: Text(
-                  product.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    height: 1.2,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 4),
-
-              // Price and stock status row
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
+                  const SizedBox(height: 4),
                   Text(
                     product.formattedPrice,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontSize: 15,
+                    style: TextStyle(
+                      fontSize: 13,
                       fontWeight: FontWeight.w900,
                       color: AppTheme.pogoTealPrimary,
                     ),
                   ),
-                  Row(
-                    children: [
-                      Container(
-                        width: 7,
-                        height: 7,
-                        decoration: BoxDecoration(
-                          color: product.stock > 0
-                              ? AppTheme.pogoMintEnd
-                              : AppTheme.pogoValorRed,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '× ${product.stock}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: colorScheme.onSurface.withAlpha(160),
-                        ),
-                      ),
-                    ],
-                  ),
                 ],
               ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 8),
+
+            // Right: Trash / Action icon (as in PoGO bag)
+            IconButton(
+              icon: const Icon(
+                Icons.delete_outline,
+                color: AppTheme.pogoTextSecondary,
+                size: 20,
+              ),
+              tooltip: 'Item Options',
+              onPressed: () => context.go('/product/${product.id}'),
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  /// Translucent quantity chip matching PoGO bag items (e.g. x9, x500, x440).
+  Widget _buildQuantityPill() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+      decoration: BoxDecoration(
+        color: Colors.white.withAlpha(220),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Colors.black.withAlpha(25),
+          width: 0.8,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(15),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Text(
+        'x${product.stock}',
+        style: const TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+          color: AppTheme.pogoTextPrimary,
+          letterSpacing: -0.2,
+        ),
+      ),
+    );
+  }
+
+  /// Builds the 3D item image render.
+  Widget _buildItemImage(bool hasImage, bool isNetworkImage, double size) {
+    if (!hasImage) {
+      return Icon(
+        Icons.catching_pokemon,
+        size: size * 0.6,
+        color: AppTheme.pogoTealPrimary,
+      );
+    }
+
+    if (isNetworkImage) {
+      return Image.network(
+        product.imagePath,
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+        errorBuilder: (_, _, _) => Icon(
+          Icons.catching_pokemon,
+          size: size * 0.6,
+          color: AppTheme.pogoTealPrimary,
+        ),
+      );
+    } else {
+      return Image.asset(
+        product.imagePath,
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+        errorBuilder: (_, _, _) => Icon(
+          Icons.catching_pokemon,
+          size: size * 0.6,
+          color: AppTheme.pogoTealPrimary,
+        ),
+      );
+    }
   }
 }

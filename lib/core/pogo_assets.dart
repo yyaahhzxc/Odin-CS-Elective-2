@@ -45,3 +45,4 @@ class PogoAssets {
   static const String oauthApple =
       '$cdnBase/Logos/ui_settings_social_apple_active.png';
 }
+
