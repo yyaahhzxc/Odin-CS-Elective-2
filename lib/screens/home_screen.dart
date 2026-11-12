@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../core/pogo_assets.dart';
 import '../state/cart_state.dart';
 import '../state/catalog_state.dart';
 import '../theme/app_theme.dart';
@@ -220,285 +219,278 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(width: 4),
         ],
       ),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            controller: _scrollController,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // PoGO Capacity Header: "Inventory Items" & "5147/5150" with Underline
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              'Inventory Items',
-                              style: theme.textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 13,
-                                color: AppTheme.pogoTextPrimary,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              '${catalog.totalCount} / 48',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w900,
-                                color: AppTheme.pogoTealPrimary,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 5),
-                        // PoGO capacity underline indicator bar
-                        Container(
-                          width: 80,
-                          height: 3,
-                          decoration: BoxDecoration(
-                            color: AppTheme.pogoTealPrimary,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                      ],
+      body: SingleChildScrollView(
+        controller: _scrollController,
+        padding: const EdgeInsets.only(bottom: 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Catalog Overview Header: "Inventory Items" & Item Count
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Inventory Items',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                      color: AppTheme.pogoTextPrimary,
                     ),
                   ),
-                ),
-
-                // Horizontal category chips styled as PoGO Bag Pockets
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: _categories.map((category) {
-                        final isSelected =
-                            catalog.selectedCategory == category;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: FilterChip(
-                            selected: isSelected,
-                            label: Text(category),
-                            labelStyle: TextStyle(
-                              fontSize: 12,
-                              fontWeight: isSelected
-                                  ? FontWeight.w900
-                                  : FontWeight.w700,
-                              color: isSelected
-                                  ? Colors.white
-                                  : colorScheme.onSurface,
-                            ),
-                            selectedColor: AppTheme.pogoTealPrimary,
-                            backgroundColor: colorScheme.surface,
-                            checkmarkColor: Colors.white,
-                            side: BorderSide(
-                              color: isSelected
-                                  ? AppTheme.pogoTealPrimary
-                                  : colorScheme.outline,
-                              width: 1.5,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            onSelected: (selected) {
-                              if (selected) {
-                                catalog.setCategory(category);
-                              }
-                            },
-                          ),
-                        );
-                      }).toList(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppTheme.pogoTealPrimary.withAlpha(20),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${catalog.totalCount} Products Available',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.pogoTealPrimary,
+                      ),
                     ),
                   ),
-                ),
+                ],
+              ),
+            ),
 
-                // Price Filter Section (Material 3 RangeSlider - Max ₽5,000)
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  child: Card(
-                    elevation: 0,
-                    color: colorScheme.surface,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                      side: BorderSide(color: colorScheme.outline, width: 1),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 10),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+            // Horizontal category filter chips
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: _categories.map((category) {
+                    final isSelected =
+                        catalog.selectedCategory == category;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: FilterChip(
+                        selected: isSelected,
+                        label: Text(category),
+                        labelStyle: TextStyle(
+                          fontSize: 12,
+                          fontWeight: isSelected
+                              ? FontWeight.w800
+                              : FontWeight.w600,
+                          color: isSelected
+                              ? Colors.white
+                              : colorScheme.onSurface,
+                        ),
+                        selectedColor: AppTheme.pogoTealPrimary,
+                        backgroundColor: colorScheme.surface,
+                        checkmarkColor: Colors.white,
+                        side: BorderSide(
+                          color: isSelected
+                              ? AppTheme.pogoTealPrimary
+                              : colorScheme.outline.withAlpha(80),
+                          width: 1,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        onSelected: (selected) {
+                          if (selected) {
+                            catalog.setCategory(category);
+                          }
+                        },
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+
+            // Price Filter Section (Material 3 RangeSlider - Max ₽5,000)
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Card(
+                elevation: 0,
+                color: colorScheme.surface,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: colorScheme.outline.withAlpha(70), width: 1),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.tune,
-                                    size: 16,
-                                    color: AppTheme.pogoTealPrimary,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    'Price Range Filter',
-                                    style:
-                                        theme.textTheme.labelMedium?.copyWith(
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                ],
+                              const Icon(
+                                Icons.tune,
+                                size: 16,
+                                color: AppTheme.pogoTealPrimary,
                               ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.pogoTealPrimary.withAlpha(20),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color:
-                                        AppTheme.pogoTealPrimary.withAlpha(40),
-                                    width: 1,
-                                  ),
-                                ),
-                                child: Text(
-                                  '₽${AppTheme.formatPrice(activeSliderValues.start)} - ₽${AppTheme.formatPrice(activeSliderValues.end)}',
-                                  style: theme.textTheme.labelSmall?.copyWith(
-                                    fontWeight: FontWeight.w900,
-                                    color: AppTheme.pogoTealPrimary,
-                                  ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Price Range Filter',
+                                style:
+                                    theme.textTheme.labelMedium?.copyWith(
+                                  fontWeight: FontWeight.w800,
                                 ),
                               ),
                             ],
                           ),
-                          RangeSlider(
-                            values: activeSliderValues,
-                            min: 0,
-                            max: 5000,
-                            divisions: 50,
-                            activeColor: AppTheme.pogoTealPrimary,
-                            inactiveColor: colorScheme.outline.withAlpha(120),
-                            labels: RangeLabels(
-                              '₽${activeSliderValues.start.round()}',
-                              '₽${activeSliderValues.end.round()}',
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
                             ),
-                            onChanged: (values) {
-                              setState(() {
-                                _sliderValues = values;
-                              });
-                            },
-                            onChangeEnd: (values) {
-                              setState(() {
-                                _sliderValues = null;
-                              });
-                              catalog.setPriceRange(values);
-                            },
+                            decoration: BoxDecoration(
+                              color: AppTheme.pogoTealPrimary.withAlpha(20),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color:
+                                    AppTheme.pogoTealPrimary.withAlpha(40),
+                                width: 1,
+                              ),
+                            ),
+                            child: Text(
+                              '₽${AppTheme.formatPrice(activeSliderValues.start)} - ₽${AppTheme.formatPrice(activeSliderValues.end)}',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                color: AppTheme.pogoTealPrimary,
+                              ),
+                            ),
                           ),
                         ],
                       ),
-                    ),
+                      RangeSlider(
+                        values: activeSliderValues,
+                        min: 0,
+                        max: 5000,
+                        divisions: 50,
+                        activeColor: AppTheme.pogoTealPrimary,
+                        inactiveColor: colorScheme.outline.withAlpha(120),
+                        labels: RangeLabels(
+                          '₽${activeSliderValues.start.round()}',
+                          '₽${activeSliderValues.end.round()}',
+                        ),
+                        onChanged: (values) {
+                          setState(() {
+                            _sliderValues = values;
+                          });
+                        },
+                        onChangeEnd: (values) {
+                          setState(() {
+                            _sliderValues = null;
+                          });
+                          catalog.setPriceRange(values);
+                        },
+                      ),
+                    ],
                   ),
                 ),
+              ),
+            ),
 
-                // PoGO Authentic Section Header (e.g. "────── MEDICINE ──────")
-                _buildPoGoSectionHeader(
-                  catalog.selectedCategory == 'All'
-                      ? 'ALL POCKETS'
-                      : catalog.selectedCategory.toUpperCase(),
-                  colorScheme,
+            // Category Section Title
+            _buildSectionHeader(
+              catalog.selectedCategory == 'All'
+                  ? 'ALL PRODUCTS'
+                  : catalog.selectedCategory.toUpperCase(),
+              colorScheme,
+            ),
+
+            // Product Catalog Layout (Dual-Mode: 2-Column Grid View or List View)
+            if (catalog.isLoading)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 48),
+                child: Center(
+                  child: CircularProgressIndicator(
+                    color: AppTheme.pogoTealPrimary,
+                  ),
                 ),
-
-                // Product Catalog Layout (Dual-Mode: List View or 3-Column Grid View)
-                if (catalog.isLoading)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 48),
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        color: AppTheme.pogoTealPrimary,
+              )
+            else if (catalog.errorMessage != null)
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Center(
+                  child: Column(
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        size: 48,
+                        color: AppTheme.pogoValorRed,
                       ),
-                    ),
-                  )
-                else if (catalog.errorMessage != null)
-                  Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Center(
-                      child: Column(
-                        children: [
-                          const Icon(
-                            Icons.error_outline,
-                            size: 48,
-                            color: AppTheme.pogoValorRed,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            catalog.errorMessage!,
-                            textAlign: TextAlign.center,
-                            style: theme.textTheme.bodyMedium,
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton.icon(
-                            onPressed: () => catalog.fetchCatalog(),
-                            icon: const Icon(Icons.refresh),
-                            label: const Text('Try Again'),
-                          ),
-                        ],
+                      const SizedBox(height: 12),
+                      Text(
+                        catalog.errorMessage!,
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodyMedium,
                       ),
-                    ),
-                  )
-                else if (catalog.products.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 48),
-                    child: Center(
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.inventory_2_outlined,
-                            size: 54,
-                            color: colorScheme.outline,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'No items found within this range',
-                            style: theme.textTheme.titleMedium,
-                          ),
-                          const SizedBox(height: 8),
-                          TextButton(
-                            onPressed: () {
-                              catalog.setPriceRange(
-                                const RangeValues(0, 5000),
-                              );
-                              catalog.setCategory('All');
-                            },
-                            child: const Text('Reset Filters'),
-                          ),
-                        ],
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: () => catalog.fetchCatalog(),
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Try Again'),
                       ),
-                    ),
-                  )
-                else if (_isGridView)
-                  // 3-Column Grid View matching PoGO Bag Grid (Image 1 right)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    child: GridView.builder(
+                    ],
+                  ),
+                ),
+              )
+            else if (catalog.products.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 48),
+                child: Center(
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.inventory_2_outlined,
+                        size: 54,
+                        color: colorScheme.outline,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'No items found within this range',
+                        style: theme.textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      TextButton(
+                        onPressed: () {
+                          catalog.setPriceRange(
+                            const RangeValues(0, 5000),
+                          );
+                          catalog.setCategory('All');
+                        },
+                        child: const Text('Reset Filters'),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else if (_isGridView)
+              // 2-Column Grid View tailored for standard e-commerce browsing
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final crossAxisCount =
+                        constraints.maxWidth >= 700 ? 4 : 2;
+                    return GridView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       itemCount: catalog.products.length,
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 3,
-                        mainAxisSpacing: 8,
-                        crossAxisSpacing: 8,
-                        childAspectRatio: 0.72,
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: crossAxisCount,
+                        mainAxisSpacing: 12,
+                        crossAxisSpacing: 12,
+                        childAspectRatio: 0.82,
                       ),
                       itemBuilder: (context, index) {
                         final product = catalog.products[index];
@@ -507,147 +499,97 @@ class _HomeScreenState extends State<HomeScreen> {
                           isGrid: true,
                         );
                       },
-                    ),
-                  )
-                else
-                  // List View matching PoGO Bag List (Image 1 left)
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: catalog.products.length,
-                    itemBuilder: (context, index) {
-                      final product = catalog.products[index];
-                      return ProductCard(
-                        product: product,
-                        isGrid: false,
-                      );
-                    },
-                  ),
-
-                // Responsive Bottom Pagination Controls
-                if (catalog.totalPages > 1)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        OutlinedButton.icon(
-                          onPressed: catalog.hasPreviousPage
-                              ? () => catalog.previousPage()
-                              : null,
-                          icon: const Icon(Icons.chevron_left, size: 18),
-                          label: const Text('Previous'),
-                        ),
-                        const SizedBox(width: 12),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: colorScheme.surface,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: colorScheme.outline,
-                              width: 1.5,
-                            ),
-                          ),
-                          child: Text(
-                            'Page ${catalog.currentPage} of ${catalog.totalPages}',
-                            style: theme.textTheme.labelMedium?.copyWith(
-                              fontWeight: FontWeight.w800,
-                              color: colorScheme.onSurface,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        OutlinedButton.icon(
-                          onPressed: catalog.hasNextPage
-                              ? () => catalog.nextPage()
-                              : null,
-                          icon: const Icon(Icons.chevron_right, size: 18),
-                          label: const Text('Next'),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                const SizedBox(height: 80), // spacing for floating button
-              ],
-            ),
-          ),
-
-          // Floating dismiss 'X' button at bottom-center matching PoGO UI (Image 1)
-          Positioned(
-            bottom: 16,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: GestureDetector(
-                onTap: () {
-                  _scrollController.animateTo(
-                    0,
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeOut,
+                    );
+                  },
+                ),
+              )
+            else
+              // Clean List View with full product details
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: catalog.products.length,
+                itemBuilder: (context, index) {
+                  final product = catalog.products[index];
+                  return ProductCard(
+                    product: product,
+                    isGrid: false,
                   );
                 },
-                child: Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: AppTheme.floatingButtonGradient,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withAlpha(50),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.close,
-                      color: AppTheme.pogoTealPrimary,
-                      size: 26,
+              ),
+
+            // Responsive Bottom Pagination Controls
+            if (catalog.totalPages > 1)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: catalog.hasPreviousPage
+                          ? () => catalog.previousPage()
+                          : null,
+                      icon: const Icon(Icons.chevron_left, size: 18),
+                      label: const Text('Previous'),
                     ),
-                  ),
+                    const SizedBox(width: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surface,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: colorScheme.outline.withAlpha(80),
+                          width: 1.2,
+                        ),
+                      ),
+                      child: Text(
+                        'Page ${catalog.currentPage} of ${catalog.totalPages}',
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    OutlinedButton.icon(
+                      onPressed: catalog.hasNextPage
+                          ? () => catalog.nextPage()
+                          : null,
+                      icon: const Icon(Icons.chevron_right, size: 18),
+                      label: const Text('Next'),
+                    ),
+                  ],
                 ),
               ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  /// Authentic PoGO Section Divider with centered tracking text (e.g. `────── MEDICINE ──────`)
-  Widget _buildPoGoSectionHeader(String title, ColorScheme colorScheme) {
+  /// Clean section title with subtle divider line.
+  Widget _buildSectionHeader(String title, ColorScheme colorScheme) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Row(
         children: [
-          Expanded(
-            child: Divider(
-              color: colorScheme.outline.withAlpha(140),
-              thickness: 1,
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.8,
+              color: AppTheme.pogoTextSecondary,
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Text(
-              title,
-              style: const TextStyle(
-                fontSize: 11.5,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1.8,
-                color: AppTheme.pogoTextSecondary,
-              ),
-            ),
-          ),
+          const SizedBox(width: 10),
           Expanded(
             child: Divider(
-              color: colorScheme.outline.withAlpha(140),
+              color: colorScheme.outline.withAlpha(60),
               thickness: 1,
             ),
           ),

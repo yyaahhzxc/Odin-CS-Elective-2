@@ -100,7 +100,7 @@ class _CheckoutConfirmationScreenState
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Thank you for your order! Your CSSEC merch order has been placed successfully. Please present your Order ID at the CSSEC Council booth for pickup.',
+                  'Thank you for your order! Your PokéMart order has been placed successfully. Please present your Order ID at the Galar Pokémon Center Mart counter for pickup.',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: colorScheme.onSurfaceVariant,

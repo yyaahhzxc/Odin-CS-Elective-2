@@ -163,7 +163,7 @@ class _CartScreenState extends State<CartScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Looks like you haven\'t added any CSSEC merchandise yet.',
+              'Looks like you haven\'t added any PokéMart items yet.',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: colorScheme.onSurfaceVariant,

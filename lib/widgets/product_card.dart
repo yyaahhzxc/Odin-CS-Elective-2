@@ -3,13 +3,9 @@ import 'package:go_router/go_router.dart';
 import '../models/product.dart';
 import '../theme/app_theme.dart';
 
-/// Product card/tile designed with authentic Pokémon GO UI conventions:
-/// - List View: Matches the PoGO Items (Bag) list view (Image 1 left) with
-///   3D item asset, translucent quantity chip (x9), bold title, lore description,
-///   and right-aligned price and bag action.
-/// - Grid View: Matches the PoGO Items 3-column grid view (Image 1 right) with
-///   top-right action icon, centered 3D asset, bottom-left quantity chip, and
-///   centered item title and price.
+/// Reusable product card component supporting both responsive grid and list layouts.
+/// Follows modern e-commerce UI conventions with crisp typography, stock indicators,
+/// category badges, and distinct pricing hierarchy.
 class ProductCard extends StatelessWidget {
   final Product product;
   final bool isGrid;
@@ -27,7 +23,6 @@ class ProductCard extends StatelessWidget {
     final hasImage = product.imagePath.isNotEmpty;
     final isNetworkImage = product.imagePath.startsWith('http');
 
-    // Distinct accent color depending on Bag Pocket category (PoGO style)
     final Color categoryAccentColor;
     if (product.category == 'Poké Balls') {
       categoryAccentColor = AppTheme.pogoValorRed;
@@ -46,13 +41,27 @@ class ProductCard extends StatelessWidget {
     }
 
     if (isGrid) {
-      return _buildGridView(context, theme, colorScheme, hasImage, isNetworkImage, categoryAccentColor);
+      return _buildGridView(
+        context,
+        theme,
+        colorScheme,
+        hasImage,
+        isNetworkImage,
+        categoryAccentColor,
+      );
     } else {
-      return _buildListView(context, theme, colorScheme, hasImage, isNetworkImage, categoryAccentColor);
+      return _buildListView(
+        context,
+        theme,
+        colorScheme,
+        hasImage,
+        isNetworkImage,
+        categoryAccentColor,
+      );
     }
   }
 
-  /// 3-Column Grid View item matching the authentic PoGO Bag grid layout (Image 1 right).
+  /// Grid view product card with image pedestal, category badge, stock status, and price.
   Widget _buildGridView(
     BuildContext context,
     ThemeData theme,
@@ -65,68 +74,110 @@ class ProductCard extends StatelessWidget {
       onTap: () => context.go('/product/${product.id}'),
       borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
         decoration: BoxDecoration(
           color: colorScheme.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: colorScheme.outline.withAlpha(60),
+            color: colorScheme.outline.withAlpha(50),
             width: 1,
           ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(6),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Top action bar (trash/cart icon at top right)
-            Align(
-              alignment: Alignment.topRight,
-              child: Icon(
-                Icons.delete_outline,
-                size: 16,
-                color: AppTheme.pogoTextSecondary.withAlpha(160),
+            // Top Product Image Showcase with Category Pill
+            Expanded(
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceContainerHighest.withAlpha(50),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                  ),
+                ),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Center(
+                      child: _buildItemImage(hasImage, isNetworkImage, 82),
+                    ),
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: categoryAccentColor.withAlpha(25),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          product.category.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            color: categoryAccentColor,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
 
-            // Item graphic with bottom-left quantity pill (e.g. x500)
-            SizedBox(
-              width: 68,
-              height: 68,
-              child: Stack(
-                alignment: Alignment.center,
+            // Product Details Section
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  _buildItemImage(hasImage, isNetworkImage, 60),
-                  Positioned(
-                    bottom: 0,
-                    left: 2,
-                    child: _buildQuantityPill(),
+                  Text(
+                    product.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13.5,
+                      color: AppTheme.pogoTextPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        product.formattedPrice,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                          color: AppTheme.pogoTealPrimary,
+                        ),
+                      ),
+                      Text(
+                        '${product.stock} in stock',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.pogoTextSecondary,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
-              ),
-            ),
-            const SizedBox(height: 6),
-
-            // Item Name centered underneath (bold, matching PoGO Lato)
-            Text(
-              product.name,
-              maxLines: 2,
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                color: AppTheme.pogoTextPrimary,
-                height: 1.15,
-              ),
-            ),
-            const SizedBox(height: 2),
-
-            // Price readout
-            Text(
-              product.formattedPrice,
-              style: theme.textTheme.labelSmall?.copyWith(
-                fontSize: 11,
-                fontWeight: FontWeight.w900,
-                color: AppTheme.pogoTealPrimary,
               ),
             ),
           ],
@@ -135,7 +186,7 @@ class ProductCard extends StatelessWidget {
     );
   }
 
-  /// List View item matching the authentic PoGO Bag list layout (Image 1 left).
+  /// List view product card with horizontal layout, description, and pricing breakdown.
   Widget _buildListView(
     BuildContext context,
     ThemeData theme,
@@ -146,15 +197,15 @@ class ProductCard extends StatelessWidget {
   ) {
     return InkWell(
       onTap: () => context.go('/product/${product.id}'),
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(16),
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: colorScheme.surface,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: colorScheme.outline.withAlpha(70),
+            color: colorScheme.outline.withAlpha(50),
             width: 1,
           ),
           boxShadow: [
@@ -168,25 +219,22 @@ class ProductCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Left: 3D Item graphic with bottom-left quantity chip (x9)
-            SizedBox(
-              width: 72,
-              height: 72,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  _buildItemImage(hasImage, isNetworkImage, 64),
-                  Positioned(
-                    bottom: 2,
-                    left: 2,
-                    child: _buildQuantityPill(),
-                  ),
-                ],
+            // Left: Product Image on subtle pedestal
+            Container(
+              width: 76,
+              height: 76,
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest.withAlpha(50),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Center(
+                child: _buildItemImage(hasImage, isNetworkImage, 64),
               ),
             ),
             const SizedBox(width: 14),
 
-            // Middle: Name and Lore description
+            // Middle: Product Title, Category, Lore, and Availability
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -200,26 +248,28 @@ class ProductCard extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.titleMedium?.copyWith(
-                            fontSize: 15.5,
-                            fontWeight: FontWeight.w900,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
                             color: AppTheme.pogoTextPrimary,
-                            letterSpacing: -0.2,
                           ),
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: categoryAccentColor.withAlpha(25),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           product.category.toUpperCase(),
                           style: TextStyle(
                             fontSize: 8.5,
-                            fontWeight: FontWeight.w900,
+                            fontWeight: FontWeight.w800,
                             color: categoryAccentColor,
-                            letterSpacing: 0.5,
+                            letterSpacing: 0.3,
                           ),
                         ),
                       ),
@@ -236,29 +286,48 @@ class ProductCard extends StatelessWidget {
                       height: 1.3,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    product.formattedPrice,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
-                      color: AppTheme.pogoTealPrimary,
-                    ),
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        product.formattedPrice,
+                        style: const TextStyle(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w900,
+                          color: AppTheme.pogoTealPrimary,
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.inventory_2_outlined,
+                            size: 13,
+                            color: AppTheme.pogoTextSecondary,
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            '${product.stock} in stock',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.pogoTextSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 10),
 
-            // Right: Trash / Action icon (as in PoGO bag)
-            IconButton(
-              icon: const Icon(
-                Icons.delete_outline,
-                color: AppTheme.pogoTextSecondary,
-                size: 20,
-              ),
-              tooltip: 'Item Options',
-              onPressed: () => context.go('/product/${product.id}'),
+            // Right: Navigation arrow icon
+            Icon(
+              Icons.chevron_right,
+              color: colorScheme.outline,
+              size: 20,
             ),
           ],
         ),
@@ -266,38 +335,7 @@ class ProductCard extends StatelessWidget {
     );
   }
 
-  /// Translucent quantity chip matching PoGO bag items (e.g. x9, x500, x440).
-  Widget _buildQuantityPill() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-      decoration: BoxDecoration(
-        color: Colors.white.withAlpha(220),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: Colors.black.withAlpha(25),
-          width: 0.8,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(15),
-            blurRadius: 2,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Text(
-        'x${product.stock}',
-        style: const TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w900,
-          color: AppTheme.pogoTextPrimary,
-          letterSpacing: -0.2,
-        ),
-      ),
-    );
-  }
-
-  /// Builds the 3D item image render.
+  /// Builds the 3D item image render with reliable fallback.
   Widget _buildItemImage(bool hasImage, bool isNetworkImage, double size) {
     if (!hasImage) {
       return Icon(
