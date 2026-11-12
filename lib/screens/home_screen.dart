@@ -72,45 +72,30 @@ class _HomeScreenState extends State<HomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'ITEMS',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 18,
-                    letterSpacing: 1.5,
-                    color: AppTheme.pogoTextPrimary,
+            RichText(
+              text: TextSpan(
+                style: theme.appBarTheme.titleTextStyle,
+                children: const [
+                  TextSpan(
+                    text: 'POKÉ',
+                    style: TextStyle(
+                      color: AppTheme.pogoTealPrimary,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 18,
+                      letterSpacing: -0.2,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                RichText(
-                  text: TextSpan(
-                    style: theme.appBarTheme.titleTextStyle,
-                    children: const [
-                      TextSpan(
-                        text: 'POKÉ',
-                        style: TextStyle(
-                          color: AppTheme.pogoTealPrimary,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 13,
-                          letterSpacing: -0.2,
-                        ),
-                      ),
-                      TextSpan(
-                        text: 'MART',
-                        style: TextStyle(
-                          color: AppTheme.pogoTextPrimary,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 13,
-                          letterSpacing: -0.2,
-                        ),
-                      ),
-                    ],
+                  TextSpan(
+                    text: 'MART',
+                    style: TextStyle(
+                      color: AppTheme.pogoTextPrimary,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 18,
+                      letterSpacing: -0.2,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             const SizedBox(
               width: 0,
@@ -195,42 +180,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           const SizedBox(width: 8),
-
-          // PoGO Trainer Coin / Funds Chip
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerHighest.withAlpha(160),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: colorScheme.outline, width: 1),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Image.network(
-                  PogoAssets.btnCoinsSmall,
-                  width: 15,
-                  height: 15,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, _, _) => const Icon(
-                    Icons.monetization_on,
-                    color: AppTheme.pogoCoinGold,
-                    size: 15,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  '325,976',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w900,
-                    color: AppTheme.pogoCoinGold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 6),
 
           // Shopping Bag button with live item counter
           IconButton(
