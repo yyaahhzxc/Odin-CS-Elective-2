@@ -1,9 +1,9 @@
 import '../models/product.dart';
 
-/// Static repository containing the authentic PokéMart (Galar Region) merchandise catalog.
+/// Static repository containing the authentic PokéMart merchandise catalog.
 ///
 /// Curated with official high-resolution 3D rendered assets from PokeMiners/pogo_assets
-/// across 6 authentic Pokémon Sword & Shield Bag pockets.
+/// across 6 authentic Bag pockets.
 const List<Product> mockProducts = [
   // ---------------------------------------------------------------------------
   // POKÉ BALLS (6 Items)
@@ -49,7 +49,7 @@ const List<Product> mockProducts = [
     ],
     category: 'Poké Balls',
     description:
-        'An ultra-high-performance Ball providing a higher catch rate than a Great Ball. Ideal for challenging wild encounters in Galar.',
+        'An ultra-high-performance Ball providing a higher catch rate than a Great Ball. Ideal for challenging wild encounters.',
     soldCount: 380,
     stock: 450,
   ),
@@ -346,7 +346,7 @@ const List<Product> mockProducts = [
     ],
     category: 'Berries & Treats',
     description:
-        'A blue berry with a juicy texture. Widely used for cooking savory curries in Galar camps.',
+        'A blue berry with a juicy texture. Widely used for cooking savory treats and curries in trainer camps.',
     soldCount: 410,
     stock: 600,
   ),
@@ -654,7 +654,7 @@ const List<Product> mockProducts = [
     ],
     category: 'Special Gear',
     description:
-        'An electronic pass enabling trainers to participate in distant Raid Battles from anywhere in Galar.',
+        'An electronic pass enabling trainers to participate in distant Raid Battles from anywhere.',
     soldCount: 560,
     stock: 400,
   ),

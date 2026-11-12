@@ -16,7 +16,7 @@ void main() {
 
     // Verify that the store title and PokéMart branding render cleanly
     expect(find.text('POKÉMART', findRichText: true), findsOneWidget);
-    expect(find.text('PokéMart - Galar Region Branch'), findsOneWidget);
+    expect(find.text('PokéMart Official Store'), findsOneWidget);
     expect(find.text('Inventory Items'), findsOneWidget);
     expect(find.byIcon(Icons.shopping_bag_outlined), findsOneWidget);
   });
@@ -70,10 +70,10 @@ void main() {
     await tester.tap(find.text('Proceed to Checkout').first);
     await tester.pumpAndSettle();
 
-    // Verify on Checkout Confirmation Screen with Galar receipt
+    // Verify on Checkout Confirmation Screen with order confirmation
     expect(find.text('Checkout Confirmation'), findsOneWidget);
     expect(find.text('Order Placed Successfully!'), findsOneWidget);
-    expect(find.text('Galar Pokémon Center Mart'), findsOneWidget);
+    expect(find.text('Pokémon Center Mart'), findsOneWidget);
     expect(find.text('Return to PokéMart'), findsOneWidget);
   });
 }

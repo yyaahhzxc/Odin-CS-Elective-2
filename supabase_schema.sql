@@ -1,5 +1,5 @@
 -- ==============================================================================
--- PokéMart Supabase Schema & Seed Script (Sword & Shield / Galar Region)
+-- PokéMart Supabase Schema & Seed Script
 -- Activity: CS Elective 2 | Flutter E-Commerce Project
 -- High-Resolution 3D Datamined Assets (PokeMiners/pogo_assets)
 -- ==============================================================================
@@ -26,12 +26,12 @@ ON public.products
 FOR SELECT
 USING (true);
 
--- 3. Seed PokéMart Galar Inventory (48 Authentic High-Res Items across 6 SwSh Bag Pockets)
+-- 3. Seed PokéMart Inventory (48 Authentic High-Res Items across 6 Bag Pockets)
 INSERT INTO public.products (id, name, price, image_path, category, description, sold_count, stock)
 VALUES
   ('poke-ball', 'Poké Ball', 200.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/pokeball_sprite.png', 'Poké Balls', 'A device for catching wild Pokémon. It is thrown like a ball comfortably at a target, expanding into a capsule to capture.', 950, 999),
   ('great-ball', 'Great Ball', 600.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/greatball_sprite.png', 'Poké Balls', 'A good, high-performance Ball that provides a higher Pokémon catch rate than a standard Poké Ball.', 540, 600),
-  ('ultra-ball', 'Ultra Ball', 1200.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/ultraball_sprite.png', 'Poké Balls', 'An ultra-high-performance Ball providing a higher catch rate than a Great Ball. Ideal for challenging wild encounters in Galar.', 380, 450),
+  ('ultra-ball', 'Ultra Ball', 1200.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/ultraball_sprite.png', 'Poké Balls', 'An ultra-high-performance Ball providing a higher catch rate than a Great Ball. Ideal for challenging wild encounters.', 380, 450),
   ('master-ball', 'Master Ball', 5000.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/masterball_sprite.png', 'Poké Balls', 'The best Ball with the ultimate level of performance. With it, you will catch any wild Pokémon without fail.', 12, 10),
   ('premier-ball', 'Premier Ball', 1000.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/premierball_sprite.png', 'Poké Balls', 'A somewhat rare Poké Ball made as a commemorative item to celebrate an event or special milestone.', 160, 200),
   ('beast-ball', 'Beast Ball', 4000.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/beastball_sprite.png', 'Poké Balls', 'A special Poké Ball designed to catch Ultra Beasts. It has a low success rate for catching standard Pokémon.', 45, 50),
@@ -50,7 +50,7 @@ VALUES
   ('unova-stone', 'Unova Stone', 5000.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Bag_Unova_Stone_Sprite.png', 'Evolution', 'A rare stone originally discovered in the Unova region that makes certain species of Pokémon evolve.', 110, 70),
   ('meteorite', 'Meteorite', 4500.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_Meteorite.png', 'Evolution', 'A glowing celestial stone charged with cosmic energy from outer space, enabling Rayquaza to learn Dragon Ascent.', 40, 25),
   ('razz-berry', 'Razz Berry', 100.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0701.png', 'Berries & Treats', 'Feed this to a wild Pokémon to make it calmer and easier to catch on your next throw.', 620, 800),
-  ('bluk-berry', 'Bluk Berry', 100.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0702.png', 'Berries & Treats', 'A blue berry with a juicy texture. Widely used for cooking savory curries in Galar camps.', 410, 600),
+  ('bluk-berry', 'Bluk Berry', 100.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0702.png', 'Berries & Treats', 'A blue berry with a juicy texture. Widely used for cooking savory treats and curries in trainer camps.', 410, 600),
   ('nanab-berry', 'Nanab Berry', 100.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0703.png', 'Berries & Treats', 'Feed this to a Pokémon to calm its movements, preventing it from darting or dodging around.', 390, 500),
   ('poffin', 'Poffin', 350.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0704.png', 'Berries & Treats', 'A delicious pastry baked with care for Pokémon. Feeding this to your buddy fills its hunger meter and maximizes bond and mood.', 560, 158),
   ('pinap-berry', 'Pinap Berry', 150.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0705.png', 'Berries & Treats', 'Feed this to a wild Pokémon to increase the amount of Candy and item rewards you gain upon capture.', 540, 382),
@@ -70,7 +70,7 @@ VALUES
   ('egg-incubator', 'Egg Incubator', 1500.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/EggIncubatorUnlimited_Empty.png', 'Special Gear', 'A state-of-the-art incubation capsule that warms and hatches Pokémon eggs as you travel.', 230, 150),
   ('super-incubator', 'Super Incubator', 3000.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/EggIncubatorSuper_Empty.png', 'Special Gear', 'A high-performance incubator with thermal enhancers that hatches eggs 33% faster.', 195, 110),
   ('premium-battle-pass', 'Premium Battle Pass', 1000.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_1402.png', 'Special Gear', 'A digital pass that grants entry to championship Raid Battles and competitive Battle Leagues.', 410, 300),
-  ('remote-raid-pass', 'Remote Raid Pass', 2500.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_1408.png', 'Special Gear', 'An electronic pass enabling trainers to participate in distant Raid Battles from anywhere in Galar.', 560, 400),
+  ('remote-raid-pass', 'Remote Raid Pass', 2500.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_1408.png', 'Special Gear', 'An electronic pass enabling trainers to participate in distant Raid Battles from anywhere.', 560, 400),
   ('lure-module', 'Lure Module', 1000.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/TroyKey.png', 'Special Gear', 'A module that attracts wild Pokémon to a PokéStop or beacon for 30 minutes.', 290, 220),
   ('glacial-lure-module', 'Glacial Lure Module', 1500.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/TroyKey_glacial.png', 'Special Gear', 'A frosty module that attracts Water- and Ice-type Pokémon and enables special evolutions.', 140, 90),
   ('magnetic-lure-module', 'Magnetic Lure Module', 1500.00, 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/TroyKey_magnetic.png', 'Special Gear', 'An electric module that attracts Electric-, Steel-, and Rock-type Pokémon.', 135, 90),

@@ -54,11 +54,6 @@ class AppTheme {
   static const Color bagGold = pogoCoinGold;
   static const Color bagGoldLight = Color(0xFFFDE8C5);
   static const Color rotomOrange = pogoCoinGold;
-  static const Color galarSlate = pogoTextPrimary;
-  static const Color galarCardWhite = pogoCardBg;
-  static const Color galarScaffoldBg = pogoScaffoldBg;
-  static const Color galarBorder = pogoBorder;
-  static const Color galarTextSecondary = pogoTextSecondary;
   static const Color healthGreen = pogoMintEnd;
   static const Color inStockColor = pogoMintEnd;
   static const Color ratingStar = pogoCoinGold;

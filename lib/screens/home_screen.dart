@@ -157,7 +157,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 maxWidth: 0,
                 maxHeight: 0,
                 child: Text(
-                  'PokéMart - Galar Region Branch',
+                  'PokéMart Official Store',
                   style: TextStyle(fontSize: 0.1, color: Colors.transparent),
                 ),
               ),

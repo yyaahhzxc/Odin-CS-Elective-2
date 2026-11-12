@@ -95,7 +95,7 @@ class _PokeMartAppState extends State<PokeMartApp> {
       child: CartScope(
         notifier: _cartManager,
         child: MaterialApp.router(
-          title: 'PokéMart - Galar Region',
+          title: 'PokéMart',
           debugShowCheckedModeBanner: false,
 
           // Centralized Design Theming applied globally

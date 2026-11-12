@@ -31,7 +31,7 @@ class _CheckoutConfirmationScreenState
   void initState() {
     super.initState();
     _orderNumber =
-        'GALAR-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+        'PKM-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
     _orderTimestamp = DateTime.now();
 
     // Snapshot cart items and clear the active cart
@@ -100,7 +100,7 @@ class _CheckoutConfirmationScreenState
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Thank you for your order! Your PokéMart order has been placed successfully. Please present your Order ID at the Galar Pokémon Center Mart counter for pickup.',
+                  'Thank you for your order! Your PokéMart order has been placed successfully. Please present your Order ID at the Pokémon Center Mart counter for pickup.',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: colorScheme.onSurfaceVariant,
@@ -229,7 +229,7 @@ class _OrderReceiptCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Galar Pokémon Center Mart',
+                      'Pokémon Center Mart',
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
