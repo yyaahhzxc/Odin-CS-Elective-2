@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../state/auth_state.dart';
 import '../state/cart_state.dart';
 import '../state/catalog_state.dart';
 import '../theme/app_theme.dart';
@@ -111,6 +112,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final cart = CartScope.of(context);
     final catalog = CatalogScope.of(context);
+    final auth = AuthScope.maybeOf(context);
 
     final activeSliderValues = _sliderValues ?? catalog.priceRange;
 
@@ -176,6 +178,23 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             tooltip: widget.isDarkMode ? 'Day Mode' : 'Night Mode',
             onPressed: widget.onToggleTheme,
+          ),
+
+          // User account / authentication button
+          IconButton(
+            icon: Icon(
+              (auth?.isAuthenticated ?? false)
+                  ? Icons.account_circle
+                  : Icons.account_circle_outlined,
+              color: (auth?.isAuthenticated ?? false)
+                  ? AppTheme.pogoTealPrimary
+                  : colorScheme.onSurfaceVariant,
+              size: 22,
+            ),
+            tooltip: (auth?.isAuthenticated ?? false)
+                ? 'Account (${auth?.displayName})'
+                : 'Sign In',
+            onPressed: () => context.go('/login'),
           ),
 
           // Shopping Bag button with live item counter

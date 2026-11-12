@@ -4,6 +4,7 @@ import '../data/product_data.dart';
 import '../screens/cart_screen.dart';
 import '../screens/checkout_confirmation_screen.dart';
 import '../screens/home_screen.dart';
+import '../screens/login_screen.dart';
 import '../screens/product_detail_screen.dart';
 import '../state/cart_state.dart';
 
@@ -81,6 +82,17 @@ class AppRouter {
             return _buildSlideTransition(
               state: state,
               child: const CheckoutConfirmationScreen(),
+            );
+          },
+        ),
+
+        // Route: User Authentication & Account Screen
+        GoRoute(
+          path: '/login',
+          pageBuilder: (context, state) {
+            return _buildSlideTransition(
+              state: state,
+              child: const LoginScreen(),
             );
           },
         ),

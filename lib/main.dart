@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/supabase_config.dart';
 import 'router/app_router.dart';
+import 'state/auth_state.dart';
 import 'state/cart_state.dart';
 import 'state/catalog_state.dart';
 import 'theme/app_theme.dart';
@@ -30,11 +31,13 @@ void main() async {
 class PokeMartApp extends StatefulWidget {
   final CatalogManager? catalogManager;
   final CartManager? cartManager;
+  final AuthManager? authManager;
 
   const PokeMartApp({
     super.key,
     this.catalogManager,
     this.cartManager,
+    this.authManager,
   });
 
   @override
@@ -44,6 +47,9 @@ class PokeMartApp extends StatefulWidget {
 class _PokeMartAppState extends State<PokeMartApp> {
   // Application-wide theme mode state
   ThemeMode _themeMode = ThemeMode.light;
+
+  // Centralized authentication manager instance
+  late final AuthManager _authManager;
 
   // Centralized shopping cart manager instance
   late final CartManager _cartManager;
@@ -57,6 +63,7 @@ class _PokeMartAppState extends State<PokeMartApp> {
   void initState() {
     super.initState();
 
+    _authManager = widget.authManager ?? AuthManager();
     _cartManager = widget.cartManager ?? CartManager();
     _catalogManager = widget.catalogManager ?? CatalogManager();
 
@@ -75,6 +82,7 @@ class _PokeMartAppState extends State<PokeMartApp> {
 
   @override
   void dispose() {
+    if (widget.authManager == null) _authManager.dispose();
     if (widget.catalogManager == null) _catalogManager.dispose();
     if (widget.cartManager == null) _cartManager.dispose();
     super.dispose();
@@ -90,21 +98,24 @@ class _PokeMartAppState extends State<PokeMartApp> {
 
   @override
   Widget build(BuildContext context) {
-    return CatalogScope(
-      manager: _catalogManager,
-      child: CartScope(
-        notifier: _cartManager,
-        child: MaterialApp.router(
-          title: 'PokéMart',
-          debugShowCheckedModeBanner: false,
+    return AuthScope(
+      manager: _authManager,
+      child: CatalogScope(
+        manager: _catalogManager,
+        child: CartScope(
+          notifier: _cartManager,
+          child: MaterialApp.router(
+            title: 'PokéMart',
+            debugShowCheckedModeBanner: false,
 
-          // Centralized Design Theming applied globally
-          theme: AppTheme.lightTheme,
-          darkTheme: AppTheme.darkTheme,
-          themeMode: _themeMode,
+            // Centralized Design Theming applied globally
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: _themeMode,
 
-          // Navigation 2.0 configuration
-          routerConfig: _router,
+            // Navigation 2.0 configuration
+            routerConfig: _router,
+          ),
         ),
       ),
     );
