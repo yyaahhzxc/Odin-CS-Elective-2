@@ -163,6 +163,39 @@ class AuthService {
     return true;
   }
 
+  /// Initiates third-party OAuth authentication with GitHub.
+  ///
+  /// On Web, redirects within the active browser context.
+  /// On Mobile, deep links through `io.supabase.pokemart://login-callback`.
+  Future<bool> signInWithGitHub({String? redirectTo}) async {
+    final client = _client;
+    if (client != null && SupabaseConfig.isConfigured) {
+      final redirectUrl = redirectTo ??
+          (kIsWeb ? null : 'io.supabase.pokemart://login-callback');
+      return await client.auth.signInWithOAuth(
+        OAuthProvider.github,
+        redirectTo: redirectUrl,
+      );
+    }
+
+    // Fallback simulation for test and offline environments
+    setMockUser(
+      const User(
+        id: 'mock-github-user-001',
+        appMetadata: {'provider': 'github'},
+        userMetadata: {
+          'username': 'GitHub Trainer',
+          'full_name': 'GitHub Trainer',
+          'email': 'trainer@github.com',
+        },
+        aud: 'authenticated',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        email: 'trainer@github.com',
+      ),
+    );
+    return true;
+  }
+
   /// Terminates the active user session and clears authentication state.
   Future<void> signOut() async {
     final client = _client;

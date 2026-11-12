@@ -130,6 +130,30 @@ class AuthManager extends ChangeNotifier {
     }
   }
 
+  /// Triggers 3rd-party GitHub OAuth authentication.
+  Future<bool> signInWithGitHub({String? redirectTo}) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final success = await _service.signInWithGitHub(redirectTo: redirectTo);
+      _isLoading = false;
+      notifyListeners();
+      return success;
+    } on AuthException catch (e) {
+      _errorMessage = e.message;
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _errorMessage = 'GitHub authentication encountered an unexpected error.';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   /// Signs the user out of the active session.
   Future<void> signOut() async {
     _isLoading = true;

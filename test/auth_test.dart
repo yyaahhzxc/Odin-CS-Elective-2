@@ -33,6 +33,19 @@ void main() {
       expect(authManager.provider, 'google');
     });
 
+    test('Authenticates via GitHub OAuth simulation', () async {
+      final authService = AuthService();
+      final authManager = AuthManager(service: authService);
+
+      final success = await authManager.signInWithGitHub();
+
+      expect(success, isTrue);
+      expect(authManager.isAuthenticated, isTrue);
+      expect(authManager.displayName, 'GitHub Trainer');
+      expect(authManager.email, 'trainer@github.com');
+      expect(authManager.provider, 'github');
+    });
+
     test('Authenticates via Email and Password simulation', () async {
       final authService = AuthService();
       final authManager = AuthManager(service: authService);
@@ -106,6 +119,7 @@ void main() {
       expect(find.text('Email'), findsOneWidget);
       expect(find.text('Password'), findsOneWidget);
       expect(find.text('Continue with Google'), findsOneWidget);
+      expect(find.text('Continue with GitHub'), findsOneWidget);
       expect(find.text('Continue as Guest'), findsOneWidget);
       expect(find.text("Don't have an account?"), findsOneWidget);
     });
@@ -201,6 +215,7 @@ void main() {
       // Verify we arrived at LoginScreen
       expect(find.text('Welcome Back'), findsOneWidget);
       expect(find.text('Continue with Google'), findsOneWidget);
+      expect(find.text('Continue with GitHub'), findsOneWidget);
     });
   });
 }

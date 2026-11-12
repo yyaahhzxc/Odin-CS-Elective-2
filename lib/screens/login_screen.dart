@@ -87,6 +87,18 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _handleGitHubSignIn(AuthManager auth) async {
+    final success = await auth.signInWithGitHub();
+    if (success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Signed in with GitHub as ${auth.displayName}!'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   Future<void> _handleSignOut(AuthManager auth) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -526,6 +538,41 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(width: 12),
                   Text(
                     'Continue with Google',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // GitHub 3rd-Party OAuth Button
+            OutlinedButton(
+              onPressed: auth.isLoading ? null : () => _handleGitHubSignIn(auth),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                side: BorderSide(
+                  color: colorScheme.outlineVariant,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                backgroundColor: isDark
+                    ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.3)
+                    : Colors.white,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.terminal_outlined,
+                    size: 18,
+                    color: colorScheme.onSurface,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Continue with GitHub',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
