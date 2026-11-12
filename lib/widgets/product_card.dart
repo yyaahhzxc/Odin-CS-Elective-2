@@ -240,45 +240,40 @@ class ProductCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          product.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: AppTheme.pogoTextPrimary,
-                          ),
-                        ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: categoryAccentColor.withAlpha(25),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      product.category.toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 8.5,
+                        fontWeight: FontWeight.w800,
+                        color: categoryAccentColor,
+                        letterSpacing: 0.3,
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: categoryAccentColor.withAlpha(25),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          product.category.toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 8.5,
-                            fontWeight: FontWeight.w800,
-                            color: categoryAccentColor,
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                   const SizedBox(height: 3),
                   Text(
+                    product.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.pogoTextPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
                     product.description,
-                    maxLines: 2,
+                    maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall?.copyWith(
                       fontSize: 12,

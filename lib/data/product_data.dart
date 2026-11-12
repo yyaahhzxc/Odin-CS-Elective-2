@@ -366,9 +366,9 @@ const List<Product> mockProducts = [
     stock: 500,
   ),
   Product(
-    id: 'wepear-berry',
-    name: 'Wepear Berry',
-    price: 100.0,
+    id: 'poffin',
+    name: 'Poffin',
+    price: 350.0,
     imagePath:
         'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/Item_0704.png',
     images: [
@@ -376,9 +376,9 @@ const List<Product> mockProducts = [
     ],
     category: 'Berries & Treats',
     description:
-        'A crisp, crunchy berry with an astringent flavor that makes curry tangy and flavorful.',
-    soldCount: 280,
-    stock: 400,
+        'A delicious pastry baked with care for Pokémon. Feeding this to your buddy fills its hunger meter and maximizes bond and mood.',
+    soldCount: 560,
+    stock: 158,
   ),
   Product(
     id: 'pinap-berry',
@@ -393,7 +393,7 @@ const List<Product> mockProducts = [
     description:
         'Feed this to a wild Pokémon to increase the amount of Candy and item rewards you gain upon capture.',
     soldCount: 540,
-    stock: 650,
+    stock: 382,
   ),
   Product(
     id: 'golden-razz-berry',
@@ -408,7 +408,7 @@ const List<Product> mockProducts = [
     description:
         'A wondrous golden berry that drastically increases the catch rate of any wild Pokémon.',
     soldCount: 310,
-    stock: 300,
+    stock: 124,
   ),
   Product(
     id: 'silver-pinap-berry',
@@ -423,11 +423,11 @@ const List<Product> mockProducts = [
     description:
         'A lustrous silver berry that both eases capture and doubles the reward upon catching.',
     soldCount: 220,
-    stock: 250,
+    stock: 89,
   ),
   Product(
-    id: 'poffin',
-    name: 'Poffin',
+    id: 'deluxe-poffin',
+    name: 'Deluxe Poffin',
     price: 800.0,
     imagePath:
         'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/poffin.3.png',
@@ -436,9 +436,9 @@ const List<Product> mockProducts = [
     ],
     category: 'Berries & Treats',
     description:
-        'A delicious snack pastry baked for Pokémon to maximize their friendship, bond, and mood.',
+        'A freshly baked gourmet treat crafted with choice berries to greatly elevate Pokémon affinity.',
     soldCount: 340,
-    stock: 200,
+    stock: 96,
   ),
 
   // ---------------------------------------------------------------------------

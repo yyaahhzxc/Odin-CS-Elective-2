@@ -35,6 +35,7 @@ class SupabaseService {
     required double minPrice,
     required double maxPrice,
     String? category,
+    String sortBy = 'popular',
   }) async {
     // If Supabase is configured and active, query the PostgreSQL database
     if (SupabaseConfig.isConfigured && _client != null) {
@@ -51,8 +52,20 @@ class SupabaseService {
         final from = (page - 1) * pageSize;
         final to = from + pageSize - 1;
 
-        final response = await filter
-            .order('id', ascending: true)
+        final PostgrestTransformBuilder<PostgrestList> orderedQuery;
+        if (sortBy == 'popular') {
+          orderedQuery = filter.order('sold_count', ascending: false);
+        } else if (sortBy == 'price_asc') {
+          orderedQuery = filter.order('price', ascending: true);
+        } else if (sortBy == 'price_desc') {
+          orderedQuery = filter.order('price', ascending: false);
+        } else if (sortBy == 'name_asc') {
+          orderedQuery = filter.order('name', ascending: true);
+        } else {
+          orderedQuery = filter.order('id', ascending: true);
+        }
+
+        final response = await orderedQuery
             .range(from, to)
             .count(CountOption.exact);
 
@@ -72,6 +85,7 @@ class SupabaseService {
           minPrice: minPrice,
           maxPrice: maxPrice,
           category: category,
+          sortBy: sortBy,
         );
       }
     }
@@ -83,6 +97,7 @@ class SupabaseService {
       minPrice: minPrice,
       maxPrice: maxPrice,
       category: category,
+      sortBy: sortBy,
     );
   }
 
@@ -93,12 +108,23 @@ class SupabaseService {
     required double minPrice,
     required double maxPrice,
     String? category,
+    String sortBy = 'popular',
   }) {
     var filtered = mockProducts.where((p) {
       final categoryMatch = category == null || category == 'All' || p.category == category;
       final priceMatch = p.price >= minPrice && p.price <= maxPrice;
       return categoryMatch && priceMatch;
     }).toList();
+
+    if (sortBy == 'popular') {
+      filtered.sort((a, b) => b.soldCount.compareTo(a.soldCount));
+    } else if (sortBy == 'price_asc') {
+      filtered.sort((a, b) => a.price.compareTo(b.price));
+    } else if (sortBy == 'price_desc') {
+      filtered.sort((a, b) => b.price.compareTo(a.price));
+    } else if (sortBy == 'name_asc') {
+      filtered.sort((a, b) => a.name.compareTo(b.name));
+    }
 
     final totalCount = filtered.length;
     final startIndex = (page - 1) * pageSize;

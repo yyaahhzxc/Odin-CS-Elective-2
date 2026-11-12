@@ -17,6 +17,7 @@ class CatalogManager extends ChangeNotifier {
 
   String _selectedCategory = 'All';
   RangeValues _priceRange = const RangeValues(0, 5000);
+  String _sortBy = 'popular';
 
   CatalogManager({SupabaseService? service})
       : _service = service ?? SupabaseService();
@@ -33,6 +34,7 @@ class CatalogManager extends ChangeNotifier {
   bool get hasNextPage => _currentPage < totalPages;
   String get selectedCategory => _selectedCategory;
   RangeValues get priceRange => _priceRange;
+  String get sortBy => _sortBy;
 
   /// Loads products matching active filters from Supabase.
   Future<void> fetchCatalog() async {
@@ -47,6 +49,7 @@ class CatalogManager extends ChangeNotifier {
         minPrice: _priceRange.start,
         maxPrice: _priceRange.end,
         category: _selectedCategory,
+        sortBy: _sortBy,
       );
 
       _products = result.products;
@@ -62,6 +65,14 @@ class CatalogManager extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  /// Updates active sort method and resets pagination to page 1.
+  void setSortBy(String sort) {
+    if (_sortBy == sort) return;
+    _sortBy = sort;
+    _currentPage = 1;
+    fetchCatalog();
   }
 
   /// Updates active category filter and resets pagination to page 1.

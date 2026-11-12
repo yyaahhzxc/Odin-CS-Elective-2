@@ -130,13 +130,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 1. Hero Product Image Showcase
+                // 1. Hero Product Image Showcase (Compact to avoid sprite pixelation)
                 Container(
                   width: double.infinity,
-                  height: 260,
+                  height: 180,
                   decoration: BoxDecoration(
                     color: colorScheme.surfaceContainerHighest.withAlpha(50),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(18),
                     border: Border.all(
                       color: colorScheme.outline.withAlpha(50),
                       width: 1,
@@ -147,76 +147,52 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         ? (isNetworkImage
                             ? Image.network(
                                 imagePath,
-                                height: 200,
+                                height: 130,
                                 fit: BoxFit.contain,
                                 errorBuilder: (_, _, _) => const Icon(
                                   Icons.catching_pokemon,
-                                  size: 100,
+                                  size: 70,
                                   color: AppTheme.pogoTealPrimary,
                                 ),
                               )
                             : Image.asset(
                                 imagePath,
-                                height: 200,
+                                height: 130,
                                 fit: BoxFit.contain,
                                 errorBuilder: (_, _, _) => const Icon(
                                   Icons.catching_pokemon,
-                                  size: 100,
+                                  size: 70,
                                   color: AppTheme.pogoTealPrimary,
                                 ),
                               ))
                         : const Icon(
                             Icons.catching_pokemon,
-                            size: 100,
+                            size: 70,
                             color: AppTheme.pogoTealPrimary,
                           ),
                   ),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 16),
 
-                // 2. Category badge & Authenticity Chip
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppTheme.pogoTealPrimary.withAlpha(20),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        widget.product.category.toUpperCase(),
-                        style: const TextStyle(
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w800,
-                          color: AppTheme.pogoTealPrimary,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
+                // 2. Category badge
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 3.5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppTheme.pogoTealPrimary.withAlpha(20),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    widget.product.category.toUpperCase(),
+                    style: const TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.pogoTealPrimary,
+                      letterSpacing: 0.5,
                     ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF4AC490).withAlpha(25),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Text(
-                        'POKÉMART OFFICIAL',
-                        style: TextStyle(
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF2E8B57),
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
                 const SizedBox(height: 10),
 
