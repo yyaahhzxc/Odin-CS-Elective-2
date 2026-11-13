@@ -33,7 +33,7 @@ class ProductVariant {
   }
 }
 
-/// Data model representing a merchandise item in the CSShop catalog.
+/// Data model representing a merchandise item in the PokéMart catalog.
 ///
 /// Kept immutable to ensure predictable state and prevent unintended mutations.
 class Product {
@@ -41,8 +41,9 @@ class Product {
   final String name;
   final double price;
   final String imagePath;
-  final List<String> images; // optional list of multiple images (e.g. front and back)
+  final List<String> images;
   final String category;
+  final int? categoryId;
   final String description;
   final int soldCount;
   final int stock;
@@ -55,6 +56,7 @@ class Product {
     this.imagePath = '',
     this.images = const [],
     required this.category,
+    this.categoryId,
     required this.description,
     required this.soldCount,
     required this.stock,
@@ -65,13 +67,30 @@ class Product {
   String get formattedPrice => '₽${AppTheme.formatPrice(price)}';
 
   /// Deserializes database record from Supabase table payload.
+  /// Supports both `image_path` and `image_url`, and resolves joined `categories(name)`.
   factory Product.fromJson(Map<String, dynamic> json) {
+    final rawImage = (json['image_path'] as String?)?.isNotEmpty == true
+        ? json['image_path'] as String
+        : (json['image_url'] as String? ?? '');
+
+    String resolvedCategory = json['category'] as String? ?? '';
+    final joinedCat = json['categories'];
+    if (resolvedCategory.isEmpty &&
+        joinedCat is Map<String, dynamic> &&
+        joinedCat['name'] != null) {
+      resolvedCategory = joinedCat['name'].toString();
+    }
+    if (resolvedCategory.isEmpty) {
+      resolvedCategory = 'Poké Balls';
+    }
+
     return Product(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      price: (json['price'] as num).toDouble(),
-      imagePath: json['image_path'] as String? ?? '',
-      category: json['category'] as String? ?? '',
+      id: json['id'].toString(),
+      name: json['name'] as String? ?? '',
+      price: (json['price'] as num?)?.toDouble() ?? 0.0,
+      imagePath: rawImage,
+      category: resolvedCategory,
+      categoryId: (json['category_id'] as num?)?.toInt(),
       description: json['description'] as String? ?? '',
       soldCount: (json['sold_count'] as num?)?.toInt() ?? 0,
       stock: (json['stock'] as num?)?.toInt() ?? 0,
@@ -86,11 +105,41 @@ class Product {
       'name': name,
       'price': price,
       'image_path': imagePath,
+      'image_url': imagePath,
       'category': category,
+      if (categoryId != null) 'category_id': categoryId,
       'description': description,
       'sold_count': soldCount,
       'stock': stock,
     };
+  }
+
+  Product copyWith({
+    String? id,
+    String? name,
+    double? price,
+    String? imagePath,
+    List<String>? images,
+    String? category,
+    int? categoryId,
+    String? description,
+    int? soldCount,
+    int? stock,
+    List<ProductVariant>? variants,
+  }) {
+    return Product(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      price: price ?? this.price,
+      imagePath: imagePath ?? this.imagePath,
+      images: images ?? this.images,
+      category: category ?? this.category,
+      categoryId: categoryId ?? this.categoryId,
+      description: description ?? this.description,
+      soldCount: soldCount ?? this.soldCount,
+      stock: stock ?? this.stock,
+      variants: variants ?? this.variants,
+    );
   }
 
   /// Returns all images available for this product.

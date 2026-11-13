@@ -49,9 +49,10 @@ class _HomeScreenState extends State<HomeScreen> {
   // Local drag values for smooth slider interaction before triggering backend query
   RangeValues? _sliderValues;
 
-  // Manual text controllers for editing price bounds directly
+  // Manual text controllers for editing price bounds directly and search query
   late final TextEditingController _minPriceController;
   late final TextEditingController _maxPriceController;
+  late final TextEditingController _searchController;
 
   final ScrollController _scrollController = ScrollController();
 
@@ -60,12 +61,14 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _minPriceController = TextEditingController(text: '0');
     _maxPriceController = TextEditingController(text: '5000');
+    _searchController = TextEditingController();
   }
 
   @override
   void dispose() {
     _minPriceController.dispose();
     _maxPriceController.dispose();
+    _searchController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -113,11 +116,25 @@ class _HomeScreenState extends State<HomeScreen> {
     final cart = CartScope.of(context);
     final catalog = CatalogScope.of(context);
     final auth = AuthScope.maybeOf(context);
+    final isAdmin = auth?.isAdmin ?? false;
+    final isAuthenticated = auth?.isAuthenticated ?? false;
 
     final activeSliderValues = _sliderValues ?? catalog.priceRange;
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
+      floatingActionButton: isAdmin
+          ? FloatingActionButton.extended(
+              backgroundColor: AppTheme.pogoTealPrimary,
+              foregroundColor: Colors.white,
+              onPressed: () => context.go('/admin/product/add'),
+              icon: const Icon(Icons.add),
+              label: const Text(
+                'Add Product',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+            )
+          : null,
       appBar: AppBar(
         backgroundColor: colorScheme.surface,
         elevation: 0,
@@ -183,41 +200,64 @@ class _HomeScreenState extends State<HomeScreen> {
           // User account / authentication button
           IconButton(
             icon: Icon(
-              (auth?.isAuthenticated ?? false)
+              isAuthenticated
                   ? Icons.account_circle
                   : Icons.account_circle_outlined,
-              color: (auth?.isAuthenticated ?? false)
+              color: isAuthenticated
                   ? AppTheme.pogoTealPrimary
                   : colorScheme.onSurfaceVariant,
               size: 22,
             ),
-            tooltip: (auth?.isAuthenticated ?? false)
+            tooltip: isAuthenticated
                 ? 'Account (${auth?.displayName})'
                 : 'Sign In',
             onPressed: () => context.go('/login'),
           ),
 
-          // Shopping Bag button with live item counter
-          IconButton(
-            icon: Badge(
-              isLabelVisible: cart.isNotEmpty,
-              backgroundColor: AppTheme.pogoValorRed,
-              label: Text(
-                '${cart.totalItemCount}',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w900,
-                  color: Colors.white,
-                  fontSize: 10,
+          // Orders navigation: Admin Order List vs Customer Order History
+          if (isAdmin)
+            IconButton(
+              icon: const Icon(
+                Icons.assignment_outlined,
+                color: AppTheme.pogoTealPrimary,
+                size: 21,
+              ),
+              tooltip: 'Admin Order List',
+              onPressed: () => context.go('/admin/orders'),
+            )
+          else if (isAuthenticated)
+            IconButton(
+              icon: const Icon(
+                Icons.receipt_long_outlined,
+                color: AppTheme.pogoTealPrimary,
+                size: 21,
+              ),
+              tooltip: 'Order History',
+              onPressed: () => context.go('/orders'),
+            ),
+
+          // Shopping Bag button (Hidden for Admin per Role Authorization table)
+          if (!isAdmin)
+            IconButton(
+              icon: Badge(
+                isLabelVisible: cart.isNotEmpty,
+                backgroundColor: AppTheme.pogoValorRed,
+                label: Text(
+                  '${cart.totalItemCount}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    fontSize: 10,
+                  ),
+                ),
+                child: const Icon(
+                  Icons.shopping_bag_outlined,
+                  color: AppTheme.pogoTealPrimary,
                 ),
               ),
-              child: const Icon(
-                Icons.shopping_bag_outlined,
-                color: AppTheme.pogoTealPrimary,
-              ),
+              tooltip: 'Shopping Bag',
+              onPressed: () => context.go('/cart'),
             ),
-            tooltip: 'Shopping Bag',
-            onPressed: () => context.go('/cart'),
-          ),
           const SizedBox(width: 6),
         ],
       ),
@@ -227,6 +267,39 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Search Bar & Active Role Indicator
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+              child: TextField(
+                controller: _searchController,
+                onChanged: catalog.setSearchQuery,
+                decoration: InputDecoration(
+                  hintText: 'Search PokéMart items by name or description...',
+                  prefixIcon: const Icon(
+                    Icons.search,
+                    size: 20,
+                    color: AppTheme.pogoTealPrimary,
+                  ),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, size: 18),
+                          tooltip: 'Clear Search',
+                          onPressed: () {
+                            _searchController.clear();
+                            catalog.setSearchQuery('');
+                            setState(() {});
+                          },
+                        )
+                      : null,
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 11,
+                  ),
+                ),
+              ),
+            ),
+
             // 1. Catalog Overview Header: "Inventory Items" & Total Count
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),

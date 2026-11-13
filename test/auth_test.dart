@@ -220,5 +220,42 @@ void main() {
       expect(find.text('Continue with Google'), findsOneWidget);
       expect(find.text('Continue with GitHub'), findsOneWidget);
     });
+
+    testWidgets('Admin role displays Add Product FAB and Edit/Delete controls while hiding Cart',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      SupabaseService.resetMockData();
+      final catalogManager = CatalogManager(service: SupabaseService(null));
+      await catalogManager.fetchCatalog();
+      final cartManager = CartManager();
+      final authService = AuthService();
+      final authManager = AuthManager(service: authService);
+
+      // Sign in as Admin (`admin@pokemart.com`)
+      await authManager.signInWithEmail(
+        email: 'admin@pokemart.com',
+        password: 'adminpassword',
+      );
+      expect(authManager.isAdmin, isTrue);
+
+      await tester.pumpWidget(
+        PokeMartApp(
+          catalogManager: catalogManager,
+          cartManager: cartManager,
+          authManager: authManager,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Verify Admin FAB and Edit/Delete icons are shown, and Shopping Bag is hidden
+      expect(find.text('Add Product'), findsOneWidget);
+      expect(find.byIcon(Icons.edit_outlined), findsWidgets);
+      expect(find.byIcon(Icons.delete_outline), findsWidgets);
+      expect(find.byIcon(Icons.shopping_bag_outlined), findsNothing);
+    });
   });
 }

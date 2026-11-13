@@ -5,8 +5,11 @@ import '../theme/app_theme.dart';
 
 /// Centralized state manager for the shopping cart.
 ///
-/// Implemented using [ChangeNotifier] from the Flutter Foundation library,
-/// providing reactive state propagation without requiring external third-party packages.
+/// Conforms to Exam Cart & Stock Requirements:
+/// - Add a product, change its quantity, and remove it.
+/// - Show a running total and the item count.
+/// - Prevent quantities above available stock, and prevent adding out-of-stock products.
+/// - Held in app state, survives screen changes, and is emptied after a successful order and on logout.
 class CartManager extends ChangeNotifier {
   final List<CartItem> _items = [];
 
@@ -38,38 +41,52 @@ class CartManager extends ChangeNotifier {
   }
 
   /// Adds a product and chosen variant to the cart, or increases its quantity if already present.
-  void addItem(Product product, ProductVariant? variant, int quantity) {
+  /// Strictly prevents adding out-of-stock products (`availableStock <= 0`) and caps at `availableStock`.
+  bool addItem(Product product, ProductVariant? variant, int quantity) {
+    final availableStock = variant?.stock ?? product.stock;
+    if (availableStock <= 0 || quantity <= 0) {
+      return false;
+    }
+
     final compositeId = '${product.id}_${variant?.id ?? 'base'}';
     final existingIndex = _items.indexWhere((item) => item.id == compositeId);
 
     if (existingIndex >= 0) {
       final item = _items[existingIndex];
       final maxStock = item.availableStock;
+      if (item.quantity >= maxStock) {
+        return false;
+      }
       final newQuantity = item.quantity + quantity;
       item.quantity = newQuantity > maxStock ? maxStock : newQuantity;
     } else {
+      final clampedQty =
+          quantity > availableStock ? availableStock : quantity;
       _items.add(
         CartItem(
           id: compositeId,
           product: product,
           variant: variant,
-          quantity: quantity,
+          quantity: clampedQty,
         ),
       );
     }
     notifyListeners();
+    return true;
   }
 
   /// Increments an existing cart item's quantity by 1 if within stock limits.
-  void incrementQuantity(String cartItemId) {
+  bool incrementQuantity(String cartItemId) {
     final index = _items.indexWhere((item) => item.id == cartItemId);
     if (index >= 0) {
       final item = _items[index];
       if (item.quantity < item.availableStock) {
         item.quantity++;
         notifyListeners();
+        return true;
       }
     }
+    return false;
   }
 
   /// Decrements an item's quantity by 1, automatically removing it if quantity drops below 1.
@@ -93,16 +110,15 @@ class CartManager extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Clears all items from the cart.
+  /// Clears all items from the cart (on order completion or user logout).
   void clearCart() {
+    if (_items.isEmpty) return;
     _items.clear();
     notifyListeners();
   }
 }
 
 /// Scoped inherited widget facilitating contextual access to [CartManager].
-///
-/// Rebuilds consuming widgets automatically whenever [CartManager] calls [notifyListeners].
 class CartScope extends InheritedNotifier<CartManager> {
   const CartScope({
     super.key,

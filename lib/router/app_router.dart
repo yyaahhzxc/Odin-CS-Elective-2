@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../data/product_data.dart';
+import '../screens/admin_product_form_screen.dart';
 import '../screens/cart_screen.dart';
 import '../screens/checkout_confirmation_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/login_screen.dart';
+import '../screens/orders_screen.dart';
 import '../screens/product_detail_screen.dart';
 import '../state/cart_state.dart';
+import '../state/catalog_state.dart';
+import '../state/order_state.dart';
 
 /// Navigation 2.0 router configuration utilizing [GoRouter].
 ///
 /// Configures declarative URL-based routing for the entire application,
-/// including route guards and native slide page transitions.
+/// including route guards for Customer & Admin flows and slide page transitions.
 class AppRouter {
   AppRouter._();
 
@@ -20,11 +24,13 @@ class AppRouter {
     required VoidCallback onToggleTheme,
     required bool Function() isDarkModeGetter,
     required CartManager cartManager,
+    CatalogManager? catalogManager,
+    OrderManager? orderManager,
   }) {
     return GoRouter(
       initialLocation: '/',
       routes: [
-        // Route: Home Screen (Product Catalog)
+        // Route: Home Screen (Product Catalog - Customer & Admin Views)
         GoRoute(
           path: '/',
           pageBuilder: (context, state) {
@@ -42,13 +48,15 @@ class AppRouter {
         GoRoute(
           path: '/product/:id',
           pageBuilder: (context, state) {
-            final productId = state.pathParameters['id'];
+            final productId = state.pathParameters['id'] ?? '';
 
-            // Locate the product matching the route parameter
-            final product = mockProducts.firstWhere(
-              (p) => p.id == productId,
-              orElse: () => mockProducts.first,
-            );
+            // Locate the product from live CatalogManager first, falling back to mockProducts
+            final liveProduct = catalogManager?.findProductById(productId);
+            final product = liveProduct ??
+                mockProducts.firstWhere(
+                  (p) => p.id == productId,
+                  orElse: () => mockProducts.first,
+                );
 
             return _buildSlideTransition(
               state: state,
@@ -57,7 +65,7 @@ class AppRouter {
           },
         ),
 
-        // Route: Shopping Cart Screen
+        // Route: Shopping Cart Screen (Customer)
         GoRoute(
           path: '/cart',
           pageBuilder: (context, state) {
@@ -68,12 +76,12 @@ class AppRouter {
           },
         ),
 
-        // Route: Checkout Confirmation Screen (Reachable only when cart has items)
+        // Route: Checkout Confirmation Screen
         GoRoute(
           path: '/checkout',
           redirect: (context, state) {
-            // Guard: Automatically redirect back to cart if attempted with empty cart
-            if (cartManager.isEmpty) {
+            // Allow access if cart has items OR if an order was just placed
+            if (cartManager.isEmpty && orderManager?.lastPlacedOrder == null) {
               return '/cart';
             }
             return null;
@@ -82,6 +90,57 @@ class AppRouter {
             return _buildSlideTransition(
               state: state,
               child: const CheckoutConfirmationScreen(),
+            );
+          },
+        ),
+
+        // Route: Customer Order History Screen
+        GoRoute(
+          path: '/orders',
+          pageBuilder: (context, state) {
+            return _buildSlideTransition(
+              state: state,
+              child: const OrdersScreen(isAdminMode: false),
+            );
+          },
+        ),
+
+        // Route: Admin Order List Screen
+        GoRoute(
+          path: '/admin/orders',
+          pageBuilder: (context, state) {
+            return _buildSlideTransition(
+              state: state,
+              child: const OrdersScreen(isAdminMode: true),
+            );
+          },
+        ),
+
+        // Route: Admin Add Product Form
+        GoRoute(
+          path: '/admin/product/add',
+          pageBuilder: (context, state) {
+            return _buildSlideTransition(
+              state: state,
+              child: const AdminProductFormScreen(),
+            );
+          },
+        ),
+
+        // Route: Admin Edit Product Form (Pre-filled with existing product values)
+        GoRoute(
+          path: '/admin/product/edit/:id',
+          pageBuilder: (context, state) {
+            final productId = state.pathParameters['id'] ?? '';
+            final existing = catalogManager?.findProductById(productId) ??
+                mockProducts.firstWhere(
+                  (p) => p.id == productId,
+                  orElse: () => mockProducts.first,
+                );
+
+            return _buildSlideTransition(
+              state: state,
+              child: AdminProductFormScreen(existingProduct: existing),
             );
           },
         ),

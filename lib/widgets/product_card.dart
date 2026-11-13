@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../models/product.dart';
+import '../state/auth_state.dart';
+import '../state/cart_state.dart';
+import '../state/catalog_state.dart';
 import '../theme/app_theme.dart';
 
-/// Reusable product card component supporting both responsive grid and list layouts.
-/// Follows modern e-commerce UI conventions with crisp typography, stock indicators,
-/// category badges, and distinct pricing hierarchy.
+/// Reusable product card component supporting both responsive grid and list layouts,
+/// as well as strict Role-Based UI separation:
+/// - Customer role: Shows "Add to Cart" action button (disabled if out of stock),
+///   and never shows Admin management controls.
+/// - Admin role: Replaces customer cart controls with Edit & Delete buttons,
+///   triggering a confirmation dialog naming the product before deletion.
 class ProductCard extends StatelessWidget {
   final Product product;
   final bool isGrid;
@@ -16,10 +22,81 @@ class ProductCard extends StatelessWidget {
     this.isGrid = false,
   });
 
+  void _handleAddToCart(BuildContext context, CartManager cart) {
+    if (product.stock <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${product.name} is currently out of stock.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final added = cart.addItem(product, null, 1);
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          added
+              ? 'Added ${product.name} to cart!'
+              : 'Maximum available stock (${product.stock}) reached in cart.',
+        ),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Future<void> _confirmAndDeleteProduct(
+    BuildContext context,
+    CatalogManager catalog,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text('Delete Product'),
+        content: Text(
+          'Are you sure you want to delete "${product.name}" from the catalog? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.pogoValorRed,
+            ),
+            onPressed: () => Navigator.of(dialogCtx).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      await catalog.deleteProduct(product.id);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Deleted "${product.name}".'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final auth = AuthScope.maybeOf(context);
+    final cart = CartScope.maybeOf(context);
+    final catalog = CatalogScope.maybeOf(context);
+
+    final isAdmin = auth?.isAdmin ?? false;
     final hasImage = product.imagePath.isNotEmpty;
     final isNetworkImage = product.imagePath.startsWith('http');
 
@@ -48,6 +125,9 @@ class ProductCard extends StatelessWidget {
         hasImage,
         isNetworkImage,
         categoryAccentColor,
+        isAdmin,
+        cart,
+        catalog,
       );
     } else {
       return _buildListView(
@@ -57,11 +137,14 @@ class ProductCard extends StatelessWidget {
         hasImage,
         isNetworkImage,
         categoryAccentColor,
+        isAdmin,
+        cart,
+        catalog,
       );
     }
   }
 
-  /// Grid view product card with image pedestal, category badge, stock status, and price.
+  /// Grid view product card with image pedestal, category badge, stock status, price, and role actions.
   Widget _buildGridView(
     BuildContext context,
     ThemeData theme,
@@ -69,7 +152,12 @@ class ProductCard extends StatelessWidget {
     bool hasImage,
     bool isNetworkImage,
     Color categoryAccentColor,
+    bool isAdmin,
+    CartManager? cart,
+    CatalogManager? catalog,
   ) {
+    final isOutOfStock = product.stock <= 0;
+
     return InkWell(
       onTap: () => context.go('/product/${product.id}'),
       borderRadius: BorderRadius.circular(16),
@@ -96,7 +184,7 @@ class ProductCard extends StatelessWidget {
             Expanded(
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: colorScheme.surfaceContainerHighest.withAlpha(50),
                   borderRadius: const BorderRadius.only(
@@ -108,7 +196,7 @@ class ProductCard extends StatelessWidget {
                   alignment: Alignment.center,
                   children: [
                     Center(
-                      child: _buildItemImage(hasImage, isNetworkImage, 82),
+                      child: _buildItemImage(hasImage, isNetworkImage, 74),
                     ),
                     Positioned(
                       top: 0,
@@ -138,7 +226,7 @@ class ProductCard extends StatelessWidget {
               ),
             ),
 
-            // Product Details Section
+            // Product Details & Role Actions Section
             Padding(
               padding: const EdgeInsets.all(10),
               child: Column(
@@ -161,22 +249,91 @@ class ProductCard extends StatelessWidget {
                     children: [
                       Text(
                         product.formattedPrice,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w900,
                           color: AppTheme.pogoTealPrimary,
                         ),
                       ),
                       Text(
-                        '${product.stock} in stock',
+                        isOutOfStock
+                            ? 'Out of stock'
+                            : '${product.stock} in stock',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
-                          color: AppTheme.pogoTextSecondary,
+                          color: isOutOfStock
+                              ? AppTheme.pogoValorRed
+                              : AppTheme.pogoTextSecondary,
                         ),
                       ),
                     ],
                   ),
+                  const SizedBox(height: 6),
+
+                  // Role-specific controls: Admin Edit/Delete vs Customer Add to Cart
+                  if (isAdmin)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          icon: const Icon(
+                            Icons.edit_outlined,
+                            size: 18,
+                            color: AppTheme.pogoTealPrimary,
+                          ),
+                          tooltip: 'Edit ${product.name}',
+                          onPressed: () =>
+                              context.go('/admin/product/edit/${product.id}'),
+                        ),
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          icon: const Icon(
+                            Icons.delete_outline,
+                            size: 18,
+                            color: AppTheme.pogoValorRed,
+                          ),
+                          tooltip: 'Delete ${product.name}',
+                          onPressed: catalog == null
+                              ? null
+                              : () => _confirmAndDeleteProduct(
+                                    context,
+                                    catalog,
+                                  ),
+                        ),
+                      ],
+                    )
+                  else if (cart != null)
+                    SizedBox(
+                      width: double.infinity,
+                      height: 30,
+                      child: OutlinedButton.icon(
+                        onPressed: isOutOfStock
+                            ? null
+                            : () => _handleAddToCart(context, cart),
+                        icon: const Icon(Icons.add_shopping_cart, size: 14),
+                        label: Text(
+                          isOutOfStock ? 'Out of Stock' : 'Add to Cart',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          foregroundColor: AppTheme.pogoTealPrimary,
+                          side: BorderSide(
+                            color: isOutOfStock
+                                ? colorScheme.outlineVariant
+                                : AppTheme.pogoTealPrimary.withAlpha(120),
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -186,7 +343,7 @@ class ProductCard extends StatelessWidget {
     );
   }
 
-  /// List view product card with horizontal layout, description, and pricing breakdown.
+  /// List view product card with horizontal layout, description, pricing breakdown, and role controls.
   Widget _buildListView(
     BuildContext context,
     ThemeData theme,
@@ -194,7 +351,12 @@ class ProductCard extends StatelessWidget {
     bool hasImage,
     bool isNetworkImage,
     Color categoryAccentColor,
+    bool isAdmin,
+    CartManager? cart,
+    CatalogManager? catalog,
   ) {
+    final isOutOfStock = product.stock <= 0;
+
     return InkWell(
       onTap: () => context.go('/product/${product.id}'),
       borderRadius: BorderRadius.circular(16),
@@ -298,15 +460,21 @@ class ProductCard extends StatelessWidget {
                           Icon(
                             Icons.inventory_2_outlined,
                             size: 13,
-                            color: AppTheme.pogoTextSecondary,
+                            color: isOutOfStock
+                                ? AppTheme.pogoValorRed
+                                : AppTheme.pogoTextSecondary,
                           ),
                           const SizedBox(width: 3),
                           Text(
-                            '${product.stock} in stock',
+                            isOutOfStock
+                                ? 'Out of stock'
+                                : '${product.stock} in stock',
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
-                              color: AppTheme.pogoTextSecondary,
+                              color: isOutOfStock
+                                  ? AppTheme.pogoValorRed
+                                  : AppTheme.pogoTextSecondary,
                             ),
                           ),
                         ],
@@ -316,14 +484,56 @@ class ProductCard extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
 
-            // Right: Navigation arrow icon
-            Icon(
-              Icons.chevron_right,
-              color: colorScheme.outline,
-              size: 20,
-            ),
+            // Right: Role-specific action controls (Admin Edit & Delete vs Customer Add to Cart)
+            if (isAdmin)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(
+                      Icons.edit_outlined,
+                      color: AppTheme.pogoTealPrimary,
+                      size: 20,
+                    ),
+                    tooltip: 'Edit ${product.name}',
+                    onPressed: () =>
+                        context.go('/admin/product/edit/${product.id}'),
+                  ),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      color: AppTheme.pogoValorRed,
+                      size: 20,
+                    ),
+                    tooltip: 'Delete ${product.name}',
+                    onPressed: catalog == null
+                        ? null
+                        : () => _confirmAndDeleteProduct(context, catalog),
+                  ),
+                ],
+              )
+            else if (cart != null)
+              IconButton(
+                icon: Icon(
+                  Icons.add_shopping_cart,
+                  color: isOutOfStock
+                      ? colorScheme.outline
+                      : AppTheme.pogoTealPrimary,
+                  size: 20,
+                ),
+                tooltip: isOutOfStock ? 'Out of Stock' : 'Add to Cart',
+                onPressed: isOutOfStock
+                    ? null
+                    : () => _handleAddToCart(context, cart),
+              )
+            else
+              Icon(
+                Icons.chevron_right,
+                color: colorScheme.outline,
+                size: 20,
+              ),
           ],
         ),
       ),

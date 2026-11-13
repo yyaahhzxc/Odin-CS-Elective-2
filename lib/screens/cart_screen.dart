@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../models/cart_item.dart';
+import '../state/auth_state.dart';
 import '../state/cart_state.dart';
+import '../state/catalog_state.dart';
+import '../state/order_state.dart';
 import '../theme/app_theme.dart';
 
 /// Screen displaying the items in the customer's shopping cart.
@@ -17,6 +20,45 @@ class CartScreen extends StatefulWidget {
 }
 
 class _CartScreenState extends State<CartScreen> {
+  Future<void> _handleCheckout(BuildContext context, CartManager cart) async {
+    final orderManager = OrderScope.maybeOf(context);
+    final catalogManager = CatalogScope.maybeOf(context);
+    final auth = AuthScope.maybeOf(context);
+
+    if (orderManager != null) {
+      final userId = auth?.currentUser?.id ?? 'guest';
+      final userEmail = auth?.email ?? 'trainer@pokemart.com';
+
+      final placedOrder = await orderManager.placeOrder(
+        userId: userId,
+        userEmail: userEmail,
+        cartItems: cart.items,
+      );
+
+      if (!context.mounted) return;
+
+      if (placedOrder == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              orderManager.errorMessage ??
+                  'Checkout failed. Please verify stock availability.',
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+
+      // Refresh catalog so reduced stock counts reflect immediately
+      catalogManager?.fetchCatalog();
+    }
+
+    if (context.mounted) {
+      context.go('/checkout');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -88,7 +130,7 @@ class _CartScreenState extends State<CartScreen> {
                               flex: 2,
                               child: _OrderSummaryCard(
                                 cart: cart,
-                                onCheckout: () => context.go('/checkout'),
+                                onCheckout: () => _handleCheckout(context, cart),
                               ),
                             ),
                           ],
@@ -120,7 +162,7 @@ class _CartScreenState extends State<CartScreen> {
                       // Bottom summary container for mobile
                       _MobileCheckoutBar(
                         cart: cart,
-                        onCheckout: () => context.go('/checkout'),
+                        onCheckout: () => _handleCheckout(context, cart),
                       ),
                     ],
                   );

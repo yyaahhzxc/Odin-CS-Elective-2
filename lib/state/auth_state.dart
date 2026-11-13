@@ -1,23 +1,35 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../models/user_profile.dart';
 import '../services/auth_service.dart';
 
-/// Centralized state manager for user authentication sessions.
+/// Centralized state manager for user authentication sessions and role permissions.
 ///
-/// Implemented using [ChangeNotifier] to provide reactive authentication state
-/// management across the application tree without external state libraries.
+/// Implemented using [ChangeNotifier] and exposed via Riverpod providers and [AuthScope].
 class AuthManager extends ChangeNotifier {
   final AuthService _service;
+  final VoidCallback? onSignedOut;
   StreamSubscription<AuthState>? _authSubscription;
 
   bool _isLoading = false;
   String? _errorMessage;
 
-  AuthManager({AuthService? service}) : _service = service ?? AuthService() {
-    _authSubscription = _service.authStateChanges.listen((data) {
+  AuthManager({
+    AuthService? service,
+    this.onSignedOut,
+  }) : _service = service ?? AuthService() {
+    _authSubscription = _service.authStateChanges.listen((data) async {
+      if (data.event == AuthChangeEvent.signedIn) {
+        await _service.fetchUserProfile();
+      } else if (data.event == AuthChangeEvent.signedOut) {
+        onSignedOut?.call();
+      }
       notifyListeners();
     });
+    if (_service.isAuthenticated) {
+      _service.fetchUserProfile().then((_) => notifyListeners());
+    }
   }
 
   /// Underlying authentication service reference.
@@ -26,8 +38,22 @@ class AuthManager extends ChangeNotifier {
   /// Current authenticated user instance, if logged in.
   User? get currentUser => _service.currentUser;
 
+  /// Active user profile containing role ('customer' or 'admin').
+  UserProfile? get currentProfile => _service.currentProfile;
+
   /// Returns true if an authenticated user session is active.
   bool get isAuthenticated => _service.isAuthenticated;
+
+  /// Returns true if the active user is an Admin.
+  bool get isAdmin => _service.isAdmin;
+
+  /// Returns true if the active user is a Customer.
+  bool get isCustomer => _service.isCustomer;
+
+  /// Active user role string ('admin', 'customer', or 'guest').
+  String get role => !isAuthenticated
+      ? 'guest'
+      : (isAdmin ? 'admin' : 'customer');
 
   /// Display name or username for the active user.
   String get displayName => _service.displayName;
@@ -35,7 +61,7 @@ class AuthManager extends ChangeNotifier {
   /// User's email address if authenticated.
   String? get email => _service.currentUser?.email;
 
-  /// Provider name (e.g., 'google' or 'email').
+  /// Provider name (e.g., 'google', 'github', or 'email').
   String get provider {
     final appMeta = _service.currentUser?.appMetadata;
     return appMeta?['provider']?.toString() ?? 'email';
@@ -46,6 +72,12 @@ class AuthManager extends ChangeNotifier {
 
   /// Most recent authentication error message, if any.
   String? get errorMessage => _errorMessage;
+
+  /// Switches active role for demonstration or testing purposes.
+  void setRoleForDemo(String newRole) {
+    _service.setDemoRole(newRole);
+    notifyListeners();
+  }
 
   /// Authenticates using standard email and password.
   Future<bool> signInWithEmail({
@@ -127,7 +159,7 @@ class AuthManager extends ChangeNotifier {
       notifyListeners();
       return false;
     } catch (e) {
-      _errorMessage = 'Google authentication encountered an unexpected error.';
+      _errorMessage = 'Google sign-in could not be completed.';
       _isLoading = false;
       notifyListeners();
       return false;
@@ -151,14 +183,14 @@ class AuthManager extends ChangeNotifier {
       notifyListeners();
       return false;
     } catch (e) {
-      _errorMessage = 'GitHub authentication encountered an unexpected error.';
+      _errorMessage = 'GitHub sign-in could not be completed.';
       _isLoading = false;
       notifyListeners();
       return false;
     }
   }
 
-  /// Signs the user out of the active session.
+  /// Signs out the current user session and triggers cart cleanup.
   Future<void> signOut() async {
     _isLoading = true;
     _errorMessage = null;
@@ -166,13 +198,14 @@ class AuthManager extends ChangeNotifier {
 
     try {
       await _service.signOut();
-    } catch (_) {}
-
-    _isLoading = false;
-    notifyListeners();
+      onSignedOut?.call();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
-  /// Clears any cached error messages.
+  /// Clears any displayed authentication error banner.
   void clearError() {
     if (_errorMessage != null) {
       _errorMessage = null;
@@ -188,7 +221,7 @@ class AuthManager extends ChangeNotifier {
   }
 }
 
-/// InheritedNotifier exposing [AuthManager] reactively down the widget tree.
+/// Scoped inherited notifier providing [AuthManager] down the widget tree.
 class AuthScope extends InheritedNotifier<AuthManager> {
   const AuthScope({
     super.key,
@@ -196,14 +229,14 @@ class AuthScope extends InheritedNotifier<AuthManager> {
     required super.child,
   }) : super(notifier: manager);
 
-  /// Accesses the nearest [AuthManager] instance up the widget tree.
+  /// Retrieves the nearest [AuthManager] in the widget tree.
   static AuthManager of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<AuthScope>();
-    assert(scope != null, 'No AuthScope found in context');
+    assert(scope != null, 'No AuthScope found in current widget context.');
     return scope!.notifier!;
   }
 
-  /// Safely retrieves [AuthManager] if an [AuthScope] exists in context.
+  /// Retrieves the nearest [AuthManager], or null if not present.
   static AuthManager? maybeOf(BuildContext context) {
     return context.dependOnInheritedWidgetOfExactType<AuthScope>()?.notifier;
   }

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../models/product.dart';
+import '../state/auth_state.dart';
 import '../state/cart_state.dart';
 import '../theme/app_theme.dart';
 
@@ -43,6 +44,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final cart = CartScope.of(context);
+    final auth = AuthScope.maybeOf(context);
+    final isAdmin = auth?.isAdmin ?? false;
 
     final hasVariants = widget.product.variants.isNotEmpty;
     final activeVariant =
@@ -398,7 +401,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         ],
       ),
 
-      // Sticky Bottom Purchasing Bar
+      // Sticky Bottom Purchasing Bar (or Admin Edit Bar)
       bottomNavigationBar: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
@@ -419,8 +422,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         ),
         child: SafeArea(
           top: false,
-          child: Row(
-            children: [
+          child: isAdmin
+              ? SizedBox(
+                  height: 46,
+                  child: FilledButton.icon(
+                    onPressed: () => context.go(
+                      '/admin/product/edit/${widget.product.id}',
+                    ),
+                    icon: const Icon(Icons.edit_outlined),
+                    label: const Text(
+                      'Edit Product (Admin)',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                )
+              : Row(
+                  children: [
               // Quantity Selector
               Container(
                 decoration: BoxDecoration(

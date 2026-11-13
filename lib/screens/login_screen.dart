@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../state/auth_state.dart';
+import '../state/cart_state.dart';
 
 /// Screen managing user authentication (Sign In, Create Account, Google & GitHub OAuth, and Profile).
 ///
@@ -189,6 +190,9 @@ class _LoginScreenState extends State<LoginScreen> {
     );
 
     if (confirmed == true) {
+      if (mounted) {
+        CartScope.maybeOf(context)?.clearCart();
+      }
       await auth.signOut();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -297,24 +301,78 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           const SizedBox(height: 12),
           Center(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                'Signed in via ${provider.toUpperCase()}',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: colorScheme.onSurfaceVariant,
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    'Signed in via ${provider.toUpperCase()}',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 ),
-              ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: auth.isAdmin
+                        ? colorScheme.tertiaryContainer
+                        : colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    'Role: ${auth.role.toUpperCase()}',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: auth.isAdmin
+                          ? colorScheme.onTertiaryContainer
+                          : colorScheme.onPrimaryContainer,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 28),
-          const Divider(),
+          const SizedBox(height: 16),
+          // Role Switcher for Final Exam Demonstration (Customer <-> Admin)
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _TabButton(
+                    label: 'Customer View',
+                    isSelected: !auth.isAdmin,
+                    onTap: () => auth.setRoleForDemo('customer'),
+                  ),
+                ),
+                Expanded(
+                  child: _TabButton(
+                    label: 'Admin View',
+                    isSelected: auth.isAdmin,
+                    onTap: () => auth.setRoleForDemo('admin'),
+                  ),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 20),
+          const Divider(),
+          const SizedBox(height: 16),
           FilledButton.icon(
             onPressed: _navigateBackOrHome,
             icon: const Icon(Icons.storefront_outlined),
@@ -323,7 +381,26 @@ class _LoginScreenState extends State<LoginScreen> {
               padding: const EdgeInsets.symmetric(vertical: 14),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: () {
+              try {
+                context.go(auth.isAdmin ? '/admin/orders' : '/orders');
+              } catch (_) {}
+            },
+            icon: Icon(
+              auth.isAdmin
+                  ? Icons.assignment_outlined
+                  : Icons.receipt_long_outlined,
+            ),
+            label: Text(
+              auth.isAdmin ? 'Manage All Orders' : 'My Order History',
+            ),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+          ),
+          const SizedBox(height: 10),
           OutlinedButton.icon(
             onPressed: auth.isLoading ? null : () => _handleSignOut(auth),
             icon: const Icon(Icons.logout),

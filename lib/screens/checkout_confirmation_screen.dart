@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../models/cart_item.dart';
 import '../state/cart_state.dart';
+import '../state/order_state.dart';
 import '../theme/app_theme.dart';
 
 /// Screen displaying the final checkout confirmation and itemized order receipt.
@@ -24,8 +25,8 @@ class _CheckoutConfirmationScreenState
     extends State<CheckoutConfirmationScreen> {
   List<CartItem> _purchasedItems = [];
   double _totalAmount = 0.0;
-  late final String _orderNumber;
-  late final DateTime _orderTimestamp;
+  late String _orderNumber;
+  late DateTime _orderTimestamp;
 
   @override
   void initState() {
@@ -34,15 +35,28 @@ class _CheckoutConfirmationScreenState
         'PKM-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
     _orderTimestamp = DateTime.now();
 
-    // Snapshot cart items and clear the active cart
+    // Snapshot cart items and database order number, then clear the active cart
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      final orderManager = OrderScope.maybeOf(context);
+      final lastOrder = orderManager?.lastPlacedOrder;
       final cart = CartScope.maybeOf(context);
+
       if (cart != null && cart.isNotEmpty) {
         setState(() {
           _purchasedItems = List<CartItem>.from(cart.items);
-          _totalAmount = cart.totalAmount;
+          _totalAmount = lastOrder?.total ?? cart.totalAmount;
+          if (lastOrder != null) {
+            _orderNumber = lastOrder.orderNumber;
+            _orderTimestamp = lastOrder.createdAt;
+          }
         });
         cart.clearCart();
+      } else if (lastOrder != null) {
+        setState(() {
+          _orderNumber = lastOrder.orderNumber;
+          _totalAmount = lastOrder.total;
+          _orderTimestamp = lastOrder.createdAt;
+        });
       }
     });
   }
