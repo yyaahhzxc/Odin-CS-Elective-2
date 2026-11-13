@@ -211,7 +211,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Tap Account icon in home appbar
+      // Tap Profile icon in bottom navigation bar
       await tester.tap(find.byIcon(Icons.account_circle_outlined));
       await tester.pumpAndSettle();
 

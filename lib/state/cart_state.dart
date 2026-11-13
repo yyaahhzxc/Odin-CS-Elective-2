@@ -40,6 +40,22 @@ class CartManager extends ChangeNotifier {
         .fold(0, (total, item) => total + item.quantity);
   }
 
+  /// Increments the base product's quantity in the cart by 1 (or adds it with quantity 1).
+  bool incrementProduct(Product product) {
+    return addItem(product, null, 1);
+  }
+
+  /// Decrements the base product's quantity in the cart by 1, removing it when reaching 0.
+  void decrementProduct(Product product) {
+    final compositeId = '${product.id}_base';
+    final index = _items.indexWhere(
+      (item) => item.id == compositeId || item.product.id == product.id,
+    );
+    if (index >= 0) {
+      decrementQuantity(_items[index].id);
+    }
+  }
+
   /// Adds a product and chosen variant to the cart, or increases its quantity if already present.
   /// Strictly prevents adding out-of-stock products (`availableStock <= 0`) and caps at `availableStock`.
   bool addItem(Product product, ProductVariant? variant, int quantity) {

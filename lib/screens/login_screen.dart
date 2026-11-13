@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../state/auth_state.dart';
 import '../state/cart_state.dart';
+import '../widgets/app_bottom_nav.dart';
 
 /// Screen managing user authentication (Sign In, Create Account, Google & GitHub OAuth, and Profile).
 ///
@@ -225,6 +226,7 @@ class _LoginScreenState extends State<LoginScreen> {
           onPressed: _navigateBackOrHome,
         ),
       ),
+      bottomNavigationBar: const AppBottomNav(currentIndex: 2),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(

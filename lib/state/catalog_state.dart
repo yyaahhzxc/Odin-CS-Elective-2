@@ -4,7 +4,8 @@ import '../models/product.dart';
 import '../services/supabase_service.dart';
 
 /// State management controller managing product catalog querying, search,
-/// price filtering, offset pagination, and Admin product/category CRUD.
+/// favorites filtering & sorting, price filtering, offset pagination,
+/// and Admin product/category CRUD.
 class CatalogManager extends ChangeNotifier {
   final SupabaseService _service;
 
@@ -18,6 +19,9 @@ class CatalogManager extends ChangeNotifier {
     'Battle & Training',
     'Special Gear',
   ];
+  final Set<String> _favoriteIds = {};
+  bool _onlyFavorites = false;
+
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -36,9 +40,13 @@ class CatalogManager extends ChangeNotifier {
   // Getters
   SupabaseService get service => _service;
   List<Product> get products => List.unmodifiable(_products);
+  List<Product> get popularProducts =>
+      _service.getTopPopularProducts(limit: 6);
   List<String> get categories => List.unmodifiable(_categories);
   List<String> get editableCategories =>
       _categories.where((c) => c != 'All').toList();
+  Set<String> get favoriteIds => Set.unmodifiable(_favoriteIds);
+  bool get onlyFavorites => _onlyFavorites;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   int get currentPage => _currentPage;
@@ -51,6 +59,51 @@ class CatalogManager extends ChangeNotifier {
   String get searchQuery => _searchQuery;
   RangeValues get priceRange => _priceRange;
   String get sortBy => _sortBy;
+
+  /// Returns true when the user is actively filtering or searching the catalog.
+  bool get isFiltering {
+    return _selectedCategory != 'All' ||
+        _searchQuery.trim().isNotEmpty ||
+        _onlyFavorites ||
+        _priceRange.start > 0 ||
+        _priceRange.end < 5000;
+  }
+
+  /// Checks whether a product ID is marked as a favorite.
+  bool isFavorite(String productId) => _favoriteIds.contains(productId);
+
+  /// Toggles favorite status for a product ID and refreshes if filtering/sorting by favorites.
+  void toggleFavorite(String productId) {
+    if (_favoriteIds.contains(productId)) {
+      _favoriteIds.remove(productId);
+    } else {
+      _favoriteIds.add(productId);
+    }
+    if (_onlyFavorites || _sortBy == 'favorites') {
+      fetchCatalog();
+    } else {
+      notifyListeners();
+    }
+  }
+
+  /// Toggles whether to filter the catalog strictly to favorited items.
+  void setOnlyFavorites(bool value) {
+    if (_onlyFavorites == value) return;
+    _onlyFavorites = value;
+    _currentPage = 1;
+    fetchCatalog();
+  }
+
+  /// Resets all active search, category, price, and favorite filters.
+  void resetFilters() {
+    _selectedCategory = 'All';
+    _searchQuery = '';
+    _onlyFavorites = false;
+    _priceRange = const RangeValues(0, 5000);
+    _sortBy = 'popular';
+    _currentPage = 1;
+    fetchCatalog();
+  }
 
   /// Looks up a product by ID from current page or underlying service.
   Product? findProductById(String id) {
@@ -80,6 +133,8 @@ class CatalogManager extends ChangeNotifier {
         category: _selectedCategory,
         searchQuery: _searchQuery,
         sortBy: _sortBy,
+        favoriteIds: _favoriteIds,
+        onlyFavorites: _onlyFavorites,
       );
 
       _products = result.products;
@@ -169,13 +224,21 @@ class CatalogManager extends ChangeNotifier {
     await fetchCatalog();
   }
 
-  /// Adds a new product (Admin only) and refreshes the catalog.
+  /// Adds a new product (Admin only), ensures filters allow it to be seen on Page 1,
+  /// and refreshes the catalog immediately.
   Future<void> addProduct(Product product) async {
     _isLoading = true;
     notifyListeners();
     try {
       await _service.addProduct(product);
       _currentPage = 1;
+      if (_selectedCategory != 'All' &&
+          _selectedCategory != product.category) {
+        _selectedCategory = 'All';
+      }
+      if (product.price > _priceRange.end) {
+        _priceRange = RangeValues(_priceRange.start, product.price);
+      }
       await fetchCatalog();
     } finally {
       _isLoading = false;
@@ -201,6 +264,7 @@ class CatalogManager extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
+      _favoriteIds.remove(productId);
       await _service.deleteProduct(productId);
       await fetchCatalog();
     } finally {

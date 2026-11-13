@@ -6,6 +6,7 @@ import '../state/cart_state.dart';
 import '../state/catalog_state.dart';
 import '../state/order_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_bottom_nav.dart';
 
 /// Screen displaying the items in the customer's shopping cart.
 ///
@@ -24,6 +25,17 @@ class _CartScreenState extends State<CartScreen> {
     final orderManager = OrderScope.maybeOf(context);
     final catalogManager = CatalogScope.maybeOf(context);
     final auth = AuthScope.maybeOf(context);
+
+    if (auth != null && !auth.isAuthenticated) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please sign in or create an account to place an order.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      context.go('/login');
+      return;
+    }
 
     if (orderManager != null) {
       final userId = auth?.currentUser?.id ?? 'guest';
@@ -88,6 +100,7 @@ class _CartScreenState extends State<CartScreen> {
             ),
         ],
       ),
+      bottomNavigationBar: const AppBottomNav(currentIndex: 1),
       body: cart.isEmpty
           ? _buildEmptyCart(context, theme, colorScheme)
           : LayoutBuilder(

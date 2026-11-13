@@ -4,6 +4,7 @@ import '../models/order.dart';
 import '../state/auth_state.dart';
 import '../state/order_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_bottom_nav.dart';
 
 /// Unified Orders Screen serving two role-authorized modes:
 /// 1. Customer Order History (`isAdminMode == false`):
@@ -158,6 +159,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
           ),
         ],
       ),
+      bottomNavigationBar: effectiveAdminMode
+          ? const AppBottomNav(currentIndex: 1)
+          : null,
       body: Builder(
         builder: (context) {
           if (isLoading && orders.isEmpty) {
