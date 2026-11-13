@@ -40,13 +40,13 @@ class AuthService {
     if (user == null) return 'Guest';
     final metadata = user.userMetadata;
     if (metadata != null) {
-      if (metadata['username'] != null &&
-          metadata['username'].toString().trim().isNotEmpty) {
-        return metadata['username'].toString().trim();
-      }
       if (metadata['full_name'] != null &&
           metadata['full_name'].toString().trim().isNotEmpty) {
         return metadata['full_name'].toString().trim();
+      }
+      if (metadata['username'] != null &&
+          metadata['username'].toString().trim().isNotEmpty) {
+        return metadata['username'].toString().trim();
       }
     }
     if (user.email != null && user.email!.contains('@')) {
@@ -94,20 +94,30 @@ class AuthService {
     );
   }
 
-  /// Registers a new user account with email, password, and custom username metadata.
+  /// Registers a new user account with email, password, username, and name metadata.
   Future<void> signUpWithEmail({
     required String email,
     required String password,
     required String username,
+    String? firstName,
+    String? lastName,
   }) async {
     final client = _client;
+    final trimmedFirst = firstName?.trim() ?? '';
+    final trimmedLast = lastName?.trim() ?? '';
+    final fullName = [trimmedFirst, trimmedLast]
+        .where((s) => s.isNotEmpty)
+        .join(' ');
+
     if (client != null && SupabaseConfig.isConfigured) {
       await client.auth.signUp(
         email: email.trim(),
         password: password,
         data: {
           'username': username.trim(),
-          'full_name': username.trim(),
+          if (trimmedFirst.isNotEmpty) 'first_name': trimmedFirst,
+          if (trimmedLast.isNotEmpty) 'last_name': trimmedLast,
+          'full_name': fullName.isNotEmpty ? fullName : username.trim(),
         },
       );
       return;
@@ -120,7 +130,9 @@ class AuthService {
         appMetadata: {'provider': 'email'},
         userMetadata: {
           'username': username.trim(),
-          'full_name': username.trim(),
+          if (trimmedFirst.isNotEmpty) 'first_name': trimmedFirst,
+          if (trimmedLast.isNotEmpty) 'last_name': trimmedLast,
+          'full_name': fullName.isNotEmpty ? fullName : username.trim(),
           'email': email.trim(),
         },
         aud: 'authenticated',

@@ -62,19 +62,21 @@ void main() {
       expect(authManager.provider, 'email');
     });
 
-    test('Registers new account with custom username', () async {
+    test('Registers new account with custom username and name', () async {
       final authService = AuthService();
       final authManager = AuthManager(service: authService);
 
       final success = await authManager.signUpWithEmail(
         email: 'red@pokemart.com',
         password: 'championpass',
-        username: 'PokemonChampionRed',
+        username: 'red_trainer',
+        firstName: 'Red',
+        lastName: 'Ketchum',
       );
 
       expect(success, isTrue);
       expect(authManager.isAuthenticated, isTrue);
-      expect(authManager.displayName, 'PokemonChampionRed');
+      expect(authManager.displayName, 'Red Ketchum');
       expect(authManager.email, 'red@pokemart.com');
     });
 
@@ -121,10 +123,9 @@ void main() {
       expect(find.text('Continue with Google'), findsOneWidget);
       expect(find.text('Continue with GitHub'), findsOneWidget);
       expect(find.text('Continue as Guest'), findsOneWidget);
-      expect(find.text("Don't have an account?"), findsOneWidget);
     });
 
-    testWidgets('Toggles to Sign Up mode with Username field',
+    testWidgets('Toggles to Sign Up mode with First Name, Last Name, and Username fields',
         (WidgetTester tester) async {
       tester.view.physicalSize = const Size(800, 1400);
       tester.view.devicePixelRatio = 1.0;
@@ -144,15 +145,17 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Tap Sign Up toggle
+      // Tap Sign Up tab
       await tester.tap(find.text('Sign Up'));
       await tester.pumpAndSettle();
 
       expect(find.text('Create an Account'), findsWidgets);
+      expect(find.text('First Name'), findsOneWidget);
+      expect(find.text('Last Name'), findsOneWidget);
       expect(find.text('Username'), findsOneWidget);
       expect(find.text('Email'), findsOneWidget);
       expect(find.text('Password'), findsOneWidget);
-      expect(find.text('Already have an account?'), findsOneWidget);
+      expect(find.text('Confirm Password'), findsOneWidget);
     });
 
     testWidgets('Signing in with Google shows profile and Sign Out button',

@@ -74,11 +74,13 @@ class AuthManager extends ChangeNotifier {
     }
   }
 
-  /// Registers a new user account with email, password, and custom username.
+  /// Registers a new user account with email, password, and custom metadata.
   Future<bool> signUpWithEmail({
     required String email,
     required String password,
     required String username,
+    String? firstName,
+    String? lastName,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -89,6 +91,8 @@ class AuthManager extends ChangeNotifier {
         email: email,
         password: password,
         username: username,
+        firstName: firstName,
+        lastName: lastName,
       );
       _isLoading = false;
       notifyListeners();
