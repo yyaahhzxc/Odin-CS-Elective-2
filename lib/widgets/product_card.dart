@@ -216,7 +216,7 @@ class ProductCard extends StatelessWidget {
           color: colorScheme.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: colorScheme.outline.withAlpha(90),
+            color: colorScheme.outlineVariant,
             width: 1,
           ),
           boxShadow: [
@@ -237,6 +237,12 @@ class ProductCard extends StatelessWidget {
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: colorScheme.surfaceContainerHighest.withAlpha(55),
+                  border: Border(
+                    bottom: BorderSide(
+                      color: colorScheme.outlineVariant,
+                      width: 1,
+                    ),
+                  ),
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(16),
                     topRight: Radius.circular(16),
@@ -308,16 +314,19 @@ class ProductCard extends StatelessWidget {
                       Positioned(
                         bottom: 0,
                         right: 0,
-                        left: qtyInCart > 0 ? 4 : null,
+                        left: qtyInCart > 0 ? 0 : null,
                         child: Align(
                           alignment: Alignment.bottomRight,
                           child: qtyInCart > 0
-                              ? _buildOverlayCounterPill(
-                                  context,
-                                  cart,
-                                  auth,
-                                  qtyInCart,
-                                  colorScheme,
+                              ? FractionallySizedBox(
+                                  widthFactor: 0.55,
+                                  child: _buildOverlayCounterPill(
+                                    context,
+                                    cart,
+                                    auth,
+                                    qtyInCart,
+                                    colorScheme,
+                                  ),
                                 )
                               : _buildOverlayAddCircle(
                                   context,
@@ -347,7 +356,7 @@ class ProductCard extends StatelessWidget {
                     style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w800,
                       fontSize: 13.5,
-                      color: AppTheme.pogoTextPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -375,7 +384,7 @@ class ProductCard extends StatelessWidget {
                             fontWeight: FontWeight.w700,
                             color: isOutOfStock
                                 ? AppTheme.pogoValorRed
-                                : AppTheme.pogoTextSecondary,
+                                : Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ),
@@ -385,10 +394,10 @@ class ProductCard extends StatelessWidget {
                           '${product.soldCount} sold',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
-                            color: AppTheme.pogoTextSecondary,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ),
@@ -476,7 +485,7 @@ class ProductCard extends StatelessWidget {
           color: colorScheme.surface,
           border: Border(
             bottom: BorderSide(
-              color: colorScheme.outline.withAlpha(55),
+              color: colorScheme.outlineVariant,
               width: 1,
             ),
           ),
@@ -502,7 +511,7 @@ class ProductCard extends StatelessWidget {
                             style: theme.textTheme.titleMedium?.copyWith(
                               fontSize: 15.5,
                               fontWeight: FontWeight.w800,
-                              color: AppTheme.pogoTextPrimary,
+                              color: Theme.of(context).colorScheme.onSurface,
                               height: 1.25,
                             ),
                           ),
@@ -542,7 +551,7 @@ class ProductCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodySmall?.copyWith(
                         fontSize: 12.5,
-                        color: AppTheme.pogoTextSecondary,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         height: 1.35,
                       ),
                     ),
@@ -564,10 +573,10 @@ class ProductCard extends StatelessWidget {
                         const SizedBox(width: 8),
                         Text(
                           '• ${product.soldCount} sold',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
-                            color: AppTheme.pogoTextSecondary,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -630,7 +639,7 @@ class ProductCard extends StatelessWidget {
                       color: colorScheme.surfaceContainerHighest.withAlpha(55),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: colorScheme.outline.withAlpha(75),
+                        color: colorScheme.outlineVariant,
                         width: 1,
                       ),
                     ),
@@ -639,26 +648,23 @@ class ProductCard extends StatelessWidget {
                     ),
                   ),
 
-                  // Top-left Category Ribbon Tag (mirrors the red corner badge in Screenshot 2)
+                  // Top-left Floating Category Pill
                   Positioned(
-                    top: 0,
-                    left: 0,
+                    top: 6,
+                    left: 6,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 7,
-                        vertical: 3,
+                        vertical: 2.5,
                       ),
                       decoration: BoxDecoration(
                         color: categoryAccentColor,
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(13),
-                          bottomRight: Radius.circular(12),
-                        ),
+                        borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         product.category.toUpperCase(),
                         style: const TextStyle(
-                          fontSize: 8,
+                          fontSize: 8.5,
                           fontWeight: FontWeight.w900,
                           color: Colors.white,
                           letterSpacing: 0.3,
@@ -676,12 +682,15 @@ class ProductCard extends StatelessWidget {
                       child: Align(
                         alignment: Alignment.bottomRight,
                         child: qtyInCart > 0
-                            ? _buildOverlayCounterPill(
-                                context,
-                                cart,
-                                auth,
-                                qtyInCart,
-                                colorScheme,
+                            ? FractionallySizedBox(
+                                widthFactor: 0.55,
+                                child: _buildOverlayCounterPill(
+                                  context,
+                                  cart,
+                                  auth,
+                                  qtyInCart,
+                                  colorScheme,
+                                ),
                               )
                             : _buildOverlayAddCircle(
                                 context,
@@ -740,7 +749,7 @@ class ProductCard extends StatelessWidget {
                   size: 20,
                   color: isOutOfStock
                       ? colorScheme.outline
-                      : AppTheme.pogoTextPrimary,
+                      : Theme.of(context).colorScheme.onSurface,
                 ),
                 // Zero-opacity icon so existing tests finding `Icons.add_shopping_cart` continue to work seamlessly
                 const Opacity(
@@ -772,7 +781,7 @@ class ProductCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
         side: BorderSide(
-          color: colorScheme.outline.withAlpha(140),
+          color: colorScheme.outlineVariant,
           width: 1,
         ),
       ),
@@ -791,7 +800,7 @@ class ProductCard extends StatelessWidget {
                 child: Icon(
                   quantity == 1 ? Icons.delete_outline : Icons.remove,
                   size: 16,
-                  color: AppTheme.pogoTextPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             ),
@@ -806,12 +815,12 @@ class ProductCard extends StatelessWidget {
             InkWell(
               onTap: () => _handleIncrement(context, cart, auth),
               borderRadius: BorderRadius.circular(14),
-              child: const Padding(
-                padding: EdgeInsets.all(4),
+              child: Padding(
+                padding: const EdgeInsets.all(4),
                 child: Icon(
                   Icons.add,
                   size: 16,
-                  color: AppTheme.pogoTextPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             ),

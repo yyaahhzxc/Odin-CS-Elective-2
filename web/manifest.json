@@ -1,6 +1,6 @@
 {
-    "name": "csshop",
-    "short_name": "csshop",
+    "name": "PokéMart",
+    "short_name": "PokéMart",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

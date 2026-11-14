@@ -71,6 +71,14 @@ flutter:
     - assets/images/005-sticker/
     - assets/images/006-keychain/
 
+  fonts:
+    - family: PokemonSolid
+      fonts:
+        - asset: assets/fonts/PokemonSolid.ttf
+    - family: Bauhaus93
+      fonts:
+        - asset: assets/fonts/Bauhaus93.ttf
+
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 

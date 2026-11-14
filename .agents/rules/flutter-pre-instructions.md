@@ -101,11 +101,11 @@ Mandatory README Section Hierarchy:
 
 6. Output & Behavioral Rules
 
-Mandatory Implementation Plan First:
+Mandatory Implementation Plan (When Requested):
 
-Before outputting or generating any actual code, ALWAYS start by presenting a concise, bulleted implementation plan.
+For small adjustments, bug fixes, or minor UI tweaks, proceed directly with implementation without presenting an implementation plan.
 
-Outline the architecture, affected files, widget structures, and steps to be taken so the user can review and approve/adjust the plan before code execution starts.
+Only create an implementation plan when explicitly requested by the user (or for major tasks such as a full rebranding, a whole new activity, or a major feature). When an implementation plan is required, write it as a dedicated artifact file with feedback enabled so the user can review and comment on it before code execution starts.
 
 Clean Code Deliverables:
 

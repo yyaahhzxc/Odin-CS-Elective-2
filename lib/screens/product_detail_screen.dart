@@ -192,7 +192,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     color: colorScheme.surface,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: colorScheme.outline.withAlpha(150),
+                      color: colorScheme.outlineVariant,
                       width: 1.5,
                     ),
                   ),
@@ -230,7 +230,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         displayName,
                         style: theme.textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.w900,
-                          color: AppTheme.pogoTextPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           letterSpacing: -0.3,
                         ),
                       ),
@@ -254,7 +254,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
-                              color: AppTheme.pogoTextSecondary,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -303,7 +303,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       color: colorScheme.surface,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: colorScheme.outline.withAlpha(150),
+                        color: colorScheme.outlineVariant,
                         width: 1.5,
                       ),
                     ),
@@ -314,7 +314,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           'Select Variation:',
                           style: theme.textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.w800,
-                            color: AppTheme.pogoTextPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -343,7 +343,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 side: BorderSide(
                                   color: isSelected
                                       ? AppTheme.pogoTealPrimary
-                                      : colorScheme.outline.withAlpha(150),
+                                      : colorScheme.outlineVariant,
                                   width: 1.4,
                                 ),
                                 onSelected: (selected) {
@@ -371,7 +371,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                     side: BorderSide(
-                      color: colorScheme.outline.withAlpha(150),
+                      color: colorScheme.outlineVariant,
                       width: 1.5,
                     ),
                   ),
@@ -384,7 +384,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           'Product Description',
                           style: theme.textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.w800,
-                            color: AppTheme.pogoTextPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -392,7 +392,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           displayDescription,
                           style: theme.textTheme.bodyMedium?.copyWith(
                             height: 1.5,
-                            color: AppTheme.pogoTextSecondary,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -461,7 +461,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           color: colorScheme.surface,
           border: Border(
             top: BorderSide(
-              color: colorScheme.outline.withAlpha(150),
+              color: colorScheme.outlineVariant,
               width: 1.5,
             ),
           ),
@@ -496,7 +496,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: colorScheme.outline.withAlpha(150),
+                    color: colorScheme.outlineVariant,
                     width: 1.4,
                   ),
                 ),
@@ -539,12 +539,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Total Price',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
-                      color: AppTheme.pogoTextSecondary,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                   Text(

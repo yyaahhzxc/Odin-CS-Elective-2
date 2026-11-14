@@ -185,6 +185,42 @@ class _HomeScreenState extends State<HomeScreen> {
   // 1. STOREFRONT HOME VIEW (SIMPLE HERO + MOST POPULAR PRODUCTS GRID)
   // ===========================================================================
 
+  Widget _buildOutlinedLogoPart({
+    required String text,
+    required Color outlineColor,
+    required Color fillColor,
+    String? fontFamily = 'PokemonSolid',
+    FontWeight fontWeight = FontWeight.normal,
+    double fontSize = 22,
+    double letterSpacing = 0.8,
+  }) {
+    final baseStyle = TextStyle(
+      fontFamily: fontFamily,
+      fontWeight: fontWeight,
+      fontSize: fontSize,
+      letterSpacing: letterSpacing,
+      height: 1.1,
+    );
+    return Stack(
+      children: [
+        Text(
+          text,
+          style: baseStyle.copyWith(
+            foreground: Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 3.5
+              ..strokeJoin = StrokeJoin.round
+              ..color = outlineColor,
+          ),
+        ),
+        Text(
+          text,
+          style: baseStyle.copyWith(color: fillColor),
+        ),
+      ],
+    );
+  }
+
   PreferredSizeWidget _buildStorefrontAppBar(
     ThemeData theme,
     ColorScheme colorScheme,
@@ -196,30 +232,25 @@ class _HomeScreenState extends State<HomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          RichText(
-            text: TextSpan(
-              style: theme.appBarTheme.titleTextStyle,
-              children: const [
-                TextSpan(
-                  text: 'POKÉ',
-                  style: TextStyle(
-                    color: AppTheme.pogoTealPrimary,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 18,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-                TextSpan(
-                  text: 'MART',
-                  style: TextStyle(
-                    color: AppTheme.pogoTextPrimary,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 18,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-              ],
-            ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildOutlinedLogoPart(
+                text: 'Poké',
+                outlineColor: const Color(0xFF2A75BB),
+                fillColor: const Color(0xFFFFCB05),
+              ),
+              const SizedBox(width: 2),
+              _buildOutlinedLogoPart(
+                text: 'MART',
+                outlineColor: const Color(0xFF2A75BB),
+                fillColor: Colors.white,
+                fontFamily: 'Bauhaus93',
+                fontWeight: FontWeight.w900,
+                fontSize: 22,
+                letterSpacing: -0.2,
+              ),
+            ],
           ),
           const SizedBox(
             width: 0,
@@ -279,14 +310,7 @@ class _HomeScreenState extends State<HomeScreen> {
             margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [
-                  AppTheme.pogoTealPrimary,
-                  AppTheme.pogoMintEnd,
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              gradient: AppTheme.mintActionGradient,
               borderRadius: BorderRadius.circular(22),
               boxShadow: [
                 BoxShadow(
@@ -325,17 +349,17 @@ class _HomeScreenState extends State<HomeScreen> {
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w900,
                           fontSize: 17,
-                          color: AppTheme.pogoTextPrimary,
+                          color: theme.colorScheme.onSurface,
                         ),
                       ),
                       const SizedBox(height: 2),
-                      const Text(
+                      Text(
                         'Top trainer essentials ranked by popularity',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 12,
-                          color: AppTheme.pogoTextSecondary,
+                          color: theme.colorScheme.onSurfaceVariant,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -570,7 +594,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: colorScheme.surfaceContainerHighest.withAlpha(90),
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
-                        color: colorScheme.outline.withAlpha(70),
+                        color: colorScheme.outlineVariant,
                       ),
                     ),
                     child: Row(
@@ -598,7 +622,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 fontWeight: FontWeight.w800,
                                 color: !_isGridViewInCatalog
                                     ? Colors.white
-                                    : AppTheme.pogoTextSecondary,
+                                    : Theme.of(context).colorScheme.onSurfaceVariant,
                               ),
                             ),
                           ),
@@ -626,7 +650,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 fontWeight: FontWeight.w800,
                                 color: _isGridViewInCatalog
                                     ? Colors.white
-                                    : AppTheme.pogoTextSecondary,
+                                    : Theme.of(context).colorScheme.onSurfaceVariant,
                               ),
                             ),
                           ),
@@ -676,7 +700,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         border: Border.all(
                           color: catalog.onlyFavorites
                               ? AppTheme.pogoValorRed
-                              : colorScheme.outline.withAlpha(70),
+                              : colorScheme.outlineVariant,
                           width: 1,
                         ),
                       ),
@@ -785,7 +809,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: colorScheme.surface,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: colorScheme.outline.withAlpha(70),
+                    color: colorScheme.outlineVariant,
                     width: 1,
                   ),
                 ),
@@ -870,7 +894,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             side: BorderSide(
                               color: isSelected
                                   ? AppTheme.pogoTealPrimary
-                                  : colorScheme.outline.withAlpha(80),
+                                  : colorScheme.outlineVariant,
                             ),
                             onSelected: (selected) {
                               if (selected) {
@@ -896,7 +920,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: colorScheme.surface,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: colorScheme.outline.withAlpha(70),
+                    color: colorScheme.outlineVariant,
                     width: 1,
                   ),
                 ),
@@ -948,7 +972,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                   side: BorderSide(
-                    color: colorScheme.outline.withAlpha(70),
+                    color: colorScheme.outlineVariant,
                     width: 1,
                   ),
                 ),
@@ -1270,7 +1294,7 @@ class _HomeScreenState extends State<HomeScreen> {
           border: Border.all(
             color: isActive || isExpanded
                 ? AppTheme.pogoTealPrimary
-                : colorScheme.outline.withAlpha(70),
+                : colorScheme.outlineVariant,
             width: 1,
           ),
         ),
@@ -1402,7 +1426,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 border: Border.all(
                   color: isMiddlePage
                       ? AppTheme.pogoTealPrimary
-                      : colorScheme.outline.withAlpha(110),
+                      : colorScheme.outlineVariant,
                   width: 1.2,
                 ),
               ),
@@ -1469,7 +1493,7 @@ class _HomeScreenState extends State<HomeScreen> {
           border: Border.all(
             color: isCurrent
                 ? AppTheme.pogoTealPrimary
-                : colorScheme.outline.withAlpha(110),
+                : colorScheme.outlineVariant,
             width: 1.2,
           ),
         ),
