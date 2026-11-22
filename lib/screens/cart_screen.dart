@@ -1,32 +1,32 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../models/cart_item.dart';
-import '../state/auth_state.dart';
+import '../providers/app_providers.dart';
 import '../state/cart_state.dart';
-import '../state/catalog_state.dart';
-import '../state/order_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/animated_primitives.dart';
 import '../widgets/app_bottom_nav.dart';
 
 /// Screen displaying the items in the customer's shopping cart.
-///
-/// Implemented as a [StatefulWidget] to handle interactive user operations,
-/// including incrementing or decrementing quantities, item removals,
-/// and triggering real-time recalculation of running totals.
-class CartScreen extends StatefulWidget {
+class CartScreen extends ConsumerStatefulWidget {
   const CartScreen({super.key});
 
   @override
-  State<CartScreen> createState() => _CartScreenState();
+  ConsumerState<CartScreen> createState() => _CartScreenState();
 }
 
-class _CartScreenState extends State<CartScreen> {
-  Future<void> _handleCheckout(BuildContext context, CartManager cart) async {
-    final orderManager = OrderScope.maybeOf(context);
-    final catalogManager = CatalogScope.maybeOf(context);
-    final auth = AuthScope.maybeOf(context);
+class _CartScreenState extends ConsumerState<CartScreen> {
+  bool _isCheckingOut = false;
 
-    if (auth != null && !auth.isAuthenticated) {
+  Future<void> _handleCheckout(BuildContext context, CartManager cart) async {
+    if (_isCheckingOut) return;
+
+    final orderManager = ref.read(orderProvider);
+    final catalogManager = ref.read(catalogProvider);
+    final auth = ref.read(authProvider);
+
+    if (!auth.isAuthenticated) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please sign in or create an account to place an order.'),
@@ -37,9 +37,14 @@ class _CartScreenState extends State<CartScreen> {
       return;
     }
 
-    if (orderManager != null) {
-      final userId = auth?.currentUser?.id ?? 'guest';
-      final userEmail = auth?.email ?? 'trainer@pokemart.com';
+    if (auth.isAdmin) {
+      return;
+    }
+
+    setState(() => _isCheckingOut = true);
+    try {
+      final userId = auth.userId ?? '';
+      final userEmail = auth.email ?? 'trainer@pokemart.com';
 
       final placedOrder = await orderManager.placeOrder(
         userId: userId,
@@ -62,12 +67,13 @@ class _CartScreenState extends State<CartScreen> {
         return;
       }
 
-      // Refresh catalog so reduced stock counts reflect immediately
-      catalogManager?.fetchCatalog();
-    }
-
-    if (context.mounted) {
+      cart.clearCart();
+      catalogManager.fetchCatalog();
       context.go('/checkout');
+    } finally {
+      if (mounted) {
+        setState(() => _isCheckingOut = false);
+      }
     }
   }
 
@@ -75,22 +81,67 @@ class _CartScreenState extends State<CartScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final cart = CartScope.of(context);
+    final auth = ref.watch(authProvider);
+    final cart = ref.watch(cartProvider);
+    final canPop = Navigator.of(context).canPop();
+
+    if (auth.isAdmin) {
+      return Scaffold(
+        appBar: AppBar(
+          automaticallyImplyLeading: false,
+          title: const Text('Permission Denied'),
+          leading: canPop
+              ? IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () => Navigator.of(context).pop(),
+                )
+              : null,
+        ),
+        bottomNavigationBar: const AppBottomNav(currentIndex: 1),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.lock_outline, size: 60, color: colorScheme.error),
+                const SizedBox(height: 16),
+                Text(
+                  'Admin Accounts Cannot Place Orders',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Shopping carts and customer checkout are restricted to customer accounts.',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                FilledButton.icon(
+                  onPressed: () => context.go('/admin/orders'),
+                  icon: const Icon(Icons.assignment_outlined),
+                  label: const Text('Go to Admin Orders'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: const Text('Shopping Cart'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          tooltip: 'Back',
-          onPressed: () {
-            if (context.canPop()) {
-              context.pop();
-            } else {
-              context.go('/');
-            }
-          },
-        ),
+        leading: canPop
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back),
+                tooltip: 'Back',
+                onPressed: () => Navigator.of(context).pop(),
+              )
+            : null,
         actions: [
           if (cart.isNotEmpty)
             IconButton(
@@ -101,87 +152,100 @@ class _CartScreenState extends State<CartScreen> {
         ],
       ),
       bottomNavigationBar: const AppBottomNav(currentIndex: 1),
-      body: cart.isEmpty
-          ? _buildEmptyCart(context, theme, colorScheme)
-          : LayoutBuilder(
-              builder: (context, constraints) {
-                final isTablet = constraints.maxWidth >= 700;
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 260),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        child: cart.isEmpty
+            ? KeyedSubtree(
+                key: const ValueKey<String>('cart-empty'),
+                child: _buildEmptyCart(context, theme, colorScheme),
+              )
+            : LayoutBuilder(
+                key: const ValueKey<String>('cart-filled'),
+                builder: (context, constraints) {
+                  final isTablet = constraints.maxWidth >= 700;
 
-                if (isTablet) {
-                  // Tablet & Desktop 2-column layout (items left, summary right)
-                  return Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 1050),
-                      child: Padding(
-                        padding: const EdgeInsets.all(24.0),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Cart items column
-                            Expanded(
-                              flex: 3,
-                              child: ListView.separated(
-                                itemCount: cart.items.length,
-                                separatorBuilder: (context, index) =>
-                                    const SizedBox(height: 12),
-                                itemBuilder: (context, index) {
-                                  final item = cart.items[index];
-                                  return _CartItemCard(
-                                    item: item,
-                                    onIncrement: () =>
-                                        cart.incrementQuantity(item.id),
-                                    onDecrement: () =>
-                                        _handleDecrement(cart, item),
-                                  );
-                                },
+                  if (isTablet) {
+                    // Tablet & Desktop 2-column layout (items left, summary right)
+                    return Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 1050),
+                        child: Padding(
+                          padding: const EdgeInsets.all(24.0),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Cart items column
+                              Expanded(
+                                flex: 3,
+                                child: ListView.separated(
+                                  itemCount: cart.items.length,
+                                  separatorBuilder: (context, index) =>
+                                      const SizedBox(height: 12),
+                                  itemBuilder: (context, index) {
+                                    final item = cart.items[index];
+                                    return _CartItemCard(
+                                      item: item,
+                                      onIncrement: () =>
+                                          cart.incrementQuantity(item.id),
+                                      onDecrement: () =>
+                                          _handleDecrement(cart, item),
+                                    );
+                                  },
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 24),
+                              const SizedBox(width: 24),
 
-                            // Sticky Order summary card column
-                            Expanded(
-                              flex: 2,
-                              child: _OrderSummaryCard(
-                                cart: cart,
-                                onCheckout: () => _handleCheckout(context, cart),
+                              // Sticky Order summary card column
+                              Expanded(
+                                flex: 2,
+                                child: _OrderSummaryCard(
+                                  cart: cart,
+                                  isCheckingOut: _isCheckingOut,
+                                  onCheckout: () =>
+                                      _handleCheckout(context, cart),
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                } else {
-                  // Mobile single-column layout with bottom checkout bar
-                  return Column(
-                    children: [
-                      Expanded(
-                        child: ListView.separated(
-                          padding: const EdgeInsets.all(16.0),
-                          itemCount: cart.items.length,
-                          separatorBuilder: (context, index) =>
-                              const SizedBox(height: 12),
-                          itemBuilder: (context, index) {
-                            final item = cart.items[index];
-                            return _CartItemCard(
-                              item: item,
-                              onIncrement: () =>
-                                  cart.incrementQuantity(item.id),
-                              onDecrement: () => _handleDecrement(cart, item),
-                            );
-                          },
+                    );
+                  } else {
+                    // Mobile single-column layout with bottom checkout bar
+                    return Column(
+                      children: [
+                        Expanded(
+                          child: ListView.separated(
+                            padding: const EdgeInsets.all(16.0),
+                            itemCount: cart.items.length,
+                            separatorBuilder: (context, index) =>
+                                const SizedBox(height: 12),
+                            itemBuilder: (context, index) {
+                              final item = cart.items[index];
+                              return _CartItemCard(
+                                item: item,
+                                onIncrement: () =>
+                                    cart.incrementQuantity(item.id),
+                                onDecrement: () =>
+                                    _handleDecrement(cart, item),
+                              );
+                            },
+                          ),
                         ),
-                      ),
-                      // Bottom summary container for mobile
-                      _MobileCheckoutBar(
-                        cart: cart,
-                        onCheckout: () => _handleCheckout(context, cart),
-                      ),
-                    ],
-                  );
-                }
-              },
-            ),
+                        // Bottom summary container for mobile
+                        _MobileCheckoutBar(
+                          cart: cart,
+                          isCheckingOut: _isCheckingOut,
+                          onCheckout: () => _handleCheckout(context, cart),
+                        ),
+                      ],
+                    );
+                  }
+                },
+              ),
+      ),
     );
   }
 
@@ -197,38 +261,47 @@ class _CartScreenState extends State<CartScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest.withAlpha(100),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.remove_shopping_cart_outlined,
-                size: 72,
-                color: colorScheme.primary,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Your cart is empty',
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Looks like you haven\'t added any PokéMart items yet.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
+            PopIn(
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceContainerHighest.withAlpha(100),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.remove_shopping_cart_outlined,
+                  size: 72,
+                  color: colorScheme.primary,
+                ),
               ),
             ),
             const SizedBox(height: 24),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.storefront_outlined),
-              label: const Text('Browse Catalog'),
-              onPressed: () => context.go('/'),
+            FadeSlideIn(
+              delay: const Duration(milliseconds: 100),
+              child: Column(
+                children: [
+                  Text(
+                    'Your cart is empty',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Looks like you haven\'t added any PokéMart items yet.',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.storefront_outlined),
+                    label: const Text('Browse Catalog'),
+                    onPressed: () => context.go('/'),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -334,85 +407,112 @@ class _CartItemCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Square thumbnail image
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Container(
-                width: 72,
-                height: 72,
-                color: colorScheme.surfaceContainerHighest.withAlpha(80),
-                child: hasImage
-                    ? (item.imagePath.startsWith('http')
-                        ? Image.network(
-                            item.imagePath,
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) =>
-                                const Icon(
-                              Icons.catching_pokemon,
-                              size: 32,
-                              color: AppTheme.swordPrimary,
-                            ),
-                          )
-                        : Image.asset(
-                            item.imagePath,
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) =>
-                                const Icon(
-                              Icons.catching_pokemon,
-                              size: 32,
-                              color: AppTheme.swordPrimary,
-                            ),
-                          ))
-                    : const Icon(
-                        Icons.catching_pokemon,
-                        size: 32,
-                        color: AppTheme.swordPrimary,
-                      ),
-              ),
-            ),
-            const SizedBox(width: 14),
-
-            // Product metadata (Title, variant, unit price)
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.product.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
+              child: InkWell(
+                onTap: () {
+                  try {
+                    context.push('/product/${item.product.id}');
+                  } catch (_) {}
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Square thumbnail image
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        width: 72,
+                        height: 72,
+                        color: colorScheme.surfaceContainerHighest.withAlpha(80),
+                        child: hasImage
+                            ? (item.imagePath.startsWith('http')
+                                ? Image.network(
+                                    item.imagePath,
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (context, error, stackTrace) =>
+                                        const Icon(
+                                      Icons.catching_pokemon,
+                                      size: 32,
+                                      color: AppTheme.swordPrimary,
+                                    ),
+                                  )
+                                : Image.asset(
+                                    item.imagePath,
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (context, error, stackTrace) =>
+                                        const Icon(
+                                      Icons.catching_pokemon,
+                                      size: 32,
+                                      color: AppTheme.swordPrimary,
+                                    ),
+                                  ))
+                            : const Icon(
+                                Icons.catching_pokemon,
+                                size: 32,
+                                color: AppTheme.swordPrimary,
+                              ),
+                      ),
                     ),
-                  ),
-                  if (item.variant != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      'Variant: ${item.variant!.name}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colorScheme.primary,
-                        fontWeight: FontWeight.w500,
+                    const SizedBox(width: 14),
+
+                    // Product metadata (Title, variant, unit price)
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.product.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          if (item.variant != null) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              'Variant: ${item.variant!.name}',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: colorScheme.primary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 4),
+                          Text(
+                            '${item.formattedUnitPrice} each',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          AnimatedValueText(
+                            'Subtotal: ${item.formattedSubtotal}',
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: colorScheme.primary,
+                            ),
+                          ),
+                          if (item.quantity >= item.availableStock) ...[
+                            const SizedBox(height: 2),
+                            const Text(
+                              'Max stock reached',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.pogoCoinGold,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   ],
-                  const SizedBox(height: 4),
-                  Text(
-                    '${item.formattedUnitPrice} each',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Subtotal: ${item.formattedSubtotal}',
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: colorScheme.primary,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
+            const SizedBox(width: 8),
 
             // Stateful quantity counter controls (+ or -)
             Container(
@@ -431,7 +531,7 @@ class _CartItemCard extends StatelessWidget {
                   ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                    child: Text(
+                    child: AnimatedValueText(
                       '${item.quantity}',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
@@ -460,10 +560,12 @@ class _CartItemCard extends StatelessWidget {
 /// Order summary card displayed on tablet & desktop layouts.
 class _OrderSummaryCard extends StatelessWidget {
   final CartManager cart;
+  final bool isCheckingOut;
   final VoidCallback onCheckout;
 
   const _OrderSummaryCard({
     required this.cart,
+    required this.isCheckingOut,
     required this.onCheckout,
   });
 
@@ -502,7 +604,7 @@ class _OrderSummaryCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                Text(
+                AnimatedValueText(
                   '${cart.totalItemCount}',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.bold,
@@ -522,7 +624,7 @@ class _OrderSummaryCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                Text(
+                AnimatedValueText(
                   cart.formattedTotal,
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: colorScheme.primary,
@@ -547,10 +649,19 @@ class _OrderSummaryCard extends StatelessWidget {
                 ],
               ),
               child: ElevatedButton.icon(
-                icon: const Icon(Icons.shopping_bag_outlined),
-                label: const Text(
-                  'Proceed to Checkout',
-                  style: TextStyle(
+                icon: isCheckingOut
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.shopping_bag_outlined),
+                label: Text(
+                  isCheckingOut ? 'Placing Order...' : 'Proceed to Checkout',
+                  style: const TextStyle(
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.5,
                   ),
@@ -563,7 +674,7 @@ class _OrderSummaryCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(28),
                   ),
                 ),
-                onPressed: onCheckout,
+                onPressed: isCheckingOut ? null : onCheckout,
               ),
             ),
           ],
@@ -576,10 +687,12 @@ class _OrderSummaryCard extends StatelessWidget {
 /// Sticky bottom checkout bar for mobile screen viewports.
 class _MobileCheckoutBar extends StatelessWidget {
   final CartManager cart;
+  final bool isCheckingOut;
   final VoidCallback onCheckout;
 
   const _MobileCheckoutBar({
     required this.cart,
+    required this.isCheckingOut,
     required this.onCheckout,
   });
 
@@ -617,7 +730,7 @@ class _MobileCheckoutBar extends StatelessWidget {
                       color: colorScheme.onSurfaceVariant,
                     ),
                   ),
-                  Text(
+                  AnimatedValueText(
                     cart.formattedTotal,
                     style: theme.textTheme.titleLarge?.copyWith(
                       color: colorScheme.primary,
@@ -640,10 +753,19 @@ class _MobileCheckoutBar extends StatelessWidget {
                 ],
               ),
               child: ElevatedButton.icon(
-                icon: const Icon(Icons.arrow_forward),
-                label: const Text(
-                  'Proceed to Checkout',
-                  style: TextStyle(
+                icon: isCheckingOut
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.arrow_forward),
+                label: Text(
+                  isCheckingOut ? 'Placing Order...' : 'Proceed to Checkout',
+                  style: const TextStyle(
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.5,
                   ),
@@ -660,7 +782,7 @@ class _MobileCheckoutBar extends StatelessWidget {
                     borderRadius: BorderRadius.circular(28),
                   ),
                 ),
-                onPressed: onCheckout,
+                onPressed: isCheckingOut ? null : onCheckout,
               ),
             ),
           ],

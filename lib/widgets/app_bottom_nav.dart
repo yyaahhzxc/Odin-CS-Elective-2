@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../state/auth_state.dart';
-import '../state/cart_state.dart';
+import '../providers/app_providers.dart';
 import '../theme/app_theme.dart';
 
-/// Floating stadium-rounded bottom navigation bar inspired by Foodpanda's
-/// primary navigation dock (`Home`, `Cart` / `Orders`, `Profile`).
-class AppBottomNav extends StatelessWidget {
+/// Floating stadium-rounded bottom navigation dock (`Home`, `Cart` / `Orders`, `Profile`).
+class AppBottomNav extends ConsumerWidget {
   final int currentIndex;
   final VoidCallback? onHomeTap;
 
@@ -17,13 +16,13 @@ class AppBottomNav extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
-    final cart = CartScope.maybeOf(context);
-    final auth = AuthScope.maybeOf(context);
-    final isAdmin = auth?.isAdmin ?? false;
-    final isAuthenticated = auth?.isAuthenticated ?? false;
-    final cartCount = cart?.totalItemCount ?? 0;
+    final cart = ref.watch(cartProvider);
+    final auth = ref.watch(authProvider);
+    final isAdmin = auth.isAdmin;
+    final isAuthenticated = auth.isAuthenticated;
+    final cartCount = cart.totalItemCount;
 
     return SafeArea(
       top: false,
@@ -64,14 +63,12 @@ class AppBottomNav extends StatelessWidget {
                       return;
                     }
                     if (currentIndex == 0) return;
-                    try {
-                      context.go('/');
-                    } catch (_) {}
+                    context.go('/');
                   },
                 ),
               ),
 
-              // 2. Cart (or Orders for Admin) Tab
+              // 2. Cart (Customer) or Orders (Admin) Tab
               Expanded(
                 child: isAdmin
                     ? _NavDockItem(
@@ -82,9 +79,7 @@ class AppBottomNav extends StatelessWidget {
                         isSelected: currentIndex == 1,
                         onTap: () {
                           if (currentIndex == 1) return;
-                          try {
-                            context.go('/admin/orders');
-                          } catch (_) {}
+                          context.go('/admin/orders');
                         },
                       )
                     : _NavDockItem(
@@ -96,9 +91,7 @@ class AppBottomNav extends StatelessWidget {
                         isSelected: currentIndex == 1,
                         onTap: () {
                           if (currentIndex == 1) return;
-                          try {
-                            context.go('/cart');
-                          } catch (_) {}
+                          context.go('/cart');
                         },
                       ),
               ),
@@ -113,9 +106,7 @@ class AppBottomNav extends StatelessWidget {
                   isSelected: currentIndex == 2,
                   onTap: () {
                     if (currentIndex == 2) return;
-                    try {
-                      context.go('/login');
-                    } catch (_) {}
+                    context.go('/profile');
                   },
                 ),
               ),
@@ -157,12 +148,21 @@ class _NavDockItem extends StatelessWidget {
     if (badgeCount > 0) {
       iconWidget = Badge(
         backgroundColor: AppTheme.pogoValorRed,
-        label: Text(
-          '$badgeCount',
-          style: const TextStyle(
-            fontWeight: FontWeight.w900,
-            color: Colors.white,
-            fontSize: 10,
+        label: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          switchInCurve: Curves.easeOutBack,
+          transitionBuilder: (child, animation) => ScaleTransition(
+            scale: Tween<double>(begin: 0.6, end: 1.0).animate(animation),
+            child: child,
+          ),
+          child: Text(
+            '$badgeCount',
+            key: ValueKey<int>(badgeCount),
+            style: const TextStyle(
+              fontWeight: FontWeight.w900,
+              color: Colors.white,
+              fontSize: 10,
+            ),
           ),
         ),
         child: iconWidget,
@@ -174,6 +174,7 @@ class _NavDockItem extends StatelessWidget {
       borderRadius: BorderRadius.circular(28),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         decoration: BoxDecoration(
           color: isSelected

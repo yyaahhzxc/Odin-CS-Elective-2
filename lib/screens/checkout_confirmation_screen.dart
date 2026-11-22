@@ -1,70 +1,60 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../models/cart_item.dart';
-import '../state/cart_state.dart';
-import '../state/order_state.dart';
+import '../models/order.dart';
+import '../providers/app_providers.dart';
 import '../theme/app_theme.dart';
+import '../widgets/animated_primitives.dart';
 
-/// Screen displaying the final checkout confirmation and itemized order receipt.
-///
-/// Implemented as a [StatefulWidget] to snapshot order contents from [CartManager]
-/// upon arrival and safely clear the active shopping cart lifecycle.
-///
-/// Conforms to the exam requirement:
-/// "Displays simple summary of: Cart items, Subtotal per item, Total, Confirmation message;
-/// Reachable only after at least one item is in the cart."
-class CheckoutConfirmationScreen extends StatefulWidget {
+/// Screen displaying the database-authoritative checkout confirmation and itemized order receipt.
+class CheckoutConfirmationScreen extends ConsumerWidget {
   const CheckoutConfirmationScreen({super.key});
 
   @override
-  State<CheckoutConfirmationScreen> createState() =>
-      _CheckoutConfirmationScreenState();
-}
-
-class _CheckoutConfirmationScreenState
-    extends State<CheckoutConfirmationScreen> {
-  List<CartItem> _purchasedItems = [];
-  double _totalAmount = 0.0;
-  late String _orderNumber;
-  late DateTime _orderTimestamp;
-
-  @override
-  void initState() {
-    super.initState();
-    _orderNumber =
-        'PKM-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
-    _orderTimestamp = DateTime.now();
-
-    // Snapshot cart items and database order number, then clear the active cart
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final orderManager = OrderScope.maybeOf(context);
-      final lastOrder = orderManager?.lastPlacedOrder;
-      final cart = CartScope.maybeOf(context);
-
-      if (cart != null && cart.isNotEmpty) {
-        setState(() {
-          _purchasedItems = List<CartItem>.from(cart.items);
-          _totalAmount = lastOrder?.total ?? cart.totalAmount;
-          if (lastOrder != null) {
-            _orderNumber = lastOrder.orderNumber;
-            _orderTimestamp = lastOrder.createdAt;
-          }
-        });
-        cart.clearCart();
-      } else if (lastOrder != null) {
-        setState(() {
-          _orderNumber = lastOrder.orderNumber;
-          _totalAmount = lastOrder.total;
-          _orderTimestamp = lastOrder.createdAt;
-        });
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final order = ref.watch(orderProvider).lastPlacedOrder;
+
+    if (order == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Checkout Confirmation'),
+          leading: IconButton(
+            icon: const Icon(Icons.home_outlined),
+            tooltip: 'Back to Shop',
+            onPressed: () => context.go('/'),
+          ),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.receipt_long_outlined,
+                  size: 56,
+                  color: colorScheme.primary,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'No recent order found',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                FilledButton(
+                  onPressed: () => context.go('/'),
+                  child: const Text('Return to PokéMart'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -83,89 +73,119 @@ class _CheckoutConfirmationScreenState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Confirmation check icon
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: colorScheme.primary.withAlpha(25),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: colorScheme.primary.withAlpha(80),
-                      width: 2,
+                PopIn(
+                  duration: const Duration(milliseconds: 460),
+                  beginScale: 0.5,
+                  child: Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withAlpha(25),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: colorScheme.primary.withAlpha(80),
+                        width: 2,
+                      ),
                     ),
-                  ),
-                  child: Icon(
-                    Icons.check_circle_rounded,
-                    size: 48,
-                    color: colorScheme.primary,
+                    child: Icon(
+                      Icons.check_circle_rounded,
+                      size: 48,
+                      color: colorScheme.primary,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),
 
-                // Confirmation headline & message
-                Text(
-                  'Order Placed Successfully!',
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: colorScheme.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Thank you for your order! Your PokéMart order has been placed successfully. Please present your Order ID at the Pokémon Center Mart counter for pickup.',
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 28),
-
-                // Static itemized order summary receipt card
-                _OrderReceiptCard(
-                  orderNumber: _orderNumber,
-                  orderDate: _orderTimestamp,
-                  items: _purchasedItems,
-                  totalAmount: _totalAmount,
-                ),
-
-                const SizedBox(height: 28),
-
-                // Return to catalog action button
-                Container(
-                  width: double.infinity,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    gradient: AppTheme.mintActionGradient,
-                    borderRadius: BorderRadius.circular(28),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.pogoMintEnd.withAlpha(80),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 110),
+                  duration: const Duration(milliseconds: 320),
+                  child: Column(
+                    children: [
+                      Text(
+                        'Order Placed Successfully!',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Thank you for your order! Your PokéMart order has been placed successfully. Please present your Order ID at the Pokémon Center Mart counter for pickup.',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          height: 1.4,
+                        ),
                       ),
                     ],
                   ),
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      shadowColor: Colors.transparent,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(28),
+                ),
+                const SizedBox(height: 28),
+
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 190),
+                  duration: const Duration(milliseconds: 340),
+                  offsetY: 16,
+                  child: _OrderReceiptCard(order: order),
+                ),
+
+                const SizedBox(height: 28),
+
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 260),
+                  duration: const Duration(milliseconds: 320),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      PressScale(
+                        pressedScale: 0.97,
+                        child: Container(
+                          width: double.infinity,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            gradient: AppTheme.mintActionGradient,
+                            borderRadius: BorderRadius.circular(28),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.pogoMintEnd.withAlpha(80),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(28),
+                              ),
+                            ),
+                            icon: const Icon(Icons.catching_pokemon),
+                            label: const Text(
+                              'Return to PokéMart',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            onPressed: () => context.go('/'),
+                          ),
+                        ),
                       ),
-                    ),
-                    icon: const Icon(Icons.catching_pokemon),
-                    label: const Text(
-                      'Return to PokéMart',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.5,
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: OutlinedButton.icon(
+                          onPressed: () => context.go('/orders'),
+                          icon: const Icon(Icons.receipt_long_outlined),
+                          label: const Text('View Order History'),
+                        ),
                       ),
-                    ),
-                    onPressed: () => context.go('/'),
+                    ],
                   ),
                 ),
               ],
@@ -177,21 +197,83 @@ class _CheckoutConfirmationScreenState
   }
 }
 
-/// Static presentation card displaying the itemized receipt.
-///
-/// Uses [StatelessWidget] since it displays immutable order snapshot data.
+/// Static presentation card displaying the itemized database order receipt.
 class _OrderReceiptCard extends StatelessWidget {
-  final String orderNumber;
-  final DateTime orderDate;
-  final List<CartItem> items;
-  final double totalAmount;
+  final OrderRecord order;
 
-  const _OrderReceiptCard({
-    required this.orderNumber,
-    required this.orderDate,
-    required this.items,
-    required this.totalAmount,
-  });
+  const _OrderReceiptCard({required this.order});
+
+  Widget _buildReceiptLineRow({
+    required ThemeData theme,
+    required ColorScheme colorScheme,
+    required OrderItemRecord item,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: Container(
+            width: 44,
+            height: 44,
+            color: colorScheme.surfaceContainerHighest.withAlpha(80),
+            child: item.imageUrl.isNotEmpty
+                ? (item.imageUrl.startsWith('http')
+                    ? Image.network(
+                        item.imageUrl,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, _, _) => const Icon(
+                          Icons.catching_pokemon,
+                          size: 20,
+                          color: AppTheme.swordPrimary,
+                        ),
+                      )
+                    : Image.asset(
+                        item.imageUrl,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, _, _) => const Icon(
+                          Icons.catching_pokemon,
+                          size: 20,
+                          color: AppTheme.swordPrimary,
+                        ),
+                      ))
+                : const Icon(
+                    Icons.catching_pokemon,
+                    size: 20,
+                    color: AppTheme.swordPrimary,
+                  ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                item.productName,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '${item.formattedUnitPrice} × ${item.quantity}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Text(
+          item.formattedSubtotal,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -209,7 +291,6 @@ class _OrderReceiptCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Order metadata header
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -224,7 +305,7 @@ class _OrderReceiptCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      orderNumber,
+                      order.orderNumber,
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: colorScheme.primary,
@@ -254,7 +335,6 @@ class _OrderReceiptCard extends StatelessWidget {
             ),
             const Divider(height: 28),
 
-            // Itemized line items
             Text(
               'Purchased Items',
               style: theme.textTheme.titleSmall?.copyWith(
@@ -263,7 +343,7 @@ class _OrderReceiptCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
 
-            if (items.isEmpty)
+            if (order.items.isEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8.0),
                 child: Text(
@@ -277,100 +357,19 @@ class _OrderReceiptCard extends StatelessWidget {
               ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: items.length,
+                itemCount: order.items.length,
                 separatorBuilder: (context, index) => const Divider(height: 16),
                 itemBuilder: (context, index) {
-                  final item = items[index];
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Thumbnail image
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(6),
-                        child: Container(
-                          width: 44,
-                          height: 44,
-                          color: colorScheme.surfaceContainerHighest
-                              .withAlpha(80),
-                          child: item.imagePath.isNotEmpty
-                              ? (item.imagePath.startsWith('http')
-                                  ? Image.network(
-                                      item.imagePath,
-                                      fit: BoxFit.contain,
-                                      errorBuilder:
-                                          (context, error, stackTrace) =>
-                                              const Icon(
-                                        Icons.catching_pokemon,
-                                        size: 20,
-                                        color: AppTheme.swordPrimary,
-                                      ),
-                                    )
-                                  : Image.asset(
-                                      item.imagePath,
-                                      fit: BoxFit.contain,
-                                      errorBuilder:
-                                          (context, error, stackTrace) =>
-                                              const Icon(
-                                        Icons.catching_pokemon,
-                                        size: 20,
-                                        color: AppTheme.swordPrimary,
-                                      ),
-                                    ))
-                              : const Icon(
-                                  Icons.catching_pokemon,
-                                  size: 20,
-                                  color: AppTheme.swordPrimary,
-                                ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-
-                      // Item details
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              item.product.name,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            if (item.variant != null) ...[
-                              const SizedBox(height: 2),
-                              Text(
-                                'Variant: ${item.variant!.name}',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                            const SizedBox(height: 2),
-                            Text(
-                              '${item.formattedUnitPrice} × ${item.quantity}',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      // Subtotal per item
-                      Text(
-                        item.formattedSubtotal,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
+                  return _buildReceiptLineRow(
+                    theme: theme,
+                    colorScheme: colorScheme,
+                    item: order.items[index],
                   );
                 },
               ),
 
             const Divider(height: 28),
 
-            // Order Total
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -381,7 +380,7 @@ class _OrderReceiptCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '₽${AppTheme.formatPrice(totalAmount)}',
+                  order.formattedTotal,
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: colorScheme.primary,

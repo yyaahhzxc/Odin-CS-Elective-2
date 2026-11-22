@@ -1,19 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../models/product.dart';
+import '../providers/app_providers.dart';
 import '../state/auth_state.dart';
 import '../state/cart_state.dart';
 import '../state/catalog_state.dart';
 import '../theme/app_theme.dart';
+import 'animated_primitives.dart';
 
-/// Reusable product card component supporting both:
-/// 1. **Grid View** (used on the Storefront Home Screen for Most Popular Items & Grid Catalog)
-/// 2. **Foodpanda-inspired List View** (used on the View All Products Catalog Screen):
-///    - Left column: Product Title, Price (`₽ ...`), Description, and Stock status
-///    - Right column: Rounded square image container (`108×108`) with top-left category pill,
-///      top-right favorite heart, and an anchored bottom-right `+` circle button that
-///      expands into a `[ 🗑 1 + ]` or `[ − 2 + ]` pill overlay.
-class ProductCard extends StatelessWidget {
+/// Reusable product card component supporting both Grid View and List View.
+class ProductCard extends ConsumerWidget {
   final Product product;
   final bool isGrid;
 
@@ -23,8 +20,8 @@ class ProductCard extends StatelessWidget {
     this.isGrid = false,
   });
 
-  bool _requireAuthenticated(BuildContext context, AuthManager? auth) {
-    if (auth != null && !auth.isAuthenticated) {
+  bool _requireAuthenticated(BuildContext context, AuthManager auth) {
+    if (!auth.isAuthenticated) {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -33,9 +30,7 @@ class ProductCard extends StatelessWidget {
           behavior: SnackBarBehavior.floating,
         ),
       );
-      try {
-        context.go('/login');
-      } catch (_) {}
+      context.go('/login');
       return false;
     }
     return true;
@@ -44,7 +39,7 @@ class ProductCard extends StatelessWidget {
   void _handleInitialAdd(
     BuildContext context,
     CartManager cart,
-    AuthManager? auth,
+    AuthManager auth,
   ) {
     if (!_requireAuthenticated(context, auth)) return;
 
@@ -64,7 +59,7 @@ class ProductCard extends StatelessWidget {
   void _handleIncrement(
     BuildContext context,
     CartManager cart,
-    AuthManager? auth,
+    AuthManager auth,
   ) {
     if (!_requireAuthenticated(context, auth)) return;
     final added = cart.incrementProduct(product);
@@ -89,6 +84,7 @@ class ProductCard extends StatelessWidget {
   Future<void> _confirmAndDeleteProduct(
     BuildContext context,
     CatalogManager catalog,
+    CartManager cart,
   ) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -114,37 +110,51 @@ class ProductCard extends StatelessWidget {
     );
 
     if (confirmed == true && context.mounted) {
-      await catalog.deleteProduct(product.id);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Deleted "${product.name}".'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+      try {
+        await catalog.deleteProduct(product.id);
+        if (context.mounted) {
+          cart.removeProductById(product.id);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Deleted "${product.name}".'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Failed to delete "${product.name}": ${e.toString().replaceFirst('Exception: ', '')}',
+              ),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
       }
     }
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final auth = AuthScope.maybeOf(context);
-    final cart = CartScope.maybeOf(context);
-    final catalog = CatalogScope.maybeOf(context);
+    final auth = ref.watch(authProvider);
+    final cart = ref.watch(cartProvider);
+    final catalog = ref.watch(catalogProvider);
 
-    final isAdmin = auth?.isAdmin ?? false;
+    final isAdmin = auth.isAdmin;
     final hasImage = product.imagePath.isNotEmpty;
     final isNetworkImage = product.imagePath.startsWith('http');
-    final isFav = catalog?.isFavorite(product.id) ?? false;
-    final qtyInCart = cart?.quantityOf(product) ?? 0;
+    final isFav = catalog.isFavorite(product.id);
+    final qtyInCart = cart.quantityOf(product);
 
     final Color categoryAccentColor;
     if (product.category == 'Poké Balls') {
       categoryAccentColor = AppTheme.pogoValorRed;
     } else if (product.category == 'Medicine') {
-      categoryAccentColor = AppTheme.pogoTealPrimary;
+      categoryAccentColor = AppTheme.pogoDeepTeal;
     } else if (product.category == 'Evolution') {
       categoryAccentColor = AppTheme.pogoCoinGold;
     } else if (product.category == 'Battle & Training') {
@@ -202,14 +212,14 @@ class ProductCard extends StatelessWidget {
     bool isAdmin,
     bool isFav,
     int qtyInCart,
-    AuthManager? auth,
-    CartManager? cart,
-    CatalogManager? catalog,
+    AuthManager auth,
+    CartManager cart,
+    CatalogManager catalog,
   ) {
     final isOutOfStock = product.stock <= 0;
 
     return InkWell(
-      onTap: () => context.go('/product/${product.id}'),
+      onTap: () => context.push('/product/${product.id}'),
       borderRadius: BorderRadius.circular(16),
       child: Container(
         decoration: BoxDecoration(
@@ -252,7 +262,10 @@ class ProductCard extends StatelessWidget {
                   alignment: Alignment.center,
                   children: [
                     Center(
-                      child: _buildItemImage(hasImage, isNetworkImage, 76),
+                      child: Hero(
+                        tag: 'product-hero-${product.id}',
+                        child: _buildItemImage(hasImage, isNetworkImage, 76),
+                      ),
                     ),
                     // Top-left Category Ribbon Badge
                     Positioned(
@@ -279,7 +292,7 @@ class ProductCard extends StatelessWidget {
                       ),
                     ),
                     // Top-right Favorite Heart Circle
-                    if (catalog != null && !isAdmin)
+                    if (!isAdmin)
                       Positioned(
                         top: 0,
                         right: 0,
@@ -299,42 +312,70 @@ class ProductCard extends StatelessWidget {
                                 ),
                               ],
                             ),
-                            child: Icon(
-                              isFav ? Icons.favorite : Icons.favorite_border,
+                            child: AnimatedFavoriteIcon(
+                              isFavorite: isFav,
                               size: 16,
-                              color: isFav
-                                  ? AppTheme.pogoValorRed
-                                  : colorScheme.onSurface,
+                              activeColor: AppTheme.pogoValorRed,
+                              inactiveColor: colorScheme.onSurface,
                             ),
                           ),
                         ),
                       ),
                     // Bottom-right Overlaid Add (+) or Counter Pill
-                    if (!isAdmin && cart != null)
+                    if (!isAdmin)
                       Positioned(
                         bottom: 0,
                         right: 0,
-                        left: qtyInCart > 0 ? 0 : null,
+                        left: 0,
                         child: Align(
                           alignment: Alignment.bottomRight,
-                          child: qtyInCart > 0
-                              ? FractionallySizedBox(
-                                  widthFactor: 0.55,
-                                  child: _buildOverlayCounterPill(
-                                    context,
-                                    cart,
-                                    auth,
-                                    qtyInCart,
-                                    colorScheme,
-                                  ),
-                                )
-                              : _buildOverlayAddCircle(
-                                  context,
-                                  cart,
-                                  auth,
-                                  isOutOfStock,
-                                  colorScheme,
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 220),
+                            switchInCurve: Curves.easeOutBack,
+                            switchOutCurve: Curves.easeInCubic,
+                            layoutBuilder: (currentChild, previousChildren) {
+                              return Stack(
+                                alignment: Alignment.bottomRight,
+                                children: [
+                                  ...previousChildren,
+                                  ?currentChild,
+                                ],
+                              );
+                            },
+                            transitionBuilder: (child, animation) {
+                              return FadeTransition(
+                                opacity: animation,
+                                child: ScaleTransition(
+                                  scale: Tween<double>(begin: 0.75, end: 1.0)
+                                      .animate(animation),
+                                  alignment: Alignment.centerRight,
+                                  child: child,
                                 ),
+                              );
+                            },
+                            child: qtyInCart > 0
+                                ? FractionallySizedBox(
+                                    key: const ValueKey<String>('counter-pill'),
+                                    widthFactor: 0.55,
+                                    child: _buildOverlayCounterPill(
+                                      context,
+                                      cart,
+                                      auth,
+                                      qtyInCart,
+                                      colorScheme,
+                                    ),
+                                  )
+                                : KeyedSubtree(
+                                    key: const ValueKey<String>('add-circle'),
+                                    child: _buildOverlayAddCircle(
+                                      context,
+                                      cart,
+                                      auth,
+                                      isOutOfStock,
+                                      colorScheme,
+                                    ),
+                                  ),
+                          ),
                         ),
                       ),
                   ],
@@ -422,7 +463,7 @@ class ProductCard extends StatelessWidget {
                           ),
                           tooltip: 'Edit ${product.name}',
                           onPressed: () =>
-                              context.go('/admin/product/edit/${product.id}'),
+                              context.push('/admin/product/edit/${product.id}'),
                         ),
                         const SizedBox(width: 4),
                         IconButton(
@@ -438,12 +479,11 @@ class ProductCard extends StatelessWidget {
                             color: AppTheme.pogoValorRed,
                           ),
                           tooltip: 'Delete ${product.name}',
-                          onPressed: catalog == null
-                              ? null
-                              : () => _confirmAndDeleteProduct(
-                                    context,
-                                    catalog,
-                                  ),
+                          onPressed: () => _confirmAndDeleteProduct(
+                            context,
+                            catalog,
+                            cart,
+                          ),
                         ),
                       ],
                     ),
@@ -457,10 +497,8 @@ class ProductCard extends StatelessWidget {
     );
   }
 
-  /// Foodpanda-inspired List View row (matches Screenshot 2):
-  /// - Left column: Bold Title, Price (`from ₽...` or `₽...`), Description, and Stock badge
-  /// - Right column: Rounded square image container with top-left category tag,
-  ///   favorite heart, and overlaid bottom-right `+` circle button or `[ 🗑 1 + ]` / `[ − 2 + ]` counter pill.
+  /// List view product row displaying item details on the left and image with
+  /// overlaid cart controls on the right.
   Widget _buildFoodpandaListView(
     BuildContext context,
     ThemeData theme,
@@ -471,14 +509,14 @@ class ProductCard extends StatelessWidget {
     bool isAdmin,
     bool isFav,
     int qtyInCart,
-    AuthManager? auth,
-    CartManager? cart,
-    CatalogManager? catalog,
+    AuthManager auth,
+    CartManager cart,
+    CatalogManager catalog,
   ) {
     final isOutOfStock = product.stock <= 0;
 
     return InkWell(
-      onTap: () => context.go('/product/${product.id}'),
+      onTap: () => context.push('/product/${product.id}'),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
@@ -516,18 +554,17 @@ class ProductCard extends StatelessWidget {
                             ),
                           ),
                         ),
-                        if (catalog != null && !isAdmin)
+                        if (!isAdmin)
                           InkWell(
                             onTap: () => catalog.toggleFavorite(product.id),
                             borderRadius: BorderRadius.circular(14),
                             child: Padding(
                               padding: const EdgeInsets.all(4),
-                              child: Icon(
-                                isFav ? Icons.favorite : Icons.favorite_border,
+                              child: AnimatedFavoriteIcon(
+                                isFavorite: isFav,
                                 size: 17,
-                                color: isFav
-                                    ? AppTheme.pogoValorRed
-                                    : colorScheme.onSurfaceVariant,
+                                activeColor: AppTheme.pogoValorRed,
+                                inactiveColor: colorScheme.onSurfaceVariant,
                               ),
                             ),
                           ),
@@ -586,7 +623,7 @@ class ProductCard extends StatelessWidget {
                       Row(
                         children: [
                           OutlinedButton.icon(
-                            onPressed: () => context.go(
+                            onPressed: () => context.push(
                               '/admin/product/edit/${product.id}',
                             ),
                             icon: const Icon(Icons.edit_outlined, size: 15),
@@ -600,12 +637,11 @@ class ProductCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 8),
                           OutlinedButton.icon(
-                            onPressed: catalog == null
-                                ? null
-                                : () => _confirmAndDeleteProduct(
-                                      context,
-                                      catalog,
-                                    ),
+                            onPressed: () => _confirmAndDeleteProduct(
+                              context,
+                              catalog,
+                              cart,
+                            ),
                             icon: const Icon(Icons.delete_outline, size: 15),
                             label: const Text('Delete'),
                             style: OutlinedButton.styleFrom(
@@ -644,7 +680,10 @@ class ProductCard extends StatelessWidget {
                       ),
                     ),
                     child: Center(
-                      child: _buildItemImage(hasImage, isNetworkImage, 74),
+                      child: Hero(
+                        tag: 'product-hero-${product.id}',
+                        child: _buildItemImage(hasImage, isNetworkImage, 74),
+                      ),
                     ),
                   ),
 
@@ -673,32 +712,61 @@ class ProductCard extends StatelessWidget {
                     ),
                   ),
 
-                  // Bottom-right Overlaid Add Button (+) or Counter Pill ([ 🗑 1 + ] / [ − 2 + ])
-                  if (!isAdmin && cart != null)
+                  // Bottom-right Overlaid Add Button (+) or Counter Pill
+                  if (!isAdmin)
                     Positioned(
                       bottom: 6,
                       right: 6,
-                      left: qtyInCart > 0 ? 6 : null,
+                      left: 6,
                       child: Align(
                         alignment: Alignment.bottomRight,
-                        child: qtyInCart > 0
-                            ? FractionallySizedBox(
-                                widthFactor: 0.55,
-                                child: _buildOverlayCounterPill(
-                                  context,
-                                  cart,
-                                  auth,
-                                  qtyInCart,
-                                  colorScheme,
-                                ),
-                              )
-                            : _buildOverlayAddCircle(
-                                context,
-                                cart,
-                                auth,
-                                isOutOfStock,
-                                colorScheme,
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 220),
+                          switchInCurve: Curves.easeOutBack,
+                          switchOutCurve: Curves.easeInCubic,
+                          layoutBuilder: (currentChild, previousChildren) {
+                            return Stack(
+                              alignment: Alignment.bottomRight,
+                              children: [
+                                ...previousChildren,
+                                ?currentChild,
+                              ],
+                            );
+                          },
+                          transitionBuilder: (child, animation) {
+                            return FadeTransition(
+                              opacity: animation,
+                              child: ScaleTransition(
+                                scale: Tween<double>(begin: 0.75, end: 1.0)
+                                    .animate(animation),
+                                alignment: Alignment.centerRight,
+                                child: child,
                               ),
+                            );
+                          },
+                          child: qtyInCart > 0
+                              ? FractionallySizedBox(
+                                  key: const ValueKey<String>('counter-pill'),
+                                  widthFactor: 0.92,
+                                  child: _buildOverlayCounterPill(
+                                    context,
+                                    cart,
+                                    auth,
+                                    qtyInCart,
+                                    colorScheme,
+                                  ),
+                                )
+                              : KeyedSubtree(
+                                  key: const ValueKey<String>('add-circle'),
+                                  child: _buildOverlayAddCircle(
+                                    context,
+                                    cart,
+                                    auth,
+                                    isOutOfStock,
+                                    colorScheme,
+                                  ),
+                                ),
+                        ),
                       ),
                     ),
                 ],
@@ -715,7 +783,7 @@ class ProductCard extends StatelessWidget {
   Widget _buildOverlayAddCircle(
     BuildContext context,
     CartManager cart,
-    AuthManager? auth,
+    AuthManager auth,
     bool isOutOfStock,
     ColorScheme colorScheme,
   ) {
@@ -765,12 +833,12 @@ class ProductCard extends StatelessWidget {
   }
 
   /// White stadium pill overlaid at the bottom of the product image when `quantity > 0`:
-  /// - Shows `[ 🗑  1  + ]` when `quantity == 1` (pressing trash removes item and reverts to `+`)
-  /// - Shows `[ −  2  + ]` when `quantity > 1` (matches Foodpanda Screenshot 2)
+  /// - Shows `[ delete  1  + ]` when `quantity == 1` (tapping delete removes the item)
+  /// - Shows `[ -  2  + ]` when `quantity > 1`
   Widget _buildOverlayCounterPill(
     BuildContext context,
     CartManager cart,
-    AuthManager? auth,
+    AuthManager auth,
     int quantity,
     ColorScheme colorScheme,
   ) {
@@ -797,14 +865,22 @@ class ProductCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(14),
               child: Padding(
                 padding: const EdgeInsets.all(4),
-                child: Icon(
-                  quantity == 1 ? Icons.delete_outline : Icons.remove,
-                  size: 16,
-                  color: Theme.of(context).colorScheme.onSurface,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 180),
+                  transitionBuilder: (child, animation) => ScaleTransition(
+                    scale: animation,
+                    child: FadeTransition(opacity: animation, child: child),
+                  ),
+                  child: Icon(
+                    quantity == 1 ? Icons.delete_outline : Icons.remove,
+                    key: ValueKey<bool>(quantity == 1),
+                    size: 16,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
                 ),
               ),
             ),
-            Text(
+            AnimatedValueText(
               '$quantity',
               style: TextStyle(
                 fontSize: 13,
@@ -845,7 +921,10 @@ class ProductCard extends StatelessWidget {
         product.imagePath,
         width: size,
         height: size,
+        // Match ProductDetailScreen cacheWidth so Hero transitions hit ImageCache immediately.
+        cacheWidth: 256,
         fit: BoxFit.contain,
+        gaplessPlayback: true,
         errorBuilder: (_, _, _) => Icon(
           Icons.catching_pokemon,
           size: size * 0.6,
@@ -858,6 +937,7 @@ class ProductCard extends StatelessWidget {
         width: size,
         height: size,
         fit: BoxFit.contain,
+        gaplessPlayback: true,
         errorBuilder: (_, _, _) => Icon(
           Icons.catching_pokemon,
           size: size * 0.6,

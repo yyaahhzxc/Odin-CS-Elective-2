@@ -1,35 +1,33 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import '../models/category.dart';
 import '../models/product.dart';
 import '../services/supabase_service.dart';
 
-/// State management controller managing product catalog querying, search,
-/// favorites filtering & sorting, price filtering, offset pagination,
+/// State controller managing product catalog querying, search, favorites
+/// filtering and sorting, price filtering, server-side pagination,
 /// and Admin product/category CRUD.
 class CatalogManager extends ChangeNotifier {
   final SupabaseService _service;
 
   List<Product> _products = [];
-  List<String> _categories = [
-    'All',
-    'Poké Balls',
-    'Medicine',
-    'Evolution',
-    'Berries & Treats',
-    'Battle & Training',
-    'Special Gear',
-  ];
+  List<Product> _popularProducts = [];
+  List<CategoryRecord> _categoryRecords = [];
   final Set<String> _favoriteIds = {};
   bool _onlyFavorites = false;
 
   bool _isLoading = false;
+  bool _hasLoadedOnce = false;
   String? _errorMessage;
+  int _fetchRequestId = 0;
 
   int _currentPage = 1;
   final int _pageSize = 6; // Evaluator requirement: 6-8 products per page
   int _totalCount = 0;
+  double _maxProductPrice = 5000.0;
 
-  String _selectedCategory = 'All';
+  final Set<String> _selectedCategories = {};
   String _searchQuery = '';
   RangeValues _priceRange = const RangeValues(0, 5000);
   String _sortBy = 'popular';
@@ -40,14 +38,17 @@ class CatalogManager extends ChangeNotifier {
   // Getters
   SupabaseService get service => _service;
   List<Product> get products => List.unmodifiable(_products);
-  List<Product> get popularProducts =>
-      _service.getTopPopularProducts(limit: 6);
-  List<String> get categories => List.unmodifiable(_categories);
+  List<Product> get popularProducts => List.unmodifiable(_popularProducts);
+  List<CategoryRecord> get categoryRecords =>
+      List.unmodifiable(_categoryRecords);
+  List<String> get categories =>
+      ['All', ..._categoryRecords.map((c) => c.name)];
   List<String> get editableCategories =>
-      _categories.where((c) => c != 'All').toList();
+      _categoryRecords.map((c) => c.name).toList();
   Set<String> get favoriteIds => Set.unmodifiable(_favoriteIds);
   bool get onlyFavorites => _onlyFavorites;
   bool get isLoading => _isLoading;
+  bool get hasLoadedOnce => _hasLoadedOnce;
   String? get errorMessage => _errorMessage;
   int get currentPage => _currentPage;
   int get pageSize => _pageSize;
@@ -55,18 +56,44 @@ class CatalogManager extends ChangeNotifier {
   int get totalPages => _totalCount == 0 ? 1 : (_totalCount / _pageSize).ceil();
   bool get hasPreviousPage => _currentPage > 1;
   bool get hasNextPage => _currentPage < totalPages;
-  String get selectedCategory => _selectedCategory;
+  Set<String> get selectedCategories => Set.unmodifiable(_selectedCategories);
+
+  String get selectedCategory {
+    if (_selectedCategories.isEmpty) return 'All';
+    if (_selectedCategories.length == 1) return _selectedCategories.first;
+    return '${_selectedCategories.length} Categories';
+  }
+
+  /// Resolves the database `category_id` matching [categoryName], if known.
+  int? categoryIdForName(String categoryName) {
+    for (final record in _categoryRecords) {
+      if (record.name == categoryName) {
+        return record.id;
+      }
+    }
+    return null;
+  }
+
+  /// Checks whether a category pill should display as selected in the filter panel.
+  bool isCategorySelected(String category) {
+    if (category == 'All') {
+      return _selectedCategories.isEmpty && !_onlyFavorites;
+    }
+    return _selectedCategories.contains(category);
+  }
+
   String get searchQuery => _searchQuery;
   RangeValues get priceRange => _priceRange;
+  double get maxCatalogPrice => math.max(_maxProductPrice, _priceRange.end);
   String get sortBy => _sortBy;
 
   /// Returns true when the user is actively filtering or searching the catalog.
   bool get isFiltering {
-    return _selectedCategory != 'All' ||
+    return _selectedCategories.isNotEmpty ||
         _searchQuery.trim().isNotEmpty ||
         _onlyFavorites ||
         _priceRange.start > 0 ||
-        _priceRange.end < 5000;
+        _priceRange.end < maxCatalogPrice;
   }
 
   /// Checks whether a product ID is marked as a favorite.
@@ -96,58 +123,134 @@ class CatalogManager extends ChangeNotifier {
 
   /// Resets all active search, category, price, and favorite filters.
   void resetFilters() {
-    _selectedCategory = 'All';
+    _selectedCategories.clear();
     _searchQuery = '';
     _onlyFavorites = false;
-    _priceRange = const RangeValues(0, 5000);
+    _priceRange = RangeValues(0, maxCatalogPrice);
     _sortBy = 'popular';
     _currentPage = 1;
     fetchCatalog();
   }
 
-  /// Looks up a product by ID from current page or underlying service.
+  /// Clears loaded catalog data and caches (invoked upon sign-out).
+  void clearCatalog() {
+    if (_products.isEmpty &&
+        _popularProducts.isEmpty &&
+        _categoryRecords.isEmpty &&
+        !_hasLoadedOnce &&
+        _errorMessage == null &&
+        !_isLoading &&
+        _favoriteIds.isEmpty &&
+        _selectedCategories.isEmpty &&
+        _searchQuery.isEmpty) {
+      return;
+    }
+    _fetchRequestId++;
+    _products = [];
+    _popularProducts = [];
+    _categoryRecords = [];
+    _favoriteIds.clear();
+    _onlyFavorites = false;
+    _selectedCategories.clear();
+    _searchQuery = '';
+    _currentPage = 1;
+    _totalCount = 0;
+    _maxProductPrice = 5000.0;
+    _priceRange = const RangeValues(0, 5000);
+    _sortBy = 'popular';
+    _isLoading = false;
+    _hasLoadedOnce = false;
+    _errorMessage = null;
+    _service.clearCache();
+    notifyListeners();
+  }
+
+  /// Looks up a product by ID from loaded lists or service cache.
   Product? findProductById(String id) {
     for (final p in _products) {
       if (p.id == id) return p;
     }
-    return _service.getProductById(id);
+    for (final p in _popularProducts) {
+      if (p.id == id) return p;
+    }
+    return _service.getCachedProductById(id);
   }
 
-  /// Loads products and categories matching active filters from Supabase.
+  /// Looks up a product locally first, then queries Supabase when not cached.
+  Future<Product?> findOrFetchProduct(String id) async {
+    final cached = findProductById(id);
+    if (cached != null) return cached;
+    return await _service.fetchProductById(id);
+  }
+
+  /// Loads categories, price bounds, popular items, and the current catalog page.
   Future<void> fetchCatalog() async {
+    final requestId = ++_fetchRequestId;
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      final fetchedCats = await _service.fetchCategories();
-      if (fetchedCats.isNotEmpty) {
-        _categories = ['All', ...fetchedCats.where((c) => c != 'All')];
+      final fetchedCategories = await _service.fetchCategories();
+      if (requestId != _fetchRequestId) return;
+      _categoryRecords = fetchedCategories;
+
+      final previousDefaultMax = _maxProductPrice;
+      final fetchedMax = await _service.fetchMaxProductPrice();
+      if (requestId != _fetchRequestId) return;
+      _maxProductPrice = fetchedMax;
+      if (_priceRange.end == previousDefaultMax &&
+          fetchedMax > _priceRange.end) {
+        _priceRange = RangeValues(_priceRange.start, fetchedMax);
       }
 
-      final result = await _service.fetchProducts(
+      final fetchedPopular = await _service.fetchPopularProducts(limit: 6);
+      if (requestId != _fetchRequestId) return;
+      _popularProducts = fetchedPopular;
+
+      var result = await _service.fetchProducts(
         page: _currentPage,
         pageSize: _pageSize,
         minPrice: _priceRange.start,
         maxPrice: _priceRange.end,
-        category: _selectedCategory,
+        categories: _selectedCategories,
         searchQuery: _searchQuery,
         sortBy: _sortBy,
         favoriteIds: _favoriteIds,
         onlyFavorites: _onlyFavorites,
       );
+      if (requestId != _fetchRequestId) return;
 
       _products = result.products;
       _totalCount = result.totalCount;
 
-      if (_currentPage > totalPages && totalPages > 0) {
+      if (_products.isEmpty && _totalCount > 0 && _currentPage > totalPages) {
         _currentPage = totalPages;
+        result = await _service.fetchProducts(
+          page: _currentPage,
+          pageSize: _pageSize,
+          minPrice: _priceRange.start,
+          maxPrice: _priceRange.end,
+          categories: _selectedCategories,
+          searchQuery: _searchQuery,
+          sortBy: _sortBy,
+          favoriteIds: _favoriteIds,
+          onlyFavorites: _onlyFavorites,
+        );
+        if (requestId != _fetchRequestId) return;
+        _products = result.products;
+        _totalCount = result.totalCount;
       }
+
+      _hasLoadedOnce = true;
     } catch (e) {
-      _errorMessage = 'Failed to load catalog from Supabase: $e';
+      if (requestId != _fetchRequestId) return;
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      if (requestId == _fetchRequestId) {
+        _isLoading = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -167,10 +270,44 @@ class CatalogManager extends ChangeNotifier {
     fetchCatalog();
   }
 
-  /// Updates active category filter and resets pagination to page 1.
+  /// Selects a single category (or clears to `'All'`) and resets pagination to page 1.
   void setCategory(String category) {
-    if (_selectedCategory == category) return;
-    _selectedCategory = category;
+    if (category == 'All') {
+      if (_selectedCategories.isEmpty && !_onlyFavorites) return;
+      _selectedCategories.clear();
+      _onlyFavorites = false;
+    } else {
+      if (_selectedCategories.length == 1 &&
+          _selectedCategories.contains(category)) {
+        return;
+      }
+      _selectedCategories
+        ..clear()
+        ..add(category);
+    }
+    _currentPage = 1;
+    fetchCatalog();
+  }
+
+  /// Toggles a category in multi-select mode, or resets all categories when `'All'` is selected.
+  void toggleCategory(String category) {
+    if (category == 'All') {
+      _selectedCategories.clear();
+      _onlyFavorites = false;
+    } else {
+      if (!_selectedCategories.remove(category)) {
+        _selectedCategories.add(category);
+      }
+    }
+    _currentPage = 1;
+    fetchCatalog();
+  }
+
+  /// Clears active category selections and favorites-only filter.
+  void clearCategoryFilters() {
+    if (_selectedCategories.isEmpty && !_onlyFavorites) return;
+    _selectedCategories.clear();
+    _onlyFavorites = false;
     _currentPage = 1;
     fetchCatalog();
   }
@@ -219,30 +356,68 @@ class CatalogManager extends ChangeNotifier {
   }
 
   /// Adds a new category (Admin only) and refreshes catalog categories.
-  Future<void> addCategory(String categoryName) async {
-    await _service.addCategory(categoryName);
+  Future<CategoryRecord> addCategory(String categoryName) async {
+    final created = await _service.addCategory(categoryName);
+    await fetchCatalog();
+    return created;
+  }
+
+  /// Renames an existing category (Admin only) and refreshes catalog.
+  Future<CategoryRecord> updateCategory({
+    required int id,
+    required String oldName,
+    required String newName,
+  }) async {
+    final updated = await _service.updateCategory(
+      id: id,
+      oldName: oldName,
+      newName: newName,
+    );
+    if (_selectedCategories.remove(oldName)) {
+      _selectedCategories.add(updated.name);
+    }
+    await fetchCatalog();
+    return updated;
+  }
+
+  /// Deletes a category (Admin only) and refreshes catalog.
+  Future<void> deleteCategory(int id) async {
+    String? deletedName;
+    for (final c in _categoryRecords) {
+      if (c.id == id) {
+        deletedName = c.name;
+        break;
+      }
+    }
+    await _service.deleteCategory(id);
+    if (deletedName != null) {
+      _selectedCategories.remove(deletedName);
+    }
     await fetchCatalog();
   }
 
-  /// Adds a new product (Admin only), ensures filters allow it to be seen on Page 1,
-  /// and refreshes the catalog immediately.
+  /// Adds a new product (Admin only) and refreshes the catalog.
   Future<void> addProduct(Product product) async {
     _isLoading = true;
     notifyListeners();
     try {
       await _service.addProduct(product);
       _currentPage = 1;
-      if (_selectedCategory != 'All' &&
-          _selectedCategory != product.category) {
-        _selectedCategory = 'All';
+      if (_selectedCategories.isNotEmpty &&
+          !_selectedCategories.contains(product.category)) {
+        _selectedCategories.clear();
       }
       if (product.price > _priceRange.end) {
-        _priceRange = RangeValues(_priceRange.start, product.price);
+        _priceRange = RangeValues(
+          _priceRange.start,
+          math.max(maxCatalogPrice, product.price),
+        );
       }
       await fetchCatalog();
-    } finally {
+    } catch (e) {
       _isLoading = false;
       notifyListeners();
+      rethrow;
     }
   }
 
@@ -252,10 +427,17 @@ class CatalogManager extends ChangeNotifier {
     notifyListeners();
     try {
       await _service.updateProduct(product);
+      if (product.price > _priceRange.end) {
+        _priceRange = RangeValues(
+          _priceRange.start,
+          math.max(maxCatalogPrice, product.price),
+        );
+      }
       await fetchCatalog();
-    } finally {
+    } catch (e) {
       _isLoading = false;
       notifyListeners();
+      rethrow;
     }
   }
 
@@ -267,29 +449,10 @@ class CatalogManager extends ChangeNotifier {
       _favoriteIds.remove(productId);
       await _service.deleteProduct(productId);
       await fetchCatalog();
-    } finally {
+    } catch (e) {
       _isLoading = false;
       notifyListeners();
+      rethrow;
     }
-  }
-}
-
-/// InheritedNotifier providing [CatalogManager] state down the widget tree.
-class CatalogScope extends InheritedNotifier<CatalogManager> {
-  const CatalogScope({
-    super.key,
-    required CatalogManager manager,
-    required super.child,
-  }) : super(notifier: manager);
-
-  /// Accesses the nearest [CatalogManager] up the widget tree.
-  static CatalogManager of(BuildContext context) {
-    final scope = context.dependOnInheritedWidgetOfExactType<CatalogScope>();
-    assert(scope != null, 'No CatalogScope found in context');
-    return scope!.notifier!;
-  }
-
-  static CatalogManager? maybeOf(BuildContext context) {
-    return context.dependOnInheritedWidgetOfExactType<CatalogScope>()?.notifier;
   }
 }

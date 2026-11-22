@@ -27,10 +27,24 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
     email TEXT,
+    username TEXT,
     firstname TEXT,
     lastname TEXT,
     role_id BIGINT NOT NULL DEFAULT 1 REFERENCES public.roles(id)
 );
+
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS username TEXT;
+
+UPDATE public.profiles p
+SET username = NULLIF(TRIM(u.raw_user_meta_data->>'username'), '')
+FROM auth.users u
+WHERE p.id = u.id
+  AND (p.username IS NULL OR p.username = '')
+  AND NULLIF(TRIM(u.raw_user_meta_data->>'username'), '') IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS profiles_username_lower_uidx
+    ON public.profiles (LOWER(username))
+    WHERE username IS NOT NULL AND username <> '';
 
 -- ------------------------------------------------------------------------------
 -- 3. CATEGORIES TABLE
@@ -124,18 +138,49 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+    v_full_name TEXT;
+    v_first TEXT;
+    v_last TEXT;
 BEGIN
-    INSERT INTO public.profiles (id, email, firstname, lastname, role_id)
+    v_full_name := TRIM(COALESCE(
+        NEW.raw_user_meta_data->>'full_name',
+        NEW.raw_user_meta_data->>'name',
+        ''
+    ));
+    v_first := NULLIF(TRIM(COALESCE(
+        NEW.raw_user_meta_data->>'firstname',
+        NEW.raw_user_meta_data->>'first_name',
+        NEW.raw_user_meta_data->>'given_name',
+        ''
+    )), '');
+    v_last := NULLIF(TRIM(COALESCE(
+        NEW.raw_user_meta_data->>'lastname',
+        NEW.raw_user_meta_data->>'last_name',
+        NEW.raw_user_meta_data->>'family_name',
+        ''
+    )), '');
+
+    IF v_first IS NULL AND v_full_name <> '' THEN
+        v_first := split_part(v_full_name, ' ', 1);
+    END IF;
+    IF v_last IS NULL AND position(' ' IN v_full_name) > 0 THEN
+        v_last := NULLIF(TRIM(substring(v_full_name FROM position(' ' IN v_full_name) + 1)), '');
+    END IF;
+
+    INSERT INTO public.profiles (id, email, username, firstname, lastname, role_id)
     VALUES (
         NEW.id,
         NEW.email,
-        COALESCE(NEW.raw_user_meta_data->>'firstname', NEW.raw_user_meta_data->>'first_name', ''),
-        COALESCE(NEW.raw_user_meta_data->>'lastname', NEW.raw_user_meta_data->>'last_name', ''),
+        NULLIF(TRIM(NEW.raw_user_meta_data->>'username'), ''),
+        COALESCE(v_first, ''),
+        COALESCE(v_last, ''),
         (SELECT id FROM public.roles WHERE role = 'customer' LIMIT 1)
     )
     ON CONFLICT (id) DO UPDATE
     SET
         email = EXCLUDED.email,
+        username = COALESCE(NULLIF(EXCLUDED.username, ''), public.profiles.username),
         firstname = COALESCE(NULLIF(EXCLUDED.firstname, ''), public.profiles.firstname),
         lastname = COALESCE(NULLIF(EXCLUDED.lastname, ''), public.profiles.lastname);
     RETURN NEW;
@@ -147,7 +192,8 @@ CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
--- 6c. Guard trigger preventing non-admins from changing their own role_id on profiles
+-- 6c. Guard trigger preventing client sessions from changing role_id on profiles
+-- Permits SQL Editor / service_role promotions where auth.uid() IS NULL
 CREATE OR REPLACE FUNCTION public.prevent_role_escalation()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -155,8 +201,8 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-    IF NEW.role_id IS DISTINCT FROM OLD.role_id AND NOT public.is_admin() THEN
-        RAISE EXCEPTION 'Permission denied: Customers cannot modify their role.';
+    IF NEW.role_id IS DISTINCT FROM OLD.role_id AND auth.uid() IS NOT NULL THEN
+        RAISE EXCEPTION 'Permission denied: Users cannot modify their role.';
     END IF;
     RETURN NEW;
 END;
@@ -167,7 +213,34 @@ CREATE TRIGGER trg_prevent_role_escalation
     BEFORE UPDATE ON public.profiles
     FOR EACH ROW EXECUTE FUNCTION public.prevent_role_escalation();
 
--- 6d. Atomic Checkout RPC Function: place_order(p_items jsonb)
+-- 6d. Guard trigger ensuring order updates only modify a valid status
+CREATE OR REPLACE FUNCTION public.enforce_orders_status_update_only()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    IF NEW.user_id IS DISTINCT FROM OLD.user_id
+       OR NEW.total IS DISTINCT FROM OLD.total
+       OR NEW.created_at IS DISTINCT FROM OLD.created_at THEN
+        RAISE EXCEPTION 'Permission denied: Only order status may be updated.';
+    END IF;
+
+    IF NEW.status IS NULL OR NEW.status NOT IN ('pending', 'processing', 'done', 'cancelled') THEN
+        RAISE EXCEPTION 'Invalid order status: %.', NEW.status;
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_orders_status_update_only ON public.orders;
+CREATE TRIGGER trg_orders_status_update_only
+    BEFORE UPDATE ON public.orders
+    FOR EACH ROW EXECUTE FUNCTION public.enforce_orders_status_update_only();
+
+-- 6e. Atomic Checkout RPC Function: place_order(p_items jsonb)
 -- Enforces Exam Checkout & Orders rules:
 -- 1. Saves one order and its items together, or saves nothing at all if anything fails.
 -- 2. Prices, product names, and stock checks come from the database at checkout time, never from app values.
@@ -182,11 +255,16 @@ AS $$
 DECLARE
     v_user_id UUID;
     v_order_id BIGINT;
+    v_created_at TIMESTAMP WITH TIME ZONE;
+    v_order_item_id BIGINT;
     v_total NUMERIC(12, 2) := 0;
     v_item JSONB;
     v_product_id TEXT;
     v_qty BIGINT;
     v_product RECORD;
+    v_prepared_items JSONB := '[]'::jsonb;
+    v_saved_items JSONB := '[]'::jsonb;
+    v_item_image TEXT;
 BEGIN
     v_user_id := auth.uid();
     IF v_user_id IS NULL THEN
@@ -197,16 +275,11 @@ BEGIN
         RAISE EXCEPTION 'Admins are not permitted to place customer orders.';
     END IF;
 
-    IF p_items IS NULL OR jsonb_array_length(p_items) = 0 THEN
+    IF p_items IS NULL OR jsonb_typeof(p_items) <> 'array' OR jsonb_array_length(p_items) = 0 THEN
         RAISE EXCEPTION 'Cannot place an empty order.';
     END IF;
 
-    -- Create parent order header first (status = 'done' per spec)
-    INSERT INTO public.orders (user_id, status, total)
-    VALUES (v_user_id, 'done', 0)
-    RETURNING id INTO v_order_id;
-
-    -- Process each item atomically, locking product rows to prevent race conditions
+    -- 1. Lock products, validate stock, deduct quantities, and compute DB-authoritative total
     FOR v_item IN SELECT * FROM jsonb_array_elements(p_items)
     LOOP
         v_product_id := v_item->>'product_id';
@@ -216,7 +289,7 @@ BEGIN
             RAISE EXCEPTION 'Invalid quantity for product %', v_product_id;
         END IF;
 
-        SELECT id, name, price, stock
+        SELECT id, name, price, stock, image_path, image_url
         INTO v_product
         FROM public.products
         WHERE id = v_product_id
@@ -231,31 +304,101 @@ BEGIN
                 v_product.name, v_product.stock, v_qty;
         END IF;
 
-        -- Deduct stock and increment sold_count atomically
         UPDATE public.products
         SET stock = stock - v_qty::INTEGER,
             sold_count = COALESCE(sold_count, 0) + v_qty::INTEGER
         WHERE id = v_product_id;
 
-        -- Insert order item with database snapshot of product_name and unit_price
-        INSERT INTO public.order_items (order_id, product_id, product_name, unit_price, quantity)
-        VALUES (v_order_id, v_product.id, v_product.name, v_product.price, v_qty);
+        v_item_image := COALESCE(NULLIF(v_product.image_path, ''), v_product.image_url, '');
+        v_prepared_items := v_prepared_items || jsonb_build_array(
+            jsonb_build_object(
+                'product_id', v_product.id,
+                'product_name', v_product.name,
+                'unit_price', v_product.price,
+                'quantity', v_qty,
+                'image_url', v_item_image
+            )
+        );
 
         v_total := v_total + (v_product.price * v_qty);
     END LOOP;
 
-    -- Update order total with verified database sum
-    UPDATE public.orders
-    SET total = v_total
-    WHERE id = v_order_id;
+    -- 2. Insert parent order header once with final database-verified total
+    INSERT INTO public.orders (user_id, status, total)
+    VALUES (v_user_id, 'done', v_total)
+    RETURNING id, created_at INTO v_order_id, v_created_at;
+
+    -- 3. Insert order line item snapshots referencing the new order
+    FOR v_item IN SELECT * FROM jsonb_array_elements(v_prepared_items)
+    LOOP
+        INSERT INTO public.order_items (order_id, product_id, product_name, unit_price, quantity)
+        VALUES (
+            v_order_id,
+            v_item->>'product_id',
+            v_item->>'product_name',
+            (v_item->>'unit_price')::NUMERIC(10, 2),
+            (v_item->>'quantity')::BIGINT
+        )
+        RETURNING id INTO v_order_item_id;
+
+        v_saved_items := v_saved_items || jsonb_build_array(
+            jsonb_build_object(
+                'id', v_order_item_id,
+                'order_id', v_order_id,
+                'product_id', v_item->>'product_id',
+                'product_name', v_item->>'product_name',
+                'unit_price', (v_item->>'unit_price')::NUMERIC(10, 2),
+                'quantity', (v_item->>'quantity')::BIGINT,
+                'image_url', COALESCE(v_item->>'image_url', '')
+            )
+        );
+    END LOOP;
 
     RETURN jsonb_build_object(
         'order_id', v_order_id,
         'total', v_total,
-        'status', 'done'
+        'status', 'done',
+        'created_at', v_created_at,
+        'items', v_saved_items
     );
 END;
 $$;
+
+-- 6f. Case-insensitive username -> email lookup for username sign-in
+CREATE OR REPLACE FUNCTION public.resolve_email_for_username(p_username TEXT)
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_email TEXT;
+BEGIN
+    IF p_username IS NULL OR TRIM(p_username) = '' THEN
+        RETURN NULL;
+    END IF;
+
+    SELECT p.email
+    INTO v_email
+    FROM public.profiles p
+    WHERE LOWER(p.username) = LOWER(TRIM(p_username))
+    LIMIT 1;
+
+    RETURN v_email;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.resolve_email_for_username(TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.resolve_email_for_username(TEXT) TO anon, authenticated;
+
+-- Restrict SECURITY DEFINER execution grants
+REVOKE ALL ON FUNCTION public.handle_new_user() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.prevent_role_escalation() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.enforce_orders_status_update_only() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.place_order(JSONB) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.place_order(JSONB) TO authenticated;
+REVOKE ALL ON FUNCTION public.is_admin() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
 
 -- ------------------------------------------------------------------------------
 -- 7. ROW LEVEL SECURITY (RLS) POLICIES (Matching Exam Permission Matrix)
@@ -277,13 +420,11 @@ CREATE POLICY "profiles_select_policy" ON public.profiles
 DROP POLICY IF EXISTS "profiles_update_policy" ON public.profiles;
 CREATE POLICY "profiles_update_policy" ON public.profiles
     FOR UPDATE TO authenticated
-    USING (id = auth.uid() OR (SELECT public.is_admin()))
-    WITH CHECK (id = auth.uid() OR (SELECT public.is_admin()));
-
-DROP POLICY IF EXISTS "profiles_insert_policy" ON public.profiles;
-CREATE POLICY "profiles_insert_policy" ON public.profiles
-    FOR INSERT TO authenticated
+    USING (id = auth.uid())
     WITH CHECK (id = auth.uid());
+
+-- Profiles are provisioned solely via handle_new_user() SECURITY DEFINER trigger
+DROP POLICY IF EXISTS "profiles_insert_policy" ON public.profiles;
 
 -- 7b. roles: Customer & Admin can read; no access when signed out
 DROP POLICY IF EXISTS "roles_read_policy" ON public.roles;
@@ -336,16 +477,14 @@ CREATE POLICY "delete product" ON public.products
     FOR DELETE TO authenticated
     USING ((SELECT public.is_admin() AS is_admin));
 
--- 7e. orders: Customer reads & creates own orders only; Admin reads all & updates status
+-- 7e. orders: Customer reads own orders only; Admin reads all & updates status
+-- Order creation happens exclusively through the SECURITY DEFINER place_order() RPC
 DROP POLICY IF EXISTS "orders_select_policy" ON public.orders;
 CREATE POLICY "orders_select_policy" ON public.orders
     FOR SELECT TO authenticated
     USING (user_id = auth.uid() OR (SELECT public.is_admin()));
 
 DROP POLICY IF EXISTS "orders_insert_policy" ON public.orders;
-CREATE POLICY "orders_insert_policy" ON public.orders
-    FOR INSERT TO authenticated
-    WITH CHECK (user_id = auth.uid() AND NOT (SELECT public.is_admin()));
 
 DROP POLICY IF EXISTS "orders_update_admin_policy" ON public.orders;
 CREATE POLICY "orders_update_admin_policy" ON public.orders
@@ -354,6 +493,7 @@ CREATE POLICY "orders_update_admin_policy" ON public.orders
     WITH CHECK ((SELECT public.is_admin()));
 
 -- 7f. order_items: Customer reads items of own orders; Admin reads all
+-- Order item creation happens exclusively through the SECURITY DEFINER place_order() RPC
 DROP POLICY IF EXISTS "order_items_select_policy" ON public.order_items;
 CREATE POLICY "order_items_select_policy" ON public.order_items
     FOR SELECT TO authenticated
@@ -366,16 +506,6 @@ CREATE POLICY "order_items_select_policy" ON public.order_items
     );
 
 DROP POLICY IF EXISTS "order_items_insert_policy" ON public.order_items;
-CREATE POLICY "order_items_insert_policy" ON public.order_items
-    FOR INSERT TO authenticated
-    WITH CHECK (
-        EXISTS (
-            SELECT 1 FROM public.orders o
-            WHERE o.id = order_items.order_id
-              AND o.user_id = auth.uid()
-              AND NOT (SELECT public.is_admin())
-        )
-    );
 
 -- ------------------------------------------------------------------------------
 -- 8. SUPABASE STORAGE BUCKET FOR PRODUCT IMAGES
@@ -393,6 +523,17 @@ DROP POLICY IF EXISTS "Admin upload product images" ON storage.objects;
 CREATE POLICY "Admin upload product images" ON storage.objects
     FOR INSERT TO authenticated
     WITH CHECK (bucket_id = 'product-images' AND (SELECT public.is_admin()));
+
+DROP POLICY IF EXISTS "Admin update product images" ON storage.objects;
+CREATE POLICY "Admin update product images" ON storage.objects
+    FOR UPDATE TO authenticated
+    USING (bucket_id = 'product-images' AND (SELECT public.is_admin()))
+    WITH CHECK (bucket_id = 'product-images' AND (SELECT public.is_admin()));
+
+DROP POLICY IF EXISTS "Admin delete product images" ON storage.objects;
+CREATE POLICY "Admin delete product images" ON storage.objects
+    FOR DELETE TO authenticated
+    USING (bucket_id = 'product-images' AND (SELECT public.is_admin()));
 
 -- ------------------------------------------------------------------------------
 -- 9. SEED POKÉMART INVENTORY (48 Items across 6 Categories)

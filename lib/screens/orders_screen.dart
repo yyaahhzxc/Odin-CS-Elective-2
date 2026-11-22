@@ -1,17 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../models/order.dart';
-import '../state/auth_state.dart';
-import '../state/order_state.dart';
+import '../providers/app_providers.dart';
 import '../theme/app_theme.dart';
+import '../widgets/animated_primitives.dart';
 import '../widgets/app_bottom_nav.dart';
 
 /// Unified Orders Screen serving two role-authorized modes:
-/// 1. Customer Order History (`isAdminMode == false`):
-///    Lists only the customer's own orders, newest first, with status, date, total, and items.
-/// 2. Admin Order List (`isAdminMode == true`):
-///    Lists all customer orders across the store and allows Admins to update order status.
-class OrdersScreen extends StatefulWidget {
+/// 1. Customer Order History (`isAdminMode == false`)
+/// 2. Admin Order List (`isAdminMode == true`)
+class OrdersScreen extends ConsumerStatefulWidget {
   final bool isAdminMode;
 
   const OrdersScreen({
@@ -20,10 +18,10 @@ class OrdersScreen extends StatefulWidget {
   });
 
   @override
-  State<OrdersScreen> createState() => _OrdersScreenState();
+  ConsumerState<OrdersScreen> createState() => _OrdersScreenState();
 }
 
-class _OrdersScreenState extends State<OrdersScreen> {
+class _OrdersScreenState extends ConsumerState<OrdersScreen> {
   static const List<String> _orderStatuses = [
     'pending',
     'processing',
@@ -39,16 +37,16 @@ class _OrdersScreenState extends State<OrdersScreen> {
     });
   }
 
-  void _loadOrders() {
-    final orderManager = OrderScope.maybeOf(context);
-    final auth = AuthScope.maybeOf(context);
-    if (orderManager == null) return;
+  Future<void> _loadOrders() async {
+    final orderManager = ref.read(orderProvider);
+    final auth = ref.read(authProvider);
+    final isAdmin = auth.isAdmin;
 
-    if (widget.isAdminMode || (auth?.isAdmin ?? false)) {
-      orderManager.fetchAllOrders();
-    } else {
-      final userId = auth?.currentUser?.id ?? 'guest';
-      orderManager.fetchCustomerOrders(userId);
+    if (widget.isAdminMode && isAdmin) {
+      await orderManager.fetchAllOrders();
+    } else if (!widget.isAdminMode && !isAdmin) {
+      final userId = auth.userId ?? '';
+      await orderManager.fetchCustomerOrders(userId);
     }
   }
 
@@ -93,10 +91,10 @@ class _OrdersScreenState extends State<OrdersScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final auth = AuthScope.maybeOf(context);
-    final orderManager = OrderScope.maybeOf(context);
+    final auth = ref.watch(authProvider);
+    final orderManager = ref.watch(orderProvider);
 
-    final isAdmin = auth?.isAdmin ?? false;
+    final isAdmin = auth.isAdmin;
     final effectiveAdminMode = widget.isAdminMode && isAdmin;
 
     // Permission-denied guard if a customer attempts to access `/admin/orders`
@@ -134,23 +132,62 @@ class _OrdersScreenState extends State<OrdersScreen> {
       );
     }
 
-    final orders = orderManager?.orders ?? const <OrderRecord>[];
-    final isLoading = orderManager?.isLoading ?? false;
-    final errorMsg = orderManager?.errorMessage;
+    // Permission-denied guard if an admin attempts to access customer `/orders`
+    if (!widget.isAdminMode && isAdmin) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Permission Denied')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.lock_outline, size: 60, color: colorScheme.error),
+                const SizedBox(height: 16),
+                Text(
+                  'Customer Account Required',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Administrators view and manage store-wide orders from the Admin Order List.',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                FilledButton(
+                  onPressed: () => context.go('/admin/orders'),
+                  child: const Text('Go to Admin Orders'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    final orders = orderManager.orders;
+    final isLoading = orderManager.isLoading;
+    final errorMsg = orderManager.errorMessage;
+    final canPop = Navigator.of(context).canPop();
 
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: Text(effectiveAdminMode ? 'Admin Order List' : 'Order History'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            if (Navigator.of(context).canPop()) {
-              Navigator.of(context).pop();
-            } else {
-              context.go('/');
-            }
-          },
-        ),
+        leading: (!effectiveAdminMode || canPop)
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () {
+                  if (canPop) {
+                    Navigator.of(context).pop();
+                  } else {
+                    context.go('/');
+                  }
+                },
+              )
+            : null,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -204,10 +241,12 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.receipt_long_outlined,
-                      size: 68,
-                      color: colorScheme.primary,
+                    PopIn(
+                      child: Icon(
+                        Icons.receipt_long_outlined,
+                        size: 68,
+                        color: colorScheme.primary,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     Text(
@@ -243,11 +282,15 @@ class _OrdersScreenState extends State<OrdersScreen> {
           return Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 800),
-              child: ListView.separated(
-                padding: const EdgeInsets.all(16),
-                itemCount: orders.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 14),
-                itemBuilder: (context, index) {
+              child: RefreshIndicator(
+                color: AppTheme.pogoTealPrimary,
+                onRefresh: _loadOrders,
+                child: ListView.separated(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(16),
+                  itemCount: orders.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 14),
+                  itemBuilder: (context, index) {
                   final order = orders[index];
                   final badgeColor = _statusColor(order.status);
 
@@ -300,8 +343,10 @@ class _OrdersScreenState extends State<OrdersScreen> {
                               ),
 
                               // Status indicator or Admin status editor
-                              if (effectiveAdminMode && orderManager != null)
-                                Container(
+                              if (effectiveAdminMode)
+                                AnimatedContainer(
+                                  duration: const Duration(milliseconds: 220),
+                                  curve: Curves.easeOutCubic,
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 10,
                                     vertical: 2,
@@ -334,12 +379,27 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                             ),
                                           )
                                           .toList(),
-                                      onChanged: (newStatus) {
+                                      onChanged: (newStatus) async {
                                         if (newStatus != null) {
-                                          orderManager.updateOrderStatus(
+                                          final ok =
+                                              await orderManager.updateOrderStatus(
                                             order.id,
                                             newStatus,
                                           );
+                                          if (!ok &&
+                                              context.mounted &&
+                                              orderManager.errorMessage != null) {
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                  orderManager.errorMessage!,
+                                                ),
+                                                behavior:
+                                                    SnackBarBehavior.floating,
+                                              ),
+                                            );
+                                          }
                                         }
                                       },
                                     ),
@@ -421,6 +481,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     ),
                   );
                 },
+                ),
               ),
             ),
           );

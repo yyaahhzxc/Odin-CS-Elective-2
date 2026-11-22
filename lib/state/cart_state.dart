@@ -5,11 +5,8 @@ import '../theme/app_theme.dart';
 
 /// Centralized state manager for the shopping cart.
 ///
-/// Conforms to Exam Cart & Stock Requirements:
-/// - Add a product, change its quantity, and remove it.
-/// - Show a running total and the item count.
-/// - Prevent quantities above available stock, and prevent adding out-of-stock products.
-/// - Held in app state, survives screen changes, and is emptied after a successful order and on logout.
+/// Supports adding products, updating quantities within available stock limits,
+/// computing running totals and item counts, and clearing on checkout or sign-out.
 class CartManager extends ChangeNotifier {
   final List<CartItem> _items = [];
 
@@ -38,6 +35,17 @@ class CartManager extends ChangeNotifier {
     return _items
         .where((item) => item.product.id == product.id)
         .fold(0, (total, item) => total + item.quantity);
+  }
+
+  /// Returns the exact cart quantity for a specific product and optional variant.
+  int quantityOfVariant(Product product, ProductVariant? variant) {
+    final compositeId = '${product.id}_${variant?.id ?? 'base'}';
+    for (final item in _items) {
+      if (item.id == compositeId) {
+        return item.quantity;
+      }
+    }
+    return 0;
   }
 
   /// Increments the base product's quantity in the cart by 1 (or adds it with quantity 1).
@@ -126,31 +134,19 @@ class CartManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Removes all cart entries belonging to [productId] (e.g., when deleted by Admin).
+  void removeProductById(String productId) {
+    final before = _items.length;
+    _items.removeWhere((item) => item.product.id == productId);
+    if (_items.length != before) {
+      notifyListeners();
+    }
+  }
+
   /// Clears all items from the cart (on order completion or user logout).
   void clearCart() {
     if (_items.isEmpty) return;
     _items.clear();
     notifyListeners();
-  }
-}
-
-/// Scoped inherited widget facilitating contextual access to [CartManager].
-class CartScope extends InheritedNotifier<CartManager> {
-  const CartScope({
-    super.key,
-    required CartManager super.notifier,
-    required super.child,
-  });
-
-  /// Retrieves the [CartManager] instance from the nearest ancestor [CartScope].
-  static CartManager of(BuildContext context) {
-    final scope = context.dependOnInheritedWidgetOfExactType<CartScope>();
-    assert(scope != null, 'No CartScope found in current widget context.');
-    return scope!.notifier!;
-  }
-
-  /// Retrieves the [CartManager] instance, or null if none is present.
-  static CartManager? maybeOf(BuildContext context) {
-    return context.dependOnInheritedWidgetOfExactType<CartScope>()?.notifier;
   }
 }

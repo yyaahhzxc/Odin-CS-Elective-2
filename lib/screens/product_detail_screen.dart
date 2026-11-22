@@ -1,38 +1,73 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../models/product.dart';
-import '../state/auth_state.dart';
-import '../state/cart_state.dart';
-import '../state/catalog_state.dart';
+import '../providers/app_providers.dart';
 import '../theme/app_theme.dart';
+import '../widgets/animated_primitives.dart';
 
 /// Screen displaying comprehensive details for a selected product.
-/// Implements standard e-commerce conventions: hero product image showcase,
-/// clear pricing hierarchy, variant selection, stock indicators, and an anchored
-/// bottom purchasing bar.
-class ProductDetailScreen extends StatefulWidget {
-  final Product product;
+class ProductDetailScreen extends ConsumerStatefulWidget {
+  final String productId;
+  final Product? initialProduct;
 
   const ProductDetailScreen({
     super.key,
-    required this.product,
+    required this.productId,
+    this.initialProduct,
   });
 
   @override
-  State<ProductDetailScreen> createState() => _ProductDetailScreenState();
+  ConsumerState<ProductDetailScreen> createState() =>
+      _ProductDetailScreenState();
 }
 
-class _ProductDetailScreenState extends State<ProductDetailScreen> {
+class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   int _selectedVariantIndex = 0;
   int _quantity = 1;
 
-  // Floating notification banner state
   bool _showBanner = false;
   String _bannerMessage = '';
   Timer? _bannerTimer;
 
-  bool _isFavorite = false;
+  Product? _fetchedProduct;
+  bool _isLoadingProduct = false;
+  String? _loadError;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialProduct == null &&
+        ref.read(catalogProvider).findProductById(widget.productId) == null) {
+      _loadProduct();
+    }
+  }
+
+  Future<void> _loadProduct() async {
+    setState(() {
+      _isLoadingProduct = true;
+      _loadError = null;
+    });
+
+    try {
+      final product =
+          await ref.read(catalogProvider).findOrFetchProduct(widget.productId);
+      if (mounted) {
+        setState(() {
+          _fetchedProduct = product;
+          _isLoadingProduct = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loadError = e.toString().replaceFirst('Exception: ', '');
+          _isLoadingProduct = false;
+        });
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -44,40 +79,107 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final cart = CartScope.of(context);
-    final auth = AuthScope.maybeOf(context);
-    final catalog = CatalogScope.maybeOf(context);
-    final isAdmin = auth?.isAdmin ?? false;
-    final isFavorite = catalog?.isFavorite(widget.product.id) ?? _isFavorite;
+    final cart = ref.watch(cartProvider);
+    final auth = ref.watch(authProvider);
+    final catalog = ref.watch(catalogProvider);
+    final isAdmin = auth.isAdmin;
 
-    final hasVariants = widget.product.variants.isNotEmpty;
+    final liveProduct = catalog.findProductById(widget.productId) ??
+        _fetchedProduct ??
+        widget.initialProduct;
+
+    if (liveProduct == null) {
+      return Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/');
+              }
+            },
+          ),
+          title: const Text('Product Details'),
+        ),
+        body: Center(
+          child: _isLoadingProduct
+              ? const CircularProgressIndicator(
+                  color: AppTheme.pogoTealPrimary,
+                )
+              : Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _loadError != null
+                            ? Icons.error_outline
+                            : Icons.inventory_2_outlined,
+                        size: 56,
+                        color: _loadError != null
+                            ? colorScheme.error
+                            : colorScheme.outline,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        _loadError ?? 'Product not found.',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 16),
+                      if (_loadError != null)
+                        FilledButton.icon(
+                          onPressed: _loadProduct,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Try Again'),
+                        )
+                      else
+                        FilledButton(
+                          onPressed: () => context.go('/'),
+                          child: const Text('Return to Catalog'),
+                        ),
+                    ],
+                  ),
+                ),
+        ),
+      );
+    }
+
+    final isFavorite = catalog.isFavorite(liveProduct.id);
+
+    final hasVariants = liveProduct.variants.isNotEmpty;
+    final safeVariantIndex =
+        hasVariants ? _selectedVariantIndex.clamp(0, liveProduct.variants.length - 1) : 0;
     final activeVariant =
-        hasVariants ? widget.product.variants[_selectedVariantIndex] : null;
+        hasVariants ? liveProduct.variants[safeVariantIndex] : null;
 
     final displayName = activeVariant != null
-        ? '${widget.product.name} - ${activeVariant.name}'
-        : widget.product.name;
-    final unitPrice = activeVariant?.price ?? widget.product.price;
+        ? '${liveProduct.name} - ${activeVariant.name}'
+        : liveProduct.name;
+    final unitPrice = activeVariant?.price ?? liveProduct.price;
     final displayPrice = activeVariant?.price != null
         ? '₽${AppTheme.formatPrice(activeVariant!.price!)}'
-        : widget.product.formattedPrice;
+        : liveProduct.formattedPrice;
     final displayDescription =
-        activeVariant?.description ?? widget.product.description;
-    final displayStock = activeVariant?.stock ?? widget.product.stock;
+        activeVariant?.description ?? liveProduct.description;
+    final displayStock = activeVariant?.stock ?? liveProduct.stock;
 
     final String imagePath = (activeVariant?.imagePath != null &&
             activeVariant!.imagePath!.isNotEmpty)
         ? activeVariant.imagePath!
-        : widget.product.imagePath;
+        : liveProduct.imagePath;
 
     final isNetworkImage = imagePath.startsWith('http');
     final hasRealImage = imagePath.isNotEmpty;
-    final totalPrice = unitPrice * _quantity;
+    final alreadyInCart = cart.quantityOfVariant(liveProduct, activeVariant);
+    final remainingStock = (displayStock - alreadyInCart).clamp(0, displayStock);
+    final effectiveQty = remainingStock > 0 ? _quantity.clamp(1, remainingStock) : 1;
+    final totalPrice = unitPrice * effectiveQty;
 
     return Scaffold(
-      backgroundColor: colorScheme.surface,
       appBar: AppBar(
-        backgroundColor: colorScheme.surface,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -92,51 +194,48 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           },
         ),
         title: Text(
-          widget.product.category,
+          liveProduct.category,
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w800,
           ),
         ),
         actions: [
-          IconButton(
-            icon: Icon(
-              isFavorite ? Icons.favorite : Icons.favorite_border,
-              color: isFavorite ? AppTheme.pogoValorRed : colorScheme.onSurface,
-            ),
-            tooltip: isFavorite ? 'Remove from Wishlist' : 'Add to Wishlist',
-            onPressed: () {
-              if (catalog != null) {
-                catalog.toggleFavorite(widget.product.id);
-              } else {
-                setState(() {
-                  _isFavorite = !_isFavorite;
-                });
-              }
-            },
-          ),
-          IconButton(
-            icon: Badge(
-              isLabelVisible: cart.isNotEmpty,
-              backgroundColor: AppTheme.pogoValorRed,
-              label: Text('${cart.totalItemCount}'),
-              child: const Icon(
-                Icons.shopping_bag_outlined,
-                color: AppTheme.pogoTealPrimary,
+          if (!isAdmin) ...[
+            IconButton(
+              icon: Badge(
+                isLabelVisible: cart.isNotEmpty,
+                backgroundColor: AppTheme.pogoValorRed,
+                label: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 220),
+                  switchInCurve: Curves.easeOutBack,
+                  transitionBuilder: (child, animation) => ScaleTransition(
+                    scale: Tween<double>(begin: 0.6, end: 1.0).animate(animation),
+                    child: child,
+                  ),
+                  child: Text(
+                    '${cart.totalItemCount}',
+                    key: ValueKey<int>(cart.totalItemCount),
+                  ),
+                ),
+                child: Icon(
+                  Icons.shopping_bag_outlined,
+                  color: colorScheme.primary,
+                ),
               ),
+              tooltip: 'Shopping Cart',
+              onPressed: () {
+                _bannerTimer?.cancel();
+                context.push('/cart');
+              },
             ),
-            tooltip: 'Shopping Cart',
-            onPressed: () {
-              _bannerTimer?.cancel();
-              context.go('/cart');
-            },
-          ),
-          const SizedBox(width: 4),
+            const SizedBox(width: 4),
+          ],
         ],
       ),
       body: Stack(
         children: [
           SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 120),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -153,33 +252,27 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     ),
                   ),
                   child: Center(
-                    child: hasRealImage
-                        ? (isNetworkImage
-                            ? Image.network(
-                                imagePath,
-                                height: 130,
-                                fit: BoxFit.contain,
-                                errorBuilder: (_, _, _) => const Icon(
-                                  Icons.catching_pokemon,
-                                  size: 70,
-                                  color: AppTheme.pogoTealPrimary,
+                    child: Hero(
+                      tag: 'product-hero-${liveProduct.id}',
+                      child: hasVariants
+                          ? AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 220),
+                              switchInCurve: Curves.easeOutCubic,
+                              child: KeyedSubtree(
+                                key: ValueKey<String>(imagePath),
+                                child: _buildShowcaseImage(
+                                  hasRealImage,
+                                  isNetworkImage,
+                                  imagePath,
                                 ),
-                              )
-                            : Image.asset(
-                                imagePath,
-                                height: 130,
-                                fit: BoxFit.contain,
-                                errorBuilder: (_, _, _) => const Icon(
-                                  Icons.catching_pokemon,
-                                  size: 70,
-                                  color: AppTheme.pogoTealPrimary,
-                                ),
-                              ))
-                        : const Icon(
-                            Icons.catching_pokemon,
-                            size: 70,
-                            color: AppTheme.pogoTealPrimary,
-                          ),
+                              ),
+                            )
+                          : _buildShowcaseImage(
+                              hasRealImage,
+                              isNetworkImage,
+                              imagePath,
+                            ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -199,29 +292,89 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Category badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 3.5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppTheme.pogoTealPrimary.withAlpha(20),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: AppTheme.pogoTealPrimary.withAlpha(100),
-                            width: 1,
+                      // Category badge + Favorite toggle pill
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: colorScheme.primary.withAlpha(22),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: colorScheme.primary.withAlpha(110),
+                                width: 1,
+                              ),
+                            ),
+                            child: Text(
+                              liveProduct.category.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w800,
+                                color: colorScheme.primary,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
                           ),
-                        ),
-                        child: Text(
-                          widget.product.category.toUpperCase(),
-                          style: const TextStyle(
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w800,
-                            color: AppTheme.pogoTealPrimary,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
+                          if (!isAdmin)
+                            Tooltip(
+                              message: isFavorite
+                                  ? 'Remove from Wishlist'
+                                  : 'Add to Wishlist',
+                              child: InkWell(
+                                onTap: () =>
+                                    catalog.toggleFavorite(liveProduct.id),
+                                borderRadius: BorderRadius.circular(20),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  curve: Curves.easeOutCubic,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isFavorite
+                                        ? AppTheme.pogoValorRed.withAlpha(22)
+                                        : colorScheme.surfaceContainerHighest
+                                            .withAlpha(90),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: isFavorite
+                                          ? AppTheme.pogoValorRed
+                                          : colorScheme.outlineVariant,
+                                      width: 1.2,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      AnimatedFavoriteIcon(
+                                        isFavorite: isFavorite,
+                                        size: 16,
+                                        activeColor: AppTheme.pogoValorRed,
+                                        inactiveColor:
+                                            colorScheme.onSurfaceVariant,
+                                      ),
+                                      const SizedBox(width: 5),
+                                      Text(
+                                        isFavorite ? 'Saved' : 'Favorite',
+                                        style: TextStyle(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w800,
+                                          color: isFavorite
+                                              ? AppTheme.pogoValorRed
+                                              : colorScheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                       const SizedBox(height: 10),
 
@@ -236,9 +389,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       ),
                       const SizedBox(height: 8),
 
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.baseline,
-                        textBaseline: TextBaseline.alphabetic,
+                      Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 10,
+                        runSpacing: 6,
                         children: [
                           Text(
                             displayPrice,
@@ -248,16 +402,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               color: AppTheme.pogoTealPrimary,
                             ),
                           ),
-                          const SizedBox(width: 14),
                           Text(
-                            '${widget.product.soldCount} sold',
+                            '${liveProduct.soldCount} sold',
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
                               color: Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
                           ),
-                          const SizedBox(width: 12),
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
@@ -287,10 +439,32 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               ),
                             ),
                           ),
+                          if (alreadyInCart > 0)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppTheme.pogoTealPrimary.withAlpha(22),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: AppTheme.pogoTealPrimary.withAlpha(90),
+                                ),
+                              ),
+                              child: Text(
+                                '$alreadyInCart in cart',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppTheme.pogoTealPrimary,
+                                ),
+                              ),
+                            ),
                         ],
                       ),
-                    ],
-                  ),
+                      ],
+                    ),
                 ),
                 const SizedBox(height: 16),
 
@@ -322,10 +496,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           spacing: 8,
                           runSpacing: 8,
                           children: List.generate(
-                            widget.product.variants.length,
+                            liveProduct.variants.length,
                             (index) {
-                              final isSelected = _selectedVariantIndex == index;
-                              final variant = widget.product.variants[index];
+                              final isSelected = safeVariantIndex == index;
+                              final variant = liveProduct.variants[index];
                               return ChoiceChip(
                                 selected: isSelected,
                                 label: Text(variant.name),
@@ -348,8 +522,20 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 ),
                                 onSelected: (selected) {
                                   if (selected) {
+                                    final nextStock =
+                                        variant.stock ?? liveProduct.stock;
+                                    final nextInCart = cart.quantityOfVariant(
+                                      liveProduct,
+                                      variant,
+                                    );
+                                    final nextRemaining =
+                                        (nextStock - nextInCart)
+                                            .clamp(0, nextStock);
                                     setState(() {
                                       _selectedVariantIndex = index;
+                                      _quantity = nextRemaining > 0
+                                          ? _quantity.clamp(1, nextRemaining)
+                                          : 1;
                                     });
                                   }
                                 },
@@ -399,58 +585,196 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     ),
                   ),
                 ),
+                if (!isAdmin) ...[
+                  const SizedBox(height: 16),
+
+                  // 6. Quantity Selector & Total Price Card
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: colorScheme.outlineVariant,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Quantity',
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: colorScheme.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              remainingStock > 0
+                                  ? '$remainingStock available to add'
+                                  : 'Max stock in cart',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: remainingStock > 0
+                                    ? colorScheme.onSurfaceVariant
+                                    : AppTheme.pogoCoinGold,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: colorScheme.outlineVariant,
+                                  width: 1.4,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.remove, size: 17),
+                                    padding: const EdgeInsets.all(8),
+                                    constraints: const BoxConstraints(),
+                                    onPressed: effectiveQty > 1
+                                        ? () => setState(
+                                              () => _quantity = effectiveQty - 1,
+                                            )
+                                        : null,
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                    ),
+                                    child: AnimatedValueText(
+                                      '$effectiveQty',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 15,
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.add, size: 17),
+                                    padding: const EdgeInsets.all(8),
+                                    constraints: const BoxConstraints(),
+                                    onPressed: effectiveQty < remainingStock
+                                        ? () => setState(
+                                              () => _quantity = effectiveQty + 1,
+                                            )
+                                        : null,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              'Total Price',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            AnimatedValueText(
+                              '₽${AppTheme.formatPrice(totalPrice)}',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900,
+                                color: colorScheme.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
 
-          // Floating notification banner
-          if (_showBanner)
-            Positioned(
-              top: 12,
-              left: 16,
-              right: 16,
-              child: Material(
-                elevation: 4,
-                borderRadius: BorderRadius.circular(14),
-                color: AppTheme.pogoTealPrimary,
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.check_circle,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          _bannerMessage,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.close,
-                          color: Colors.white,
-                          size: 18,
-                        ),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        onPressed: () {
-                          setState(() => _showBanner = false);
-                        },
-                      ),
-                    ],
+          // Floating notification banner with slide-down + fade animation
+          Positioned(
+            top: 12,
+            left: 16,
+            right: 16,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 260),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (child, animation) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0, -0.35),
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: child,
                   ),
-                ),
-              ),
+                );
+              },
+              child: _showBanner
+                  ? Material(
+                      key: ValueKey<String>(_bannerMessage),
+                      elevation: 4,
+                      borderRadius: BorderRadius.circular(14),
+                      color: AppTheme.pogoTealPrimary,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.check_circle,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                _bannerMessage,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.close,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onPressed: () {
+                                setState(() => _showBanner = false);
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : const SizedBox.shrink(
+                      key: ValueKey<String>('banner-hidden'),
+                    ),
             ),
+          ),
         ],
       ),
 
@@ -477,10 +801,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           top: false,
           child: isAdmin
               ? SizedBox(
-                  height: 46,
+                  width: double.infinity,
+                  height: 48,
                   child: FilledButton.icon(
-                    onPressed: () => context.go(
-                      '/admin/product/edit/${widget.product.id}',
+                    onPressed: () => context.push(
+                      '/admin/product/edit/${liveProduct.id}',
                     ),
                     icon: const Icon(Icons.edit_outlined),
                     label: const Text(
@@ -489,140 +814,128 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     ),
                   ),
                 )
-              : Row(
-                  children: [
-              // Quantity Selector
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: colorScheme.outlineVariant,
-                    width: 1.4,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.remove, size: 16),
-                      padding: const EdgeInsets.all(6),
-                      constraints: const BoxConstraints(),
-                      onPressed: _quantity > 1
-                          ? () => setState(() => _quantity--)
-                          : null,
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: Text(
-                        '$_quantity',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 14,
-                        ),
+              : SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: colorScheme.primary,
+                      foregroundColor: colorScheme.onPrimary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.add, size: 16),
-                      padding: const EdgeInsets.all(6),
-                      constraints: const BoxConstraints(),
-                      onPressed: _quantity < displayStock
-                          ? () => setState(() => _quantity++)
-                          : null,
+                    icon: const Icon(Icons.add_shopping_cart, size: 19),
+                    label: const Text(
+                      'Add to Cart',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                      ),
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 10),
-
-              // Total Price Preview
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Total Price',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  Text(
-                    '₽${AppTheme.formatPrice(totalPrice)}',
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                      color: AppTheme.pogoTealPrimary,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 12),
-
-              // Add to Cart Action Button
-              Expanded(
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.pogoTealPrimary,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    minimumSize: const Size.fromHeight(46),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  icon: const Icon(Icons.add_shopping_cart, size: 18),
-                  label: const Text(
-                    'Add to Cart',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 14,
-                    ),
-                  ),
-                  onPressed: displayStock > 0
-                      ? () {
-                          if (auth != null && !auth.isAuthenticated) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Please sign in to add items to your cart.',
+                    onPressed: displayStock > 0
+                        ? () {
+                            if (!auth.isAuthenticated) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Please sign in to add items to your cart.',
+                                  ),
+                                  behavior: SnackBarBehavior.floating,
                                 ),
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                            context.go('/login');
-                            return;
-                          }
-
-                          cart.addItem(
-                            widget.product,
-                            activeVariant,
-                            _quantity,
-                          );
-                          final variantNote = activeVariant != null
-                              ? ' (${activeVariant.name})'
-                              : '';
-
-                          _bannerTimer?.cancel();
-                          setState(() {
-                            _bannerMessage =
-                                'Added $_quantity × ${widget.product.name}$variantNote to cart';
-                            _showBanner = true;
-                            _quantity = 1;
-                          });
-
-                          _bannerTimer = Timer(const Duration(seconds: 4), () {
-                            if (mounted) {
-                              setState(() => _showBanner = false);
+                              );
+                              context.go('/login');
+                              return;
                             }
-                          });
-                        }
-                      : null,
+
+                            final beforeQty =
+                                cart.quantityOfVariant(liveProduct, activeVariant);
+                            final success = cart.addItem(
+                              liveProduct,
+                              activeVariant,
+                              effectiveQty,
+                            );
+                            final addedQty =
+                                cart.quantityOfVariant(liveProduct, activeVariant) -
+                                    beforeQty;
+
+                            if (!success || addedQty <= 0) {
+                              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Maximum available stock ($displayStock) is already in your cart.',
+                                  ),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                              return;
+                            }
+
+                            final variantNote = activeVariant != null
+                                ? ' (${activeVariant.name})'
+                                : '';
+
+                            _bannerTimer?.cancel();
+                            setState(() {
+                              _bannerMessage =
+                                  'Added $addedQty × ${liveProduct.name}$variantNote to cart';
+                              _showBanner = true;
+                              _quantity = 1;
+                            });
+
+                            _bannerTimer = Timer(const Duration(seconds: 4), () {
+                              if (mounted) {
+                                setState(() => _showBanner = false);
+                              }
+                            });
+                          }
+                        : null,
+                  ),
                 ),
-              ),
-            ],
-          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildShowcaseImage(
+    bool hasRealImage,
+    bool isNetworkImage,
+    String imagePath,
+  ) {
+    if (!hasRealImage) {
+      return const Icon(
+        Icons.catching_pokemon,
+        size: 70,
+        color: AppTheme.pogoTealPrimary,
+      );
+    }
+
+    if (isNetworkImage) {
+      return Image.network(
+        imagePath,
+        height: 130,
+        // Match ProductCard cacheWidth so Hero transitions reuse the cached bitmap with no flash.
+        cacheWidth: 256,
+        fit: BoxFit.contain,
+        gaplessPlayback: true,
+        errorBuilder: (_, _, _) => const Icon(
+          Icons.catching_pokemon,
+          size: 70,
+          color: AppTheme.pogoTealPrimary,
+        ),
+      );
+    }
+
+    return Image.asset(
+      imagePath,
+      height: 130,
+      fit: BoxFit.contain,
+      gaplessPlayback: true,
+      errorBuilder: (_, _, _) => const Icon(
+        Icons.catching_pokemon,
+        size: 70,
+        color: AppTheme.pogoTealPrimary,
       ),
     );
   }

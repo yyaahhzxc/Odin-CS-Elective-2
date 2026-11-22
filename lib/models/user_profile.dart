@@ -4,6 +4,7 @@
 class UserProfile {
   final String id;
   final String email;
+  final String username;
   final String firstName;
   final String lastName;
   final int roleId;
@@ -12,6 +13,7 @@ class UserProfile {
   const UserProfile({
     required this.id,
     required this.email,
+    this.username = '',
     this.firstName = '',
     this.lastName = '',
     this.roleId = 1,
@@ -44,6 +46,7 @@ class UserProfile {
     return UserProfile(
       id: json['id']?.toString() ?? '',
       email: json['email']?.toString() ?? '',
+      username: json['username']?.toString() ?? '',
       firstName: json['firstname']?.toString() ?? '',
       lastName: json['lastname']?.toString() ?? '',
       roleId: parsedRoleId,
@@ -54,6 +57,7 @@ class UserProfile {
   UserProfile copyWith({
     String? id,
     String? email,
+    String? username,
     String? firstName,
     String? lastName,
     int? roleId,
@@ -62,6 +66,7 @@ class UserProfile {
     return UserProfile(
       id: id ?? this.id,
       email: email ?? this.email,
+      username: username ?? this.username,
       firstName: firstName ?? this.firstName,
       lastName: lastName ?? this.lastName,
       roleId: roleId ?? this.roleId,

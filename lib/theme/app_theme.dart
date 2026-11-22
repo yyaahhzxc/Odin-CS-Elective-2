@@ -15,7 +15,8 @@ class AppTheme {
   // ---------------------------------------------------------------------------
   // Core Pokémon GO Brand Color Tokens (from UI Kit Sketch Master Symbols)
   // ---------------------------------------------------------------------------
-  static const Color pogoTealPrimary = Color(0xFF1C8696); // Deep Sea Teal / Niantic Teal (67 refs)
+  static const Color pogoDeepTeal = Color(0xFF1C8696); // Deep Sea Teal secondary accent
+  static const Color pogoTealPrimary = Color(0xFF23CCA9); // Vibrant Pokémon GO Emerald Mint
   static const Color pogoMintStart = Color(0xFFA8DD9C); // Spring Lime / Mint Gradient Start
   static const Color pogoMintEnd = Color(0xFF23CCA9); // Vibrant Emerald Mint / Gradient End
   static const Color pogoLimeStart = Color(0xFFAEFBA8); // Electric Lime (Back/Cancel Button)
@@ -78,7 +79,7 @@ class AppTheme {
 
   /// Top Hero horizon banner gradient.
   static const LinearGradient horizonHeroGradient = LinearGradient(
-    colors: [Color(0xFF1C8696), Color(0xFF23CCA9)],
+    colors: [pogoMintStart, pogoMintEnd],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -95,17 +96,17 @@ class AppTheme {
   /// Light Theme definition applied at the MaterialApp level.
   static ThemeData get lightTheme {
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: pogoTealPrimary,
+      seedColor: pogoMintEnd,
       brightness: Brightness.light,
-      primary: pogoTealPrimary,
-      secondary: pogoMintEnd,
+      primary: pogoMintEnd,
+      secondary: const Color(0xFF1BA88B),
       tertiary: pogoCoinGold,
       surface: pogoCardBg,
       surfaceContainerLowest: pogoScaffoldBg,
       surfaceContainerHighest: pogoCardMintPad,
       outline: pogoBorder,
       onPrimary: Colors.white,
-      onSecondary: pogoTextPrimary,
+      onSecondary: Colors.white,
       onSurface: pogoTextPrimary,
     );
 
@@ -145,7 +146,7 @@ class AppTheme {
       // Button styling - PoGO Stadium Capsule CTA
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: pogoTealPrimary,
+          backgroundColor: pogoMintEnd,
           foregroundColor: Colors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(
@@ -160,10 +161,27 @@ class AppTheme {
         ),
       ),
 
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: pogoMintEnd,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          textStyle: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.3,
+          ),
+        ),
+      ),
+
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: pogoTealPrimary,
-          side: const BorderSide(color: pogoTealPrimary, width: 1.5),
+          foregroundColor: pogoMintEnd,
+          side: const BorderSide(color: pogoMintEnd, width: 1.5),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(28),
           ),
@@ -174,6 +192,36 @@ class AppTheme {
             letterSpacing: 0.3,
           ),
         ),
+      ),
+
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFFF6FBF8),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 14,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: pogoBorder, width: 1.2),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: pogoBorder, width: 1.2),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: pogoMintEnd, width: 1.8),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: pogoValorRed, width: 1.4),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: pogoValorRed, width: 1.6),
+        ),
+        hintStyle: const TextStyle(color: pogoTextSubtle, fontSize: 14),
       ),
 
       // Text styling
@@ -205,17 +253,17 @@ class AppTheme {
   /// Dark Theme definition applied at the MaterialApp level.
   static ThemeData get darkTheme {
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: pogoTealPrimary,
+      seedColor: pogoMintEnd,
       brightness: Brightness.dark,
       primary: pogoMintEnd,
       secondary: pogoCyanEnd,
       tertiary: pogoCoinGold,
       surface: darkCardBg,
       surfaceContainerLowest: darkScaffoldBg,
-      surfaceContainerHighest: Color(0xFF1D3742),
+      surfaceContainerHighest: const Color(0xFF1D3742),
       outline: darkBorder,
-      onPrimary: pogoTextPrimary,
-      onSecondary: pogoTextPrimary,
+      onPrimary: darkScaffoldBg,
+      onSecondary: darkScaffoldBg,
       onSurface: darkTextPrimary,
     );
 
@@ -253,7 +301,7 @@ class AppTheme {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: pogoMintEnd,
-          foregroundColor: pogoTextPrimary,
+          foregroundColor: darkScaffoldBg,
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(28),
@@ -263,6 +311,23 @@ class AppTheme {
             fontSize: 15,
             fontWeight: FontWeight.w800,
             letterSpacing: 0.5,
+          ),
+        ),
+      ),
+
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: pogoMintEnd,
+          foregroundColor: darkScaffoldBg,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          textStyle: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.3,
           ),
         ),
       ),
@@ -281,6 +346,36 @@ class AppTheme {
             letterSpacing: 0.3,
           ),
         ),
+      ),
+
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFF102229),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 14,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: darkBorder, width: 1.2),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: darkBorder, width: 1.2),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: pogoMintEnd, width: 1.8),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: pogoValorRed, width: 1.4),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: pogoValorRed, width: 1.6),
+        ),
+        hintStyle: const TextStyle(color: darkTextSecondary, fontSize: 14),
       ),
 
       textTheme: const TextTheme(

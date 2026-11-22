@@ -1,35 +1,36 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/product.dart';
-import '../state/auth_state.dart';
+import '../providers/app_providers.dart';
 import '../state/catalog_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/admin_categories_dialog.dart';
 
-/// Admin-only Product Form Screen supporting both Adding a new product
-/// and Editing any field of an existing product (pre-filled with current values).
-///
-/// Conforms to Exam Admin Requirements:
-/// - Add a product with name, description, price, stock quantity, category, and an image.
-/// - Edit any field of an existing product, with the form pre-filled with its current values.
-/// - Validate input: a name is required, price is a number of zero or more,
-///   and stock is a whole number of zero or more.
-class AdminProductFormScreen extends StatefulWidget {
+/// Admin-only Product Form Screen supporting product creation and pre-filled editing.
+class AdminProductFormScreen extends ConsumerStatefulWidget {
+  final String? productId;
   final Product? existingProduct;
 
   const AdminProductFormScreen({
     super.key,
+    this.productId,
     this.existingProduct,
   });
 
-  bool get isEditing => existingProduct != null;
+  bool get isEditing =>
+      existingProduct != null ||
+      (productId != null && productId!.isNotEmpty);
 
   @override
-  State<AdminProductFormScreen> createState() => _AdminProductFormScreenState();
+  ConsumerState<AdminProductFormScreen> createState() =>
+      _AdminProductFormScreenState();
 }
 
-class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
+class _AdminProductFormScreenState
+    extends ConsumerState<AdminProductFormScreen> {
   final _formKey = GlobalKey<FormState>();
 
   late final TextEditingController _nameController;
@@ -39,6 +40,10 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
   late final TextEditingController _imageUrlController;
   late String _selectedCategory;
 
+  Product? _loadedProduct;
+  bool _isLoadingProduct = false;
+  String? _loadError;
+
   Uint8List? _pickedImageBytes;
   String? _pickedImageName;
   bool _isSubmitting = false;
@@ -46,19 +51,83 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
   @override
   void initState() {
     super.initState();
-    final p = widget.existingProduct;
-    _nameController = TextEditingController(text: p?.name ?? '');
-    _descriptionController = TextEditingController(text: p?.description ?? '');
+    final catalog = ref.read(catalogProvider);
+    final initialProduct = widget.existingProduct ??
+        (widget.productId != null
+            ? catalog.findProductById(widget.productId!)
+            : null);
+
+    _loadedProduct = initialProduct;
+    _nameController = TextEditingController(text: initialProduct?.name ?? '');
+    _descriptionController = TextEditingController(
+      text: initialProduct?.description ?? '',
+    );
     _priceController = TextEditingController(
-      text: p != null ? p.price.toStringAsFixed(2) : '',
+      text: initialProduct != null
+          ? initialProduct.price.toStringAsFixed(2)
+          : '',
     );
     _stockController = TextEditingController(
-      text: p != null ? p.stock.toString() : '',
+      text: initialProduct != null ? initialProduct.stock.toString() : '',
     );
-    _imageUrlController = TextEditingController(text: p?.imagePath ?? '');
-    _selectedCategory = p?.category.isNotEmpty == true
-        ? p!.category
-        : 'Poké Balls';
+    _imageUrlController = TextEditingController(
+      text: initialProduct?.imagePath ?? '',
+    );
+
+    final available = catalog.editableCategories;
+    if (initialProduct != null && initialProduct.category.isNotEmpty) {
+      _selectedCategory = initialProduct.category;
+    } else if (available.isNotEmpty) {
+      _selectedCategory = available.first;
+    } else {
+      _selectedCategory = 'Poké Balls';
+    }
+
+    if (widget.isEditing && initialProduct == null && widget.productId != null) {
+      _fetchExistingProduct();
+    }
+  }
+
+  Future<void> _fetchExistingProduct() async {
+    setState(() {
+      _isLoadingProduct = true;
+      _loadError = null;
+    });
+
+    try {
+      final fetched = await ref
+          .read(catalogProvider)
+          .findOrFetchProduct(widget.productId!);
+      if (!mounted) return;
+
+      if (fetched == null) {
+        setState(() {
+          _loadError = 'Product not found.';
+          _isLoadingProduct = false;
+        });
+        return;
+      }
+
+      setState(() {
+        _loadedProduct = fetched;
+        _nameController.text = fetched.name;
+        _descriptionController.text = fetched.description;
+        _priceController.text = fetched.price.toStringAsFixed(2);
+        _stockController.text = fetched.stock.toString();
+        _imageUrlController.text = fetched.imagePath;
+        if (fetched.category.isNotEmpty) {
+          _selectedCategory = fetched.category;
+        }
+        _isLoadingProduct = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loadError = e.toString().replaceFirst('Exception: ', '');
+          _isLoadingProduct = false;
+        });
+      }
+    }
   }
 
   @override
@@ -108,10 +177,16 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _isSubmitting = false);
+        setState(() {
+          _pickedImageBytes = null;
+          _pickedImageName = null;
+          _isSubmitting = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Could not pick image: $e'),
+            content: Text(
+              'Image upload failed: ${e.toString().replaceFirst('Exception: ', '')}',
+            ),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -119,40 +194,14 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
     }
   }
 
-  Future<void> _promptAddCategory(CatalogManager catalog) async {
-    final controller = TextEditingController();
-    final newCat = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Add New Category'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Category Name',
-            hintText: 'e.g. Key Items',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
-            child: const Text('Add'),
-          ),
-        ],
-      ),
-    );
-
-    if (newCat != null && newCat.isNotEmpty) {
-      await catalog.addCategory(newCat);
-      if (mounted) {
-        setState(() {
-          _selectedCategory = newCat;
-        });
-      }
+  Future<void> _openManageCategories(CatalogManager catalog) async {
+    await showAdminCategoriesDialog(context);
+    if (!mounted) return;
+    final updatedCats = ref.read(catalogProvider).editableCategories;
+    if (updatedCats.isNotEmpty && !updatedCats.contains(_selectedCategory)) {
+      setState(() {
+        _selectedCategory = updatedCats.first;
+      });
     }
   }
 
@@ -169,14 +218,16 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
       final imageUrl = _imageUrlController.text.trim().isNotEmpty
           ? _imageUrlController.text.trim()
           : 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Items/pokeball_sprite.png';
+      final resolvedCategoryId = catalog.categoryIdForName(_selectedCategory);
 
-      if (widget.isEditing) {
-        final updated = widget.existingProduct!.copyWith(
+      if (widget.isEditing && _loadedProduct != null) {
+        final updated = _loadedProduct!.copyWith(
           name: name,
           description: description,
           price: price,
           stock: stock,
           category: _selectedCategory,
+          categoryId: resolvedCategoryId,
           imagePath: imageUrl,
         );
         await catalog.updateProduct(updated);
@@ -195,6 +246,7 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
           price: price,
           stock: stock,
           category: _selectedCategory,
+          categoryId: resolvedCategoryId,
           imagePath: imageUrl,
           soldCount: 0,
         );
@@ -222,7 +274,9 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to save product: $e'),
+            content: Text(
+              'Failed to save product: ${e.toString().replaceFirst('Exception: ', '')}',
+            ),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -238,11 +292,11 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final catalog = CatalogScope.of(context);
-    final auth = AuthScope.maybeOf(context);
+    final catalog = ref.watch(catalogProvider);
+    final auth = ref.watch(authProvider);
 
-    // Permission-denied guard if a non-admin navigates here directly
-    if (auth != null && !auth.isAdmin) {
+    // Permission-denied guard for non-admin users navigating directly
+    if (!auth.isAdmin) {
       return Scaffold(
         appBar: AppBar(title: const Text('Permission Denied')),
         body: Center(
@@ -280,8 +334,57 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
       );
     }
 
+    if (widget.isEditing && _loadedProduct == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Edit Product'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              if (Navigator.of(context).canPop()) {
+                Navigator.of(context).pop();
+              } else {
+                context.go('/');
+              }
+            },
+          ),
+        ),
+        body: Center(
+          child: _isLoadingProduct
+              ? const CircularProgressIndicator(
+                  color: AppTheme.pogoTealPrimary,
+                )
+              : Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        size: 52,
+                        color: colorScheme.error,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        _loadError ?? 'Product not found.',
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      FilledButton(
+                        onPressed: () => context.go('/'),
+                        child: const Text('Return to Catalog'),
+                      ),
+                    ],
+                  ),
+                ),
+        ),
+      );
+    }
+
     final availableCategories = catalog.editableCategories.toSet().toList();
-    if (!availableCategories.contains(_selectedCategory)) {
+    if (availableCategories.isEmpty) {
+      availableCategories.add(_selectedCategory);
+    } else if (!availableCategories.contains(_selectedCategory)) {
       availableCategories.add(_selectedCategory);
     }
 
@@ -302,6 +405,7 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             padding: const EdgeInsets.all(24),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 560),
@@ -359,7 +463,7 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // 2. Category Selector + Add Category
+                      // 2. Category Selector + Manage Categories
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -370,9 +474,9 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
                             ),
                           ),
                           TextButton.icon(
-                            onPressed: () => _promptAddCategory(catalog),
-                            icon: const Icon(Icons.add, size: 16),
-                            label: const Text('New Category'),
+                            onPressed: () => _openManageCategories(catalog),
+                            icon: const Icon(Icons.category_outlined, size: 16),
+                            label: const Text('Manage Categories'),
                             style: TextButton.styleFrom(
                               visualDensity: VisualDensity.compact,
                             ),
@@ -381,6 +485,9 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
                       ),
                       const SizedBox(height: 4),
                       DropdownButtonFormField<String>(
+                        key: ValueKey<String>(
+                          'cat-$_selectedCategory-${availableCategories.join('|')}',
+                        ),
                         initialValue: _selectedCategory,
                         items: availableCategories
                             .map(
@@ -513,12 +620,15 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            'Product Image (Supabase Storage / URL)',
-                            style: theme.textTheme.labelMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
+                          Expanded(
+                            child: Text(
+                              'Product Image (Supabase Storage / URL)',
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
+                          const SizedBox(width: 8),
                           OutlinedButton.icon(
                             onPressed: _isSubmitting
                                 ? null
@@ -564,15 +674,27 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
                                     _pickedImageBytes!,
                                     fit: BoxFit.contain,
                                   )
-                                : Image.network(
-                                    _imageUrlController.text.trim(),
-                                    fit: BoxFit.contain,
-                                    errorBuilder: (_, _, _) => const Icon(
-                                      Icons.catching_pokemon,
-                                      size: 48,
-                                      color: AppTheme.pogoTealPrimary,
-                                    ),
-                                  ),
+                                : (_imageUrlController.text
+                                        .trim()
+                                        .startsWith('http')
+                                    ? Image.network(
+                                        _imageUrlController.text.trim(),
+                                        fit: BoxFit.contain,
+                                        errorBuilder: (_, _, _) => const Icon(
+                                          Icons.catching_pokemon,
+                                          size: 48,
+                                          color: AppTheme.pogoTealPrimary,
+                                        ),
+                                      )
+                                    : Image.asset(
+                                        _imageUrlController.text.trim(),
+                                        fit: BoxFit.contain,
+                                        errorBuilder: (_, _, _) => const Icon(
+                                          Icons.catching_pokemon,
+                                          size: 48,
+                                          color: AppTheme.pogoTealPrimary,
+                                        ),
+                                      )),
                           ),
                         ),
                       ],
@@ -614,4 +736,3 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
     );
   }
 }
-

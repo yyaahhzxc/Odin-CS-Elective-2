@@ -4,18 +4,38 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/supabase_config.dart';
 import '../models/user_profile.dart';
 
+/// Discrete authentication lifecycle events emitted by [AuthService].
+enum AuthChangeKind {
+  signedIn,
+  signedOut,
+  updated,
+}
+
+/// Domain exception representing authentication and profile authorization errors.
+class AppAuthException implements Exception {
+  final String message;
+
+  const AppAuthException(this.message);
+
+  @override
+  String toString() => message;
+}
+
 /// Service managing user authentication sessions and role resolution via Supabase Auth.
 ///
-/// Supports email/password credentials, user registration with metadata (firstname, lastname, username),
-/// third-party OAuth providers (Google, GitHub), profile & role lookup (`customer` vs `admin`),
-/// and deterministic mock fallbacks for testing.
+/// Supports email/password credentials, registration metadata, third-party OAuth
+/// providers (Google, GitHub), profile and role lookup from `public.profiles`
+/// joined with `public.roles`, and deterministic mock mode for automated tests.
 class AuthService {
   final SupabaseClient? _client;
+  final bool _isMockMode;
   User? _mockUser;
   UserProfile? _cachedProfile;
+  final Map<String, User> _mockUsersByEmail = {};
 
-  final StreamController<AuthState> _mockStreamController =
-      StreamController<AuthState>.broadcast();
+  final StreamController<AuthChangeKind> _mockStreamController =
+      StreamController<AuthChangeKind>.broadcast();
+  final Map<String, User> _mockUsersByUsername = {};
 
   static SupabaseClient? _resolveClient(SupabaseClient? client) {
     if (client != null) return client;
@@ -27,68 +47,99 @@ class AuthService {
     }
   }
 
-  AuthService([SupabaseClient? client]) : _client = _resolveClient(client);
+  /// Creates an [AuthService] bound to the configured [SupabaseClient] (or falls back to mock if uninitialized).
+  AuthService([SupabaseClient? client])
+      : this._fromResolvedClient(_resolveClient(client));
 
-  /// Currently authenticated Supabase user or active mock user.
-  User? get currentUser => _mockUser ?? _client?.auth.currentUser;
+  AuthService._fromResolvedClient(this._client)
+      : _isMockMode = _client == null;
 
-  /// Active Supabase authentication session.
-  Session? get currentSession => _client?.auth.currentSession;
+  /// Creates an isolated in-memory mock [AuthService] for unit and widget tests.
+  AuthService.mock()
+      : _client = null,
+        _isMockMode = true;
 
-  /// Returns true if an authenticated user session is active.
-  bool get isAuthenticated => currentUser != null;
+  User? get _activeUser =>
+      _isMockMode ? _mockUser : _client?.auth.currentSession?.user;
 
-  /// Cached user profile containing `role` ('customer' or 'admin').
+  /// Unique identifier of the currently authenticated user, if any.
+  String? get userId => _activeUser?.id;
+
+  /// Email address of the currently authenticated user, if any.
+  String? get email => _activeUser?.email;
+
+  /// Authentication provider identifier (e.g. 'email', 'google', 'github').
+  String get provider =>
+      _activeUser?.appMetadata['provider']?.toString() ?? 'email';
+
+  /// Returns true when an active authenticated user session exists.
+  bool get isAuthenticated => _activeUser != null;
+
+  /// Cached user profile loaded from `public.profiles` and `public.roles`.
   UserProfile? get currentProfile => _cachedProfile;
 
-  /// Returns true if the active user holds the 'admin' role.
+  /// Active user's handle/username from profile or metadata, if present.
+  String? get username {
+    final profileUsername = _cachedProfile?.username.trim() ?? '';
+    if (profileUsername.isNotEmpty) return profileUsername;
+    final metaUsername =
+        _activeUser?.userMetadata?['username']?.toString().trim() ?? '';
+    return metaUsername.isNotEmpty ? metaUsername : null;
+  }
+
+  /// Returns true if the active user holds the `admin` role.
+  ///
+  /// In live mode, role status is resolved strictly from the database profile.
   bool get isAdmin {
+    if (_client != null && !_isMockMode) {
+      return _cachedProfile?.isAdmin ?? false;
+    }
     if (_cachedProfile != null) {
       return _cachedProfile!.isAdmin;
     }
-    final user = currentUser;
+    final user = _activeUser;
     if (user == null) return false;
     final roleMeta = user.userMetadata?['role']?.toString().toLowerCase() ??
         user.appMetadata['role']?.toString().toLowerCase() ??
         '';
-    if (roleMeta == 'admin') return true;
-    final lowerEmail = user.email?.toLowerCase();
-    if (lowerEmail == 'admin@pokemart.com' ||
-        lowerEmail == 'ysodin@addu.edu.ph') {
-      return true;
-    }
-    return false;
+    return roleMeta == 'admin' ||
+        user.email?.toLowerCase() == 'admin@pokemart.com';
   }
 
-  /// Returns true if the active user is a customer.
+  /// Returns true if the active user is an authenticated customer.
   bool get isCustomer => isAuthenticated && !isAdmin;
 
-  /// Returns the display username extracted from profile, user metadata, or email prefix.
+  /// Display name extracted from profile, OAuth/user metadata, or email prefix.
   String get displayName {
     if (_cachedProfile != null && _cachedProfile!.fullName.isNotEmpty) {
       return _cachedProfile!.fullName;
     }
-    final user = currentUser;
+    final user = _activeUser;
     if (user == null) return 'Guest';
     final metadata = user.userMetadata;
     if (metadata != null) {
-      if (metadata['full_name'] != null &&
-          metadata['full_name'].toString().trim().isNotEmpty) {
-        return metadata['full_name'].toString().trim();
-      }
-      final first = (metadata['firstname'] ?? metadata['first_name'] ?? '')
+      final full = (metadata['full_name'] ?? metadata['name'] ?? '')
           .toString()
           .trim();
-      final last = (metadata['lastname'] ?? metadata['last_name'] ?? '')
+      if (full.isNotEmpty) return full;
+
+      final first = (metadata['firstname'] ??
+              metadata['first_name'] ??
+              metadata['given_name'] ??
+              '')
+          .toString()
+          .trim();
+      final last = (metadata['lastname'] ??
+              metadata['last_name'] ??
+              metadata['family_name'] ??
+              '')
           .toString()
           .trim();
       final combined = [first, last].where((s) => s.isNotEmpty).join(' ');
       if (combined.isNotEmpty) return combined;
 
-      if (metadata['username'] != null &&
-          metadata['username'].toString().trim().isNotEmpty) {
-        return metadata['username'].toString().trim();
-      }
+      final handle = metadata['username']?.toString().trim() ?? '';
+      if (handle.isNotEmpty) return handle;
     }
     if (user.email != null && user.email!.contains('@')) {
       return user.email!.split('@').first;
@@ -96,29 +147,45 @@ class AuthService {
     return 'Trainer';
   }
 
-  /// Broadcast stream delivering real-time authentication state updates.
-  Stream<AuthState> get authStateChanges {
+  /// Broadcast stream delivering normalized authentication lifecycle events.
+  Stream<AuthChangeKind> get sessionEvents {
     final client = _client;
-    if (client != null) {
-      return client.auth.onAuthStateChange;
+    if (client != null && !_isMockMode) {
+      return client.auth.onAuthStateChange.map((state) {
+        if (state.event == AuthChangeEvent.signedOut) {
+          _cachedProfile = null;
+          return AuthChangeKind.signedOut;
+        }
+        if (state.event == AuthChangeEvent.initialSession) {
+          return state.session != null
+              ? AuthChangeKind.signedIn
+              : AuthChangeKind.signedOut;
+        }
+        if (state.event == AuthChangeEvent.signedIn) {
+          return AuthChangeKind.signedIn;
+        }
+        return AuthChangeKind.updated;
+      });
     }
     return _mockStreamController.stream;
   }
 
   /// Fetches the user's profile and role from `public.profiles` joined with `public.roles`.
   Future<UserProfile?> fetchUserProfile() async {
-    final user = currentUser;
+    final user = _activeUser;
     if (user == null) {
       _cachedProfile = null;
       return null;
     }
 
     final client = _client;
-    if (client != null && SupabaseConfig.isConfigured && _mockUser == null) {
+    if (client != null && !_isMockMode) {
       try {
         final data = await client
             .from('profiles')
-            .select('id, email, firstname, lastname, role_id, roles(role)')
+            .select(
+              'id, email, username, firstname, lastname, role_id, roles(role)',
+            )
             .eq('id', user.id)
             .maybeSingle();
 
@@ -126,46 +193,141 @@ class AuthService {
           _cachedProfile = UserProfile.fromJson(data);
           return _cachedProfile;
         }
-      } catch (_) {
-        // Fallback to metadata if profiles table is not yet migrated
+
+        // Default strictly to customer when the profile trigger row is unavailable
+        _cachedProfile = _profileFromMetadata(user, isAdminRole: false);
+        return _cachedProfile;
+      } on PostgrestException catch (e) {
+        throw AppAuthException('Unable to load user profile: ${e.message}');
       }
     }
 
-    final lowerEmail = user.email?.toLowerCase();
-    final isDefaultAdmin = lowerEmail == 'admin@pokemart.com' ||
-        lowerEmail == 'ysodin@addu.edu.ph' ||
-        user.userMetadata?['role'] == 'admin';
-
-    _cachedProfile = UserProfile(
-      id: user.id,
-      email: user.email ?? '',
-      firstName: (user.userMetadata?['firstname'] ??
-              user.userMetadata?['first_name'] ??
-              '')
-          .toString(),
-      lastName: (user.userMetadata?['lastname'] ??
-              user.userMetadata?['last_name'] ??
-              '')
-          .toString(),
-      roleId: isDefaultAdmin ? 2 : 1,
-      role: isDefaultAdmin ? 'admin' : 'customer',
-    );
+    final isMockAdmin = user.email?.toLowerCase() == 'admin@pokemart.com' ||
+        user.userMetadata?['role']?.toString().toLowerCase() == 'admin';
+    _cachedProfile = _profileFromMetadata(user, isAdminRole: isMockAdmin);
     return _cachedProfile;
   }
 
-  /// Allows switching role in demo/testing or updating role when permitted.
-  void setDemoRole(String role) {
-    final user = currentUser;
-    if (user == null) return;
-    final normalized = role.toLowerCase() == 'admin' ? 'admin' : 'customer';
-    _cachedProfile = (_cachedProfile ??
-            UserProfile(
-              id: user.id,
-              email: user.email ?? '',
-            ))
-        .copyWith(
-      roleId: normalized == 'admin' ? 2 : 1,
-      role: normalized,
+  UserProfile _profileFromMetadata(User user, {required bool isAdminRole}) {
+    final meta = user.userMetadata;
+    final first = (meta?['firstname'] ??
+            meta?['first_name'] ??
+            meta?['given_name'] ??
+            '')
+        .toString();
+    final last = (meta?['lastname'] ??
+            meta?['last_name'] ??
+            meta?['family_name'] ??
+            '')
+        .toString();
+    return UserProfile(
+      id: user.id,
+      email: user.email ?? '',
+      username: (meta?['username'] ?? '').toString(),
+      firstName: first,
+      lastName: last,
+      roleId: isAdminRole ? 2 : 1,
+      role: isAdminRole ? 'admin' : 'customer',
+    );
+  }
+
+  /// Authenticates using either an email address or a username with password.
+  Future<void> signInWithIdentifier({
+    required String identifier,
+    required String password,
+  }) async {
+    final trimmed = identifier.trim();
+    final isEmail = trimmed.contains('@');
+    final client = _client;
+
+    if (client != null && !_isMockMode) {
+      String resolvedEmail = trimmed;
+      if (!isEmail) {
+        dynamic result;
+        try {
+          result = await client.rpc(
+            'resolve_email_for_username',
+            params: {'p_username': trimmed},
+          );
+        } on PostgrestException catch (e) {
+          throw AppAuthException(
+            'Username sign-in requires running the latest supabase_schema.sql (${e.message}).',
+          );
+        }
+        final resolved = result?.toString().trim() ?? '';
+        if (resolved.isEmpty) {
+          throw const AppAuthException(
+            'No account found with that username.',
+          );
+        }
+        resolvedEmail = resolved;
+      }
+
+      try {
+        await client.auth.signInWithPassword(
+          email: resolvedEmail,
+          password: password,
+        );
+        await fetchUserProfile();
+        return;
+      } on AuthException catch (e) {
+        throw AppAuthException(e.message);
+      }
+    }
+
+    if (!isEmail) {
+      final byUsername = _mockUsersByUsername[trimmed.toLowerCase()];
+      if (byUsername != null) {
+        setMockUser(byUsername);
+        return;
+      }
+      final isAdminUsername = trimmed.toLowerCase() == 'admin';
+      final mockEmail = isAdminUsername
+          ? 'admin@pokemart.com'
+          : '${trimmed.toLowerCase()}@pokemart.com';
+      setMockUser(
+        User(
+          id: 'mock-user-${mockEmail.hashCode.abs()}',
+          appMetadata: {
+            'provider': 'email',
+            'role': isAdminUsername ? 'admin' : 'customer',
+          },
+          userMetadata: {
+            'username': trimmed,
+            'email': mockEmail,
+            'role': isAdminUsername ? 'admin' : 'customer',
+          },
+          aud: 'authenticated',
+          createdAt: DateTime.now().toIso8601String(),
+          email: mockEmail,
+        ),
+      );
+      return;
+    }
+
+    final existing = _mockUsersByEmail[trimmed.toLowerCase()];
+    if (existing != null) {
+      setMockUser(existing);
+      return;
+    }
+
+    final isMockAdmin = trimmed.toLowerCase() == 'admin@pokemart.com';
+    setMockUser(
+      User(
+        id: 'mock-user-${trimmed.hashCode.abs()}',
+        appMetadata: {
+          'provider': 'email',
+          'role': isMockAdmin ? 'admin' : 'customer',
+        },
+        userMetadata: {
+          'username': trimmed.split('@').first,
+          'email': trimmed,
+          'role': isMockAdmin ? 'admin' : 'customer',
+        },
+        aud: 'authenticated',
+        createdAt: DateTime.now().toIso8601String(),
+        email: trimmed,
+      ),
     );
   }
 
@@ -173,106 +335,91 @@ class AuthService {
   Future<void> signInWithEmail({
     required String email,
     required String password,
-  }) async {
-    final trimmedEmail = email.trim();
-    final client = _client;
-    if (client != null && SupabaseConfig.isConfigured) {
-      await client.auth.signInWithPassword(
-        email: trimmedEmail,
-        password: password,
-      );
-      await fetchUserProfile();
-      return;
-    }
-
-    // Fallback simulation for test and offline environments
-    final isAdminEmail = trimmedEmail.toLowerCase() == 'admin@pokemart.com';
-    setMockUser(
-      User(
-        id: 'mock-user-${trimmedEmail.hashCode.abs()}',
-        appMetadata: {
-          'provider': 'email',
-          'role': isAdminEmail ? 'admin' : 'customer',
-        },
-        userMetadata: {
-          'username': trimmedEmail.split('@').first,
-          'email': trimmedEmail,
-          'role': isAdminEmail ? 'admin' : 'customer',
-        },
-        aud: 'authenticated',
-        createdAt: DateTime.now().toIso8601String(),
-        email: trimmedEmail,
-      ),
-    );
+  }) {
+    return signInWithIdentifier(identifier: email, password: password);
   }
 
-  /// Registers a new user account with email, password, username, and name metadata.
-  /// Every new account starts as a customer (`role_id = 1`).
+  /// Registers a new customer account (`role_id = 1` assigned by database trigger).
   Future<void> signUpWithEmail({
     required String email,
     required String password,
-    required String username,
+    String username = '',
     String? firstName,
     String? lastName,
   }) async {
     final client = _client;
+    final trimmedEmail = email.trim();
+    final trimmedUsername = username.trim();
     final trimmedFirst = firstName?.trim() ?? '';
     final trimmedLast = lastName?.trim() ?? '';
     final fullName = [trimmedFirst, trimmedLast]
         .where((s) => s.isNotEmpty)
         .join(' ');
 
-    if (client != null && SupabaseConfig.isConfigured) {
-      await client.auth.signUp(
-        email: email.trim(),
-        password: password,
-        data: {
-          'username': username.trim(),
-          // Match exact keys expected by `handle_new_user` trigger in Supabase Setup.pdf
-          'firstname': trimmedFirst,
-          'lastname': trimmedLast,
-          if (trimmedFirst.isNotEmpty) 'first_name': trimmedFirst,
-          if (trimmedLast.isNotEmpty) 'last_name': trimmedLast,
-          'full_name': fullName.isNotEmpty ? fullName : username.trim(),
-          'role': 'customer',
-        },
-      );
-      await fetchUserProfile();
-      return;
+    if (client != null && !_isMockMode) {
+      try {
+        final response = await client.auth.signUp(
+          email: trimmedEmail,
+          password: password,
+          data: {
+            if (trimmedUsername.isNotEmpty) 'username': trimmedUsername,
+            'firstname': trimmedFirst,
+            'lastname': trimmedLast,
+            if (trimmedFirst.isNotEmpty) 'first_name': trimmedFirst,
+            if (trimmedLast.isNotEmpty) 'last_name': trimmedLast,
+            if (fullName.isNotEmpty || trimmedUsername.isNotEmpty)
+              'full_name': fullName.isNotEmpty ? fullName : trimmedUsername,
+          },
+        );
+        if (response.session != null) {
+          await fetchUserProfile();
+        }
+        return;
+      } on AuthException catch (e) {
+        throw AppAuthException(e.message);
+      } on PostgrestException catch (e) {
+        throw AppAuthException(e.message);
+      }
     }
 
-    // Fallback simulation for test and offline environments
-    setMockUser(
-      User(
-        id: 'mock-user-${email.hashCode.abs()}',
-        appMetadata: {'provider': 'email', 'role': 'customer'},
-        userMetadata: {
-          'username': username.trim(),
-          'firstname': trimmedFirst,
-          'lastname': trimmedLast,
-          if (trimmedFirst.isNotEmpty) 'first_name': trimmedFirst,
-          if (trimmedLast.isNotEmpty) 'last_name': trimmedLast,
-          'full_name': fullName.isNotEmpty ? fullName : username.trim(),
-          'email': email.trim(),
-          'role': 'customer',
-        },
-        aud: 'authenticated',
-        createdAt: DateTime.now().toIso8601String(),
-        email: email.trim(),
-      ),
+    final mockUser = User(
+      id: 'mock-user-${trimmedEmail.hashCode.abs()}',
+      appMetadata: const {'provider': 'email', 'role': 'customer'},
+      userMetadata: {
+        if (trimmedUsername.isNotEmpty) 'username': trimmedUsername,
+        'firstname': trimmedFirst,
+        'lastname': trimmedLast,
+        if (trimmedFirst.isNotEmpty) 'first_name': trimmedFirst,
+        if (trimmedLast.isNotEmpty) 'last_name': trimmedLast,
+        'full_name': fullName.isNotEmpty ? fullName : trimmedUsername,
+        'email': trimmedEmail,
+        'role': 'customer',
+      },
+      aud: 'authenticated',
+      createdAt: DateTime.now().toIso8601String(),
+      email: trimmedEmail,
     );
+    _mockUsersByEmail[trimmedEmail.toLowerCase()] = mockUser;
+    if (trimmedUsername.isNotEmpty) {
+      _mockUsersByUsername[trimmedUsername.toLowerCase()] = mockUser;
+    }
+    setMockUser(mockUser);
   }
 
   /// Initiates third-party OAuth authentication with Google.
   Future<bool> signInWithGoogle({String? redirectTo}) async {
     final client = _client;
-    if (client != null && SupabaseConfig.isConfigured) {
-      final redirectUrl = redirectTo ??
-          (kIsWeb ? null : 'io.supabase.pokemart://login-callback');
-      return await client.auth.signInWithOAuth(
-        OAuthProvider.google,
-        redirectTo: redirectUrl,
-      );
+    if (client != null && !_isMockMode) {
+      try {
+        final redirectUrl = redirectTo ??
+            (kIsWeb ? null : 'io.supabase.pokemart://login-callback');
+        return await client.auth.signInWithOAuth(
+          OAuthProvider.google,
+          redirectTo: redirectUrl,
+        );
+      } on AuthException catch (e) {
+        throw AppAuthException(e.message);
+      }
     }
 
     setMockUser(
@@ -298,13 +445,17 @@ class AuthService {
   /// Initiates third-party OAuth authentication with GitHub.
   Future<bool> signInWithGitHub({String? redirectTo}) async {
     final client = _client;
-    if (client != null && SupabaseConfig.isConfigured) {
-      final redirectUrl = redirectTo ??
-          (kIsWeb ? null : 'io.supabase.pokemart://login-callback');
-      return await client.auth.signInWithOAuth(
-        OAuthProvider.github,
-        redirectTo: redirectUrl,
-      );
+    if (client != null && !_isMockMode) {
+      try {
+        final redirectUrl = redirectTo ??
+            (kIsWeb ? null : 'io.supabase.pokemart://login-callback');
+        return await client.auth.signInWithOAuth(
+          OAuthProvider.github,
+          redirectTo: redirectUrl,
+        );
+      } on AuthException catch (e) {
+        throw AppAuthException(e.message);
+      }
     }
 
     setMockUser(
@@ -327,58 +478,64 @@ class AuthService {
     return true;
   }
 
-  /// Terminates the active user session and clears authentication state.
+  /// Terminates the active user session and clears cached profile state.
   Future<void> signOut() async {
     _mockUser = null;
     _cachedProfile = null;
     final client = _client;
-    if (client != null && SupabaseConfig.isConfigured) {
+    if (client != null && !_isMockMode) {
       try {
         await client.auth.signOut();
-      } catch (_) {
-        // Ignore network errors during sign-out cleanup
+      } on AuthException catch (e) {
+        throw AppAuthException(e.message);
       }
     }
-    _mockStreamController.add(const AuthState(AuthChangeEvent.signedOut, null));
+    _mockStreamController.add(AuthChangeKind.signedOut);
   }
 
-  /// Injects a mock user session for deterministic unit and widget testing.
+  /// Injects a mock user session for unit and widget tests.
+  @visibleForTesting
+  void setMockCredentials({
+    required String id,
+    required String email,
+    String username = '',
+    String firstName = '',
+    String lastName = '',
+    String provider = 'email',
+    String role = 'customer',
+  }) {
+    setMockUser(
+      User(
+        id: id,
+        appMetadata: {'provider': provider, 'role': role},
+        userMetadata: {
+          'username': username,
+          'firstname': firstName,
+          'lastname': lastName,
+          'email': email,
+          'role': role,
+        },
+        aud: 'authenticated',
+        createdAt: DateTime.now().toIso8601String(),
+        email: email,
+      ),
+    );
+  }
+
+  /// Injects a mock Supabase [User] for deterministic unit and widget tests.
   @visibleForTesting
   void setMockUser(User? user) {
     _mockUser = user;
     if (user == null) {
       _cachedProfile = null;
     } else {
-      final isDefaultAdmin =
+      final isMockAdmin =
           user.email?.toLowerCase() == 'admin@pokemart.com' ||
-              user.userMetadata?['role'] == 'admin';
-      _cachedProfile = UserProfile(
-        id: user.id,
-        email: user.email ?? '',
-        firstName: (user.userMetadata?['firstname'] ??
-                user.userMetadata?['first_name'] ??
-                '')
-            .toString(),
-        lastName: (user.userMetadata?['lastname'] ??
-                user.userMetadata?['last_name'] ??
-                '')
-            .toString(),
-        roleId: isDefaultAdmin ? 2 : 1,
-        role: isDefaultAdmin ? 'admin' : 'customer',
-      );
+              user.userMetadata?['role']?.toString().toLowerCase() == 'admin';
+      _cachedProfile = _profileFromMetadata(user, isAdminRole: isMockAdmin);
     }
-    final session = user != null
-        ? Session(
-            accessToken: 'mock-access-token',
-            tokenType: 'bearer',
-            user: user,
-          )
-        : null;
     _mockStreamController.add(
-      AuthState(
-        user != null ? AuthChangeEvent.signedIn : AuthChangeEvent.signedOut,
-        session,
-      ),
+      user != null ? AuthChangeKind.signedIn : AuthChangeKind.signedOut,
     );
   }
 

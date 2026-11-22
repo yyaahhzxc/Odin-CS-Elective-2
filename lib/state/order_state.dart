@@ -21,7 +21,7 @@ class OrderManager extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
-  /// Places an order atomically in the database, saving the snapshot for the confirmation screen.
+  /// Places an order atomically in the database, saving the snapshot for confirmation.
   Future<OrderRecord?> placeOrder({
     required String userId,
     required String userEmail,
@@ -58,7 +58,7 @@ class OrderManager extends ChangeNotifier {
     try {
       _orders = await _service.fetchCustomerOrders(userId);
     } catch (e) {
-      _errorMessage = 'Failed to load order history: $e';
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -74,15 +74,26 @@ class OrderManager extends ChangeNotifier {
     try {
       _orders = await _service.fetchAllOrders();
     } catch (e) {
-      _errorMessage = 'Failed to load admin order list: $e';
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  /// Updates an order's status (Admin only).
-  Future<void> updateOrderStatus(int orderId, String newStatus) async {
+  /// Clears cached orders and error state (e.g., on user sign-out).
+  void clearOrders() {
+    if (_orders.isEmpty && _lastPlacedOrder == null && _errorMessage == null) {
+      return;
+    }
+    _orders = [];
+    _lastPlacedOrder = null;
+    _errorMessage = null;
+    notifyListeners();
+  }
+
+  /// Updates an order's status (Admin only). Returns true on success.
+  Future<bool> updateOrderStatus(int orderId, String newStatus) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -93,31 +104,13 @@ class OrderManager extends ChangeNotifier {
       if (idx >= 0) {
         _orders[idx] = _orders[idx].copyWith(status: newStatus);
       }
+      return true;
     } catch (e) {
-      _errorMessage = 'Failed to update order status: $e';
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      return false;
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 }
-
-/// Scoped inherited notifier providing [OrderManager] down the widget tree.
-class OrderScope extends InheritedNotifier<OrderManager> {
-  const OrderScope({
-    super.key,
-    required OrderManager manager,
-    required super.child,
-  }) : super(notifier: manager);
-
-  static OrderManager of(BuildContext context) {
-    final scope = context.dependOnInheritedWidgetOfExactType<OrderScope>();
-    assert(scope != null, 'No OrderScope found in context.');
-    return scope!.notifier!;
-  }
-
-  static OrderManager? maybeOf(BuildContext context) {
-    return context.dependOnInheritedWidgetOfExactType<OrderScope>()?.notifier;
-  }
-}
-

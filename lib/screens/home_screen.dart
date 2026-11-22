@@ -1,63 +1,45 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../state/auth_state.dart';
+import '../providers/app_providers.dart';
 import '../state/cart_state.dart';
 import '../state/catalog_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/admin_categories_dialog.dart';
+import '../widgets/animated_primitives.dart';
 import '../widgets/app_bottom_nav.dart';
 import '../widgets/product_card.dart';
 
-/// Home & Catalog Screen implementing the two-screen flow:
-///
-/// 1. **Storefront Home View** (`_isViewingAllProducts == false`):
-///    - Simple, clean Hero banner displaying **"Welcome to PokéMart"**
-///    - Proceeds immediately to the **Most Popular Products** section in a 2-column Grid
-///    - Prominent **"View All Products"** button to open the full catalog
-///    - Displays the floating stadium **Bottom Navigation Bar** (`Home`, `Cart` / `Orders`, `Profile`)
-///
-/// 2. **View All Products Catalog View** (`_isViewingAllProducts == true`):
-///    - Back arrow to return to the Storefront Home + rounded Search bar (`Search items...`)
-///    - Classic Filter, Favorites, Sort By, and Price Range toolbar with collapsible panels
-///    - Conditional product count badge (shown only when actively filtering)
-///    - Foodpanda-style List rows (or Grid toggle) where each item has its image on the right
-///      with an overlaid `+` circle button that transforms into `[ 🗑 1 + ]` / `[ − 2 + ]`
-///    - Simplified pagination (`1`, `2`, clickable/editable `...`, `Last`)
-///    - Hides the main bottom navigation bar and instead displays the sticky **"View your cart"**
-///      bottom bar **only when `cart.isNotEmpty`**, leading to Cart & Checkout.
-class HomeScreen extends StatefulWidget {
-  final VoidCallback onToggleTheme;
-  final bool isDarkMode;
+/// Home and Catalog screen displaying the storefront popular items and full searchable catalog.
+class HomeScreen extends ConsumerStatefulWidget {
   final bool initialShowAllProducts;
 
   const HomeScreen({
     super.key,
-    required this.onToggleTheme,
-    required this.isDarkMode,
     this.initialShowAllProducts = false,
   });
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   late bool _isViewingAllProducts;
 
-  // In the "View All Products" screen, Foodpanda-style List view is default
   bool _isGridViewInCatalog = false;
 
-  // Collapsible toolbar panels state
   bool _isFilterExpanded = false;
   bool _isSortExpanded = false;
   bool _isPriceExpanded = false;
 
-  // Local drag values for smooth slider interaction before triggering backend query
   RangeValues? _sliderValues;
 
-  // Manual text controllers for editing price bounds directly and search query
   late final TextEditingController _minPriceController;
   late final TextEditingController _maxPriceController;
   late final TextEditingController _searchController;
+  Timer? _searchDebounce;
 
   final ScrollController _scrollController = ScrollController();
 
@@ -72,6 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _minPriceController.dispose();
     _maxPriceController.dispose();
     _searchController.dispose();
@@ -79,7 +62,21 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  void _resetAllProductsState() {
+    _searchDebounce?.cancel();
+    _searchController.clear();
+    _isGridViewInCatalog = false;
+    _isFilterExpanded = false;
+    _isSortExpanded = false;
+    _isPriceExpanded = false;
+    _sliderValues = null;
+    final catalog = ref.read(catalogProvider);
+    catalog.resetFilters();
+    _syncPriceControllers(RangeValues(0, catalog.maxCatalogPrice));
+  }
+
   void _openAllProductsView() {
+    _resetAllProductsState();
     setState(() {
       _isViewingAllProducts = true;
     });
@@ -87,6 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _returnToStorefrontHome() {
+    _resetAllProductsState();
     setState(() {
       _isViewingAllProducts = false;
     });
@@ -99,11 +97,12 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _applyManualPrice(CatalogManager catalog) {
+    final sliderMax = catalog.maxCatalogPrice;
     final minParsed = double.tryParse(_minPriceController.text) ?? 0.0;
-    final maxParsed = double.tryParse(_maxPriceController.text) ?? 5000.0;
+    final maxParsed = double.tryParse(_maxPriceController.text) ?? sliderMax;
 
-    final validMin = minParsed.clamp(0.0, 5000.0);
-    final validMax = maxParsed.clamp(validMin, 5000.0);
+    final validMin = minParsed.clamp(0.0, sliderMax);
+    final validMax = maxParsed.clamp(validMin, sliderMax);
 
     final newRange = RangeValues(validMin, validMax);
     setState(() {
@@ -135,29 +134,50 @@ class _HomeScreenState extends State<HomeScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    final catalog = CatalogScope.of(context);
-    final cart = CartScope.maybeOf(context);
-    final auth = AuthScope.maybeOf(context);
-    final isAdmin = auth?.isAdmin ?? false;
-    final hasCartItems = (cart?.isNotEmpty ?? false) && !isAdmin;
+    final catalog = ref.watch(catalogProvider);
+    final cart = ref.watch(cartProvider);
+    final auth = ref.watch(authProvider);
+    final isAdmin = auth.isAdmin;
+    final hasCartItems = cart.isNotEmpty && !isAdmin;
 
-    return Scaffold(
-      backgroundColor: colorScheme.surface,
-      // Storefront Home shows the floating stadium Bottom Navigation Bar;
-      // View All Products hides the navbar and shows "View your cart" ONLY when cart has items.
+    return PopScope(
+      canPop: !_isViewingAllProducts,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _isViewingAllProducts) {
+          _returnToStorefrontHome();
+        }
+      },
+      child: Scaffold(
       bottomNavigationBar: _isViewingAllProducts
-          ? (hasCartItems && cart != null
-              ? _buildViewCartBottomBar(context, cart)
-              : null)
+          ? AnimatedSwitcher(
+              duration: const Duration(milliseconds: 260),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (child, animation) {
+                return SizeTransition(
+                  sizeFactor: animation,
+                  axisAlignment: -1.0,
+                  child: FadeTransition(opacity: animation, child: child),
+                );
+              },
+              child: hasCartItems
+                  ? KeyedSubtree(
+                      key: const ValueKey<String>('sticky-cart-bar'),
+                      child: _buildViewCartBottomBar(context, cart, colorScheme),
+                    )
+                  : const SizedBox.shrink(
+                      key: ValueKey<String>('empty-cart-bar'),
+                    ),
+            )
           : AppBottomNav(
               currentIndex: 0,
               onHomeTap: _isViewingAllProducts ? _returnToStorefrontHome : null,
             ),
       floatingActionButton: isAdmin
           ? FloatingActionButton.extended(
-              backgroundColor: AppTheme.pogoTealPrimary,
-              foregroundColor: Colors.white,
-              onPressed: () => context.go('/admin/product/add'),
+              backgroundColor: colorScheme.primary,
+              foregroundColor: colorScheme.onPrimary,
+              onPressed: () => context.push('/admin/product/add'),
               icon: const Icon(Icons.add),
               label: const Text(
                 'Add Product',
@@ -167,17 +187,32 @@ class _HomeScreenState extends State<HomeScreen> {
           : null,
       appBar: _isViewingAllProducts
           ? _buildAllProductsAppBar(context, theme, colorScheme, catalog)
-          : _buildStorefrontAppBar(theme, colorScheme),
-      body: _isViewingAllProducts
-          ? _buildAllProductsBody(context, theme, colorScheme, catalog)
-          : _buildStorefrontHomeBody(
-              context,
-              theme,
-              colorScheme,
-              catalog,
-              cart,
-              isAdmin,
-            ),
+          : _buildStorefrontAppBar(theme, colorScheme, isAdmin),
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 240),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        child: _isViewingAllProducts
+            ? KeyedSubtree(
+                key: const ValueKey<String>('all-products-view'),
+                child: _buildAllProductsBody(
+                  context,
+                  theme,
+                  colorScheme,
+                  catalog,
+                ),
+              )
+            : KeyedSubtree(
+                key: const ValueKey<String>('storefront-home-view'),
+                child: _buildStorefrontHomeBody(
+                  context,
+                  theme,
+                  colorScheme,
+                  catalog,
+                ),
+              ),
+      ),
+      ),
     );
   }
 
@@ -224,6 +259,7 @@ class _HomeScreenState extends State<HomeScreen> {
   PreferredSizeWidget _buildStorefrontAppBar(
     ThemeData theme,
     ColorScheme colorScheme,
+    bool isAdmin,
   ) {
     return AppBar(
       backgroundColor: colorScheme.surface,
@@ -244,7 +280,7 @@ class _HomeScreenState extends State<HomeScreen> {
               _buildOutlinedLogoPart(
                 text: 'MART',
                 outlineColor: const Color(0xFF2A75BB),
-                fillColor: Colors.white,
+                fillColor: AppTheme.pogoMintEnd,
                 fontFamily: 'Bauhaus93',
                 fontWeight: FontWeight.w900,
                 fontSize: 22,
@@ -269,20 +305,46 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       actions: [
-        // Only Theme mode toggle remains in the top-right AppBar
-        IconButton(
-          icon: Icon(
-            widget.isDarkMode
-                ? Icons.light_mode_outlined
-                : Icons.dark_mode_outlined,
-            color: AppTheme.pogoTealPrimary,
-            size: 22,
+        if (isAdmin)
+          IconButton(
+            icon: const Icon(Icons.category_outlined),
+            tooltip: 'Manage Categories',
+            onPressed: () => showAdminCategoriesDialog(context),
           ),
-          tooltip: widget.isDarkMode ? 'Day Mode' : 'Night Mode',
-          onPressed: widget.onToggleTheme,
-        ),
+        _buildThemeToggleButton(theme, colorScheme),
         const SizedBox(width: 8),
       ],
+    );
+  }
+
+  Widget _buildThemeToggleButton(ThemeData theme, ColorScheme colorScheme) {
+    final isDark = theme.brightness == Brightness.dark;
+    final accentColor = isDark ? AppTheme.pogoCoinGold : colorScheme.primary;
+    final tintBg = isDark
+        ? AppTheme.pogoCoinGold.withAlpha(28)
+        : colorScheme.primary.withAlpha(24);
+
+    return IconButton(
+      style: IconButton.styleFrom(backgroundColor: tintBg),
+      icon: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 260),
+        transitionBuilder: (child, animation) => RotationTransition(
+          turns: Tween<double>(begin: 0.75, end: 1.0).animate(animation),
+          child: FadeTransition(opacity: animation, child: child),
+        ),
+        child: Icon(
+          isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+          key: ValueKey<bool>(isDark),
+          color: accentColor,
+          size: 21,
+        ),
+      ),
+      tooltip: isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode',
+      onPressed: () {
+        final current = ref.read(themeModeProvider);
+        ref.read(themeModeProvider.notifier).state =
+            current == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+      },
     );
   }
 
@@ -291,20 +353,23 @@ class _HomeScreenState extends State<HomeScreen> {
     ThemeData theme,
     ColorScheme colorScheme,
     CatalogManager catalog,
-    CartManager? cart,
-    bool isAdmin,
   ) {
     final popularItems = catalog.popularProducts.isNotEmpty
         ? catalog.popularProducts
         : catalog.products.take(6).toList();
 
-    return SingleChildScrollView(
-      controller: _scrollController,
-      padding: const EdgeInsets.only(bottom: 28),
-      child: Column(
+    return RefreshIndicator(
+      color: AppTheme.pogoTealPrimary,
+      onRefresh: catalog.fetchCatalog,
+      child: SingleChildScrollView(
+        controller: _scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        padding: const EdgeInsets.only(bottom: 28),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // A. Simple, Clean Hero Banner: Only "Welcome to PokéMart"
+          // Hero Banner
           Container(
             width: double.infinity,
             margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
@@ -334,7 +399,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // B. Most Popular Products Grid Header + "View All" Action Button
+          // Most Popular Products Header + View All Action Button
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 18, 16, 10),
             child: Row(
@@ -367,43 +432,74 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                TextButton.icon(
+                FilledButton(
                   onPressed: _openAllProductsView,
-                  icon: const Text(
-                    'View All',
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w900,
-                      color: AppTheme.pogoTealPrimary,
-                    ),
-                  ),
-                  label: const Icon(
-                    Icons.arrow_forward_rounded,
-                    size: 16,
-                    color: AppTheme.pogoTealPrimary,
-                  ),
-                  style: TextButton.styleFrom(
-                    backgroundColor: AppTheme.pogoTealPrimary.withAlpha(20),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: colorScheme.primary,
+                    foregroundColor: colorScheme.onPrimary,
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
+                      horizontal: 16,
+                      vertical: 11,
                     ),
+                    minimumSize: const Size(0, 40),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'View All',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      SizedBox(width: 4),
+                      Icon(Icons.arrow_forward_rounded, size: 16),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
 
-          // C. Most Popular Products in 2-Column Grid Form
+          // Most Popular Products Grid
           if (catalog.isLoading)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 40),
               child: Center(
                 child: CircularProgressIndicator(
                   color: AppTheme.pogoTealPrimary,
+                ),
+              ),
+            )
+          else if (catalog.errorMessage != null)
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Center(
+                child: Column(
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      size: 48,
+                      color: AppTheme.pogoValorRed,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      catalog.errorMessage!,
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      onPressed: () => catalog.fetchCatalog(),
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Try Again'),
+                    ),
+                  ],
                 ),
               ),
             )
@@ -448,8 +544,8 @@ class _HomeScreenState extends State<HomeScreen> {
               child: FilledButton.icon(
                 onPressed: _openAllProductsView,
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppTheme.pogoTealPrimary,
-                  foregroundColor: Colors.white,
+                  backgroundColor: colorScheme.primary,
+                  foregroundColor: colorScheme.onPrimary,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(28),
                   ),
@@ -467,6 +563,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -499,7 +596,12 @@ class _HomeScreenState extends State<HomeScreen> {
             controller: _searchController,
             onChanged: (val) {
               setState(() {});
-              catalog.setSearchQuery(val);
+              _searchDebounce?.cancel();
+              _searchDebounce = Timer(const Duration(milliseconds: 250), () {
+                if (mounted) {
+                  catalog.setSearchQuery(val);
+                }
+              });
             },
             decoration: InputDecoration(
               hintText: 'Search items...',
@@ -518,6 +620,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       icon: const Icon(Icons.clear, size: 16),
                       padding: EdgeInsets.zero,
                       onPressed: () {
+                        _searchDebounce?.cancel();
                         _searchController.clear();
                         catalog.setSearchQuery('');
                         setState(() {});
@@ -550,18 +653,8 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
       actions: [
-        IconButton(
-          icon: Icon(
-            widget.isDarkMode
-                ? Icons.light_mode_outlined
-                : Icons.dark_mode_outlined,
-            color: AppTheme.pogoTealPrimary,
-            size: 21,
-          ),
-          tooltip: widget.isDarkMode ? 'Day Mode' : 'Night Mode',
-          onPressed: widget.onToggleTheme,
-        ),
-        const SizedBox(width: 4),
+        _buildThemeToggleButton(theme, colorScheme),
+        const SizedBox(width: 8),
       ],
     );
   }
@@ -572,12 +665,21 @@ class _HomeScreenState extends State<HomeScreen> {
     ColorScheme colorScheme,
     CatalogManager catalog,
   ) {
-    final activeSliderValues = _sliderValues ?? catalog.priceRange;
+    final sliderMax = catalog.maxCatalogPrice;
+    final rawRange = _sliderValues ?? catalog.priceRange;
+    final clampedStart = rawRange.start.clamp(0.0, sliderMax);
+    final clampedEnd = rawRange.end.clamp(clampedStart, sliderMax);
+    final activeSliderValues = RangeValues(clampedStart, clampedEnd);
 
-    return SingleChildScrollView(
-      controller: _scrollController,
-      padding: const EdgeInsets.only(bottom: 32),
-      child: Column(
+    return RefreshIndicator(
+      color: AppTheme.pogoTealPrimary,
+      onRefresh: catalog.fetchCatalog,
+      child: SingleChildScrollView(
+        controller: _scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        padding: const EdgeInsets.only(bottom: 32),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 1. Classic Toolbar: View Mode, Filter, Favorites, Sort By, Price Range & Conditional Filter Count
@@ -604,7 +706,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           onTap: () =>
                               setState(() => _isGridViewInCatalog = false),
                           borderRadius: BorderRadius.circular(7),
-                          child: Container(
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            curve: Curves.easeOutCubic,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
                               vertical: 4,
@@ -632,7 +736,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           onTap: () =>
                               setState(() => _isGridViewInCatalog = true),
                           borderRadius: BorderRadius.circular(7),
-                          child: Container(
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            curve: Curves.easeOutCubic,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
                               vertical: 4,
@@ -662,12 +768,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   // B. Collapsible Category Filter Button
                   _buildToolbarPill(
-                    label: catalog.selectedCategory == 'All'
+                    label: catalog.selectedCategories.isEmpty
                         ? 'Filter'
-                        : catalog.selectedCategory,
+                        : (catalog.selectedCategories.length == 1
+                            ? catalog.selectedCategories.first
+                            : 'Filter (${catalog.selectedCategories.length})'),
                     icon: Icons.filter_list,
                     isExpanded: _isFilterExpanded,
-                    isActive: catalog.selectedCategory != 'All' ||
+                    isActive: catalog.selectedCategories.isNotEmpty ||
                         catalog.onlyFavorites,
                     colorScheme: colorScheme,
                     onTap: () {
@@ -687,7 +795,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     onTap: () =>
                         catalog.setOnlyFavorites(!catalog.onlyFavorites),
                     borderRadius: BorderRadius.circular(10),
-                    child: Container(
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOutCubic,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,
                         vertical: 7,
@@ -707,14 +817,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
-                            catalog.onlyFavorites
-                                ? Icons.favorite
-                                : Icons.favorite_border,
+                          AnimatedFavoriteIcon(
+                            isFavorite: catalog.onlyFavorites,
                             size: 14,
-                            color: catalog.onlyFavorites
-                                ? AppTheme.pogoValorRed
-                                : colorScheme.onSurface,
+                            activeColor: AppTheme.pogoValorRed,
+                            inactiveColor: colorScheme.onSurface,
                           ),
                           const SizedBox(width: 5),
                           Text(
@@ -758,7 +865,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     icon: Icons.tune,
                     isExpanded: _isPriceExpanded,
                     isActive: catalog.priceRange.start > 0 ||
-                        catalog.priceRange.end < 5000,
+                        catalog.priceRange.end < sliderMax,
                     colorScheme: colorScheme,
                     onTap: () {
                       setState(() {
@@ -799,283 +906,359 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // 2. Collapsible Category & Favorites Filter Panel
-          if (_isFilterExpanded)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: colorScheme.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: colorScheme.outlineVariant,
-                    width: 1,
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Filter by Category & Favorites',
-                          style: theme.textTheme.labelMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
+          // 2. Collapsible Toolbar Panels (Filter / Sort / Price Range)
+          AnimatedSize(
+            duration: const Duration(milliseconds: 240),
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.topCenter,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 180),
+              switchInCurve: Curves.easeOut,
+              switchOutCurve: Curves.easeIn,
+              child: _isFilterExpanded
+                  ? Padding(
+                      key: const ValueKey<String>('panel-filter'),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 6,
+                      ),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: colorScheme.surface,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: colorScheme.outlineVariant,
+                            width: 1,
                           ),
                         ),
-                        if (catalog.selectedCategory != 'All' ||
-                            catalog.onlyFavorites)
-                          GestureDetector(
-                            onTap: () {
-                              catalog.setCategory('All');
-                              catalog.setOnlyFavorites(false);
-                            },
-                            child: const Text(
-                              'Reset',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: AppTheme.pogoValorRed,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Filter by Category & Favorites',
+                                  style: theme.textTheme.labelMedium?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                if (catalog.selectedCategories.isNotEmpty ||
+                                    catalog.onlyFavorites)
+                                  GestureDetector(
+                                    onTap: catalog.clearCategoryFilters,
+                                    child: const Text(
+                                      'Reset',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppTheme.pogoValorRed,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                FilterChip(
+                                  selected: catalog.selectedCategories.isEmpty &&
+                                      !catalog.onlyFavorites,
+                                  label: const Text('All'),
+                                  labelStyle: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: catalog.selectedCategories.isEmpty &&
+                                            !catalog.onlyFavorites
+                                        ? FontWeight.w800
+                                        : FontWeight.w600,
+                                    color: catalog.selectedCategories.isEmpty &&
+                                            !catalog.onlyFavorites
+                                        ? colorScheme.onPrimary
+                                        : colorScheme.onSurface,
+                                  ),
+                                  selectedColor: colorScheme.primary,
+                                  backgroundColor: colorScheme.surface,
+                                  checkmarkColor: colorScheme.onPrimary,
+                                  side: BorderSide(
+                                    color: catalog.selectedCategories.isEmpty &&
+                                            !catalog.onlyFavorites
+                                        ? colorScheme.primary
+                                        : colorScheme.outlineVariant,
+                                  ),
+                                  onSelected: (_) =>
+                                      catalog.clearCategoryFilters(),
+                                ),
+                                FilterChip(
+                                  selected: catalog.onlyFavorites,
+                                  avatar: Icon(
+                                    catalog.onlyFavorites
+                                        ? Icons.favorite
+                                        : Icons.favorite_border,
+                                    size: 15,
+                                    color: catalog.onlyFavorites
+                                        ? Colors.white
+                                        : AppTheme.pogoValorRed,
+                                  ),
+                                  label: const Text('Favorites Only'),
+                                  labelStyle: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: catalog.onlyFavorites
+                                        ? FontWeight.w800
+                                        : FontWeight.w600,
+                                    color: catalog.onlyFavorites
+                                        ? Colors.white
+                                        : colorScheme.onSurface,
+                                  ),
+                                  selectedColor: AppTheme.pogoValorRed,
+                                  backgroundColor: colorScheme.surface,
+                                  checkmarkColor: Colors.white,
+                                  onSelected: (selected) =>
+                                      catalog.setOnlyFavorites(selected),
+                                ),
+                                ...catalog.editableCategories.map((category) {
+                                  final isSelected = catalog.selectedCategories
+                                      .contains(category);
+                                  return FilterChip(
+                                    selected: isSelected,
+                                    label: Text(category),
+                                    labelStyle: TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w800
+                                          : FontWeight.w600,
+                                      color: isSelected
+                                          ? colorScheme.onPrimary
+                                          : colorScheme.onSurface,
+                                    ),
+                                    selectedColor: colorScheme.primary,
+                                    backgroundColor: colorScheme.surface,
+                                    checkmarkColor: colorScheme.onPrimary,
+                                    side: BorderSide(
+                                      color: isSelected
+                                          ? colorScheme.primary
+                                          : colorScheme.outlineVariant,
+                                    ),
+                                    onSelected: (_) =>
+                                        catalog.toggleCategory(category),
+                                  );
+                                }),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : _isSortExpanded
+                      ? Padding(
+                          key: const ValueKey<String>('panel-sort'),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 6,
+                          ),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: colorScheme.surface,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: colorScheme.outlineVariant,
+                                width: 1,
                               ),
                             ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        FilterChip(
-                          selected: catalog.onlyFavorites,
-                          avatar: Icon(
-                            catalog.onlyFavorites
-                                ? Icons.favorite
-                                : Icons.favorite_border,
-                            size: 15,
-                            color: catalog.onlyFavorites
-                                ? Colors.white
-                                : AppTheme.pogoValorRed,
-                          ),
-                          label: const Text('Favorites Only'),
-                          labelStyle: TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: catalog.onlyFavorites
-                                ? FontWeight.w800
-                                : FontWeight.w600,
-                            color: catalog.onlyFavorites
-                                ? Colors.white
-                                : colorScheme.onSurface,
-                          ),
-                          selectedColor: AppTheme.pogoValorRed,
-                          checkmarkColor: Colors.white,
-                          onSelected: (selected) =>
-                              catalog.setOnlyFavorites(selected),
-                        ),
-                        ...catalog.categories.map((category) {
-                          final isSelected =
-                              catalog.selectedCategory == category;
-                          return ChoiceChip(
-                            selected: isSelected,
-                            label: Text(category),
-                            labelStyle: TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: isSelected
-                                  ? FontWeight.w800
-                                  : FontWeight.w600,
-                              color: isSelected
-                                  ? Colors.white
-                                  : colorScheme.onSurface,
-                            ),
-                            selectedColor: AppTheme.pogoTealPrimary,
-                            backgroundColor: colorScheme.surface,
-                            side: BorderSide(
-                              color: isSelected
-                                  ? AppTheme.pogoTealPrimary
-                                  : colorScheme.outlineVariant,
-                            ),
-                            onSelected: (selected) {
-                              if (selected) {
-                                catalog.setCategory(category);
-                              }
-                            },
-                          );
-                        }),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-          // 3. Collapsible Sort By Panel (including Favorites First)
-          if (_isSortExpanded)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: colorScheme.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: colorScheme.outlineVariant,
-                    width: 1,
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Sort Products By',
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        _buildSortChip('popular', 'Popular', catalog),
-                        _buildSortChip(
-                          'favorites',
-                          'Favorites First',
-                          catalog,
-                        ),
-                        _buildSortChip(
-                          'price_asc',
-                          'Price: Low to High',
-                          catalog,
-                        ),
-                        _buildSortChip(
-                          'price_desc',
-                          'Price: High to Low',
-                          catalog,
-                        ),
-                        _buildSortChip('name_asc', 'Name: A–Z', catalog),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-          // 4. Collapsible Price Range Panel
-          if (_isPriceExpanded)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              child: Card(
-                elevation: 0,
-                color: colorScheme.surface,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(
-                    color: colorScheme.outlineVariant,
-                    width: 1,
-                  ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Price Range Filter (₽0 – ₽5,000)',
-                            style: theme.textTheme.labelMedium?.copyWith(
-                              fontWeight: FontWeight.w800,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Sort Products By',
+                                  style: theme.textTheme.labelMedium?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: [
+                                    _buildSortChip(
+                                      'popular',
+                                      'Popular',
+                                      catalog,
+                                      colorScheme,
+                                    ),
+                                    _buildSortChip(
+                                      'favorites',
+                                      'Favorites First',
+                                      catalog,
+                                      colorScheme,
+                                    ),
+                                    _buildSortChip(
+                                      'price_asc',
+                                      'Price: Low to High',
+                                      catalog,
+                                      colorScheme,
+                                    ),
+                                    _buildSortChip(
+                                      'price_desc',
+                                      'Price: High to Low',
+                                      catalog,
+                                      colorScheme,
+                                    ),
+                                    _buildSortChip(
+                                      'name_asc',
+                                      'Name: A–Z',
+                                      catalog,
+                                      colorScheme,
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
                           ),
-                          Text(
-                            '₽${AppTheme.formatPrice(activeSliderValues.start)} - ₽${AppTheme.formatPrice(activeSliderValues.end)}',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w900,
-                              color: AppTheme.pogoTealPrimary,
-                            ),
-                          ),
-                        ],
-                      ),
-                      RangeSlider(
-                        values: activeSliderValues,
-                        min: 0,
-                        max: 5000,
-                        divisions: 50,
-                        activeColor: AppTheme.pogoTealPrimary,
-                        inactiveColor: colorScheme.outline.withAlpha(120),
-                        labels: RangeLabels(
-                          '₽${activeSliderValues.start.round()}',
-                          '₽${activeSliderValues.end.round()}',
-                        ),
-                        onChanged: (values) {
-                          setState(() {
-                            _sliderValues = values;
-                            _syncPriceControllers(values);
-                          });
-                        },
-                        onChangeEnd: (values) {
-                          setState(() {
-                            _sliderValues = null;
-                          });
-                          catalog.setPriceRange(values);
-                        },
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _minPriceController,
-                              keyboardType: TextInputType.number,
-                              decoration: InputDecoration(
-                                labelText: 'Min Price (₽)',
-                                labelStyle: const TextStyle(fontSize: 12),
-                                isDense: true,
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
+                        )
+                      : _isPriceExpanded
+                          ? Padding(
+                              key: const ValueKey<String>('panel-price'),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 6,
+                              ),
+                              child: SizedBox(
+                                width: double.infinity,
+                                child: Card(
+                                  elevation: 0,
+                                  color: colorScheme.surface,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    side: BorderSide(
+                                      color: colorScheme.outlineVariant,
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(14),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Text(
+                                              'Price Range Filter (₽0 – ₽${AppTheme.formatPrice(sliderMax)})',
+                                              style: theme.textTheme.labelMedium
+                                                  ?.copyWith(
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                            Text(
+                                              '₽${AppTheme.formatPrice(activeSliderValues.start)} - ₽${AppTheme.formatPrice(activeSliderValues.end)}',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w900,
+                                                color: colorScheme.primary,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        RangeSlider(
+                                          values: activeSliderValues,
+                                          min: 0,
+                                          max: sliderMax,
+                                          divisions: 50,
+                                          activeColor: colorScheme.primary,
+                                          inactiveColor:
+                                              colorScheme.outline.withAlpha(120),
+                                          labels: RangeLabels(
+                                            '₽${activeSliderValues.start.round()}',
+                                            '₽${activeSliderValues.end.round()}',
+                                          ),
+                                          onChanged: (values) {
+                                            setState(() {
+                                              _sliderValues = values;
+                                              _syncPriceControllers(values);
+                                            });
+                                          },
+                                          onChangeEnd: (values) {
+                                            setState(() {
+                                              _sliderValues = null;
+                                            });
+                                            catalog.setPriceRange(values);
+                                          },
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: TextField(
+                                                controller: _minPriceController,
+                                                keyboardType:
+                                                    TextInputType.number,
+                                                decoration: InputDecoration(
+                                                  labelText: 'Min Price (₽)',
+                                                  labelStyle:
+                                                      const TextStyle(fontSize: 12),
+                                                  isDense: true,
+                                                  border: OutlineInputBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(8),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: TextField(
+                                                controller: _maxPriceController,
+                                                keyboardType:
+                                                    TextInputType.number,
+                                                decoration: InputDecoration(
+                                                  labelText: 'Max Price (₽)',
+                                                  labelStyle:
+                                                      const TextStyle(fontSize: 12),
+                                                  isDense: true,
+                                                  border: OutlineInputBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(8),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 10),
+                                            ElevatedButton(
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor:
+                                                    colorScheme.primary,
+                                                foregroundColor:
+                                                    colorScheme.onPrimary,
+                                                elevation: 0,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                              ),
+                                              onPressed: () =>
+                                                  _applyManualPrice(catalog),
+                                              child: const Text('Apply'),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ),
+                            )
+                          : const SizedBox.shrink(
+                              key: ValueKey<String>('panel-none'),
                             ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: TextField(
-                              controller: _maxPriceController,
-                              keyboardType: TextInputType.number,
-                              decoration: InputDecoration(
-                                labelText: 'Max Price (₽)',
-                                labelStyle: const TextStyle(fontSize: 12),
-                                isDense: true,
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.pogoTealPrimary,
-                              foregroundColor: Colors.white,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            onPressed: () => _applyManualPrice(catalog),
-                            child: const Text('Apply'),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
             ),
+          ),
 
           // Product List / Grid Content
           if (catalog.isLoading)
@@ -1137,9 +1320,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 8),
                     TextButton(
                       onPressed: () {
+                        _searchDebounce?.cancel();
                         _searchController.clear();
                         setState(() => _sliderValues = null);
-                        _syncPriceControllers(const RangeValues(0, 5000));
+                        _syncPriceControllers(
+                          RangeValues(0, catalog.maxCatalogPrice),
+                        );
                         catalog.resetFilters();
                       },
                       child: const Text('Reset Filters'),
@@ -1148,45 +1334,58 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             )
-          else if (_isGridViewInCatalog)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final crossAxisCount = constraints.maxWidth >= 700 ? 4 : 2;
-                  return GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: catalog.products.length,
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: crossAxisCount,
-                      mainAxisSpacing: 12,
-                      crossAxisSpacing: 12,
-                      childAspectRatio: 0.80,
-                    ),
-                    itemBuilder: (context, index) {
-                      final product = catalog.products[index];
-                      return ProductCard(
-                        product: product,
-                        isGrid: true,
-                      );
-                    },
-                  );
-                },
-              ),
-            )
           else
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: catalog.products.length,
-              itemBuilder: (context, index) {
-                final product = catalog.products[index];
-                return ProductCard(
-                  product: product,
-                  isGrid: false,
-                );
-              },
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              child: _isGridViewInCatalog
+                  ? Padding(
+                      key: ValueKey<String>(
+                        'catalog-grid-${catalog.currentPage}',
+                      ),
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final crossAxisCount =
+                              constraints.maxWidth >= 700 ? 4 : 2;
+                          return GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: catalog.products.length,
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: crossAxisCount,
+                              mainAxisSpacing: 12,
+                              crossAxisSpacing: 12,
+                              childAspectRatio: 0.80,
+                            ),
+                            itemBuilder: (context, index) {
+                              final product = catalog.products[index];
+                              return ProductCard(
+                                product: product,
+                                isGrid: true,
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    )
+                  : ListView.builder(
+                      key: ValueKey<String>(
+                        'catalog-list-${catalog.currentPage}',
+                      ),
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: catalog.products.length,
+                      itemBuilder: (context, index) {
+                        final product = catalog.products[index];
+                        return ProductCard(
+                          product: product,
+                          isGrid: false,
+                        );
+                      },
+                    ),
             ),
 
           // Simplified Pagination Bar: `<` `1` `2` `...` (clickable & editable) `Last` `>`
@@ -1197,6 +1396,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
         ],
       ),
+      ),
     );
   }
 
@@ -1205,18 +1405,22 @@ class _HomeScreenState extends State<HomeScreen> {
   /// - Center: `View your cart`
   /// - Right: Formatted running total (`₽ 273.00`)
   /// Only rendered when `cart.isNotEmpty`. Tapping it leads to `/cart` for Checkout.
-  Widget _buildViewCartBottomBar(BuildContext context, CartManager cart) {
+  Widget _buildViewCartBottomBar(
+    BuildContext context,
+    CartManager cart,
+    ColorScheme colorScheme,
+  ) {
     return SafeArea(
       top: false,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
         child: Material(
-          color: AppTheme.pogoTealPrimary,
+          color: colorScheme.primary,
           borderRadius: BorderRadius.circular(14),
           elevation: 6,
           shadowColor: Colors.black.withAlpha(60),
           child: InkWell(
-            onTap: () => context.go('/cart'),
+            onTap: () => context.push('/cart'),
             borderRadius: BorderRadius.circular(14),
             child: Container(
               height: 54,
@@ -1230,13 +1434,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     height: 30,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 1.6),
+                      border: Border.all(
+                        color: colorScheme.onPrimary,
+                        width: 1.6,
+                      ),
                     ),
                     child: Center(
-                      child: Text(
+                      child: AnimatedValueText(
                         '${cart.totalItemCount}',
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: colorScheme.onPrimary,
                           fontWeight: FontWeight.w900,
                           fontSize: 13,
                         ),
@@ -1245,10 +1452,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
 
                   // Center: "View your cart" (clean single line without subtitle)
-                  const Text(
+                  Text(
                     'View your cart',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: colorScheme.onPrimary,
                       fontWeight: FontWeight.w900,
                       fontSize: 15,
                       letterSpacing: 0.2,
@@ -1256,10 +1463,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
 
                   // Right: Running Cart Total
-                  Text(
+                  AnimatedValueText(
                     cart.formattedTotal,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: colorScheme.onPrimary,
                       fontWeight: FontWeight.w900,
                       fontSize: 15,
                     ),
@@ -1284,7 +1491,9 @@ class _HomeScreenState extends State<HomeScreen> {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(10),
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
         decoration: BoxDecoration(
           color: isActive || isExpanded
@@ -1320,14 +1529,17 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(width: 4),
-            Icon(
-              isExpanded
-                  ? Icons.keyboard_arrow_up
-                  : Icons.keyboard_arrow_down,
-              size: 16,
-              color: isActive || isExpanded
-                  ? AppTheme.pogoTealPrimary
-                  : colorScheme.onSurface.withAlpha(140),
+            AnimatedRotation(
+              turns: isExpanded ? 0.5 : 0.0,
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutCubic,
+              child: Icon(
+                Icons.keyboard_arrow_down,
+                size: 16,
+                color: isActive || isExpanded
+                    ? AppTheme.pogoTealPrimary
+                    : colorScheme.onSurface.withAlpha(140),
+              ),
             ),
           ],
         ),
@@ -1339,6 +1551,7 @@ class _HomeScreenState extends State<HomeScreen> {
     String sortValue,
     String label,
     CatalogManager catalog,
+    ColorScheme colorScheme,
   ) {
     final isSelected = catalog.sortBy == sortValue;
     return ChoiceChip(
@@ -1347,9 +1560,13 @@ class _HomeScreenState extends State<HomeScreen> {
       labelStyle: TextStyle(
         fontSize: 11.5,
         fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-        color: isSelected ? Colors.white : null,
+        color: isSelected ? colorScheme.onPrimary : colorScheme.onSurface,
       ),
-      selectedColor: AppTheme.pogoTealPrimary,
+      selectedColor: colorScheme.primary,
+      backgroundColor: colorScheme.surface,
+      side: BorderSide(
+        color: isSelected ? colorScheme.primary : colorScheme.outlineVariant,
+      ),
       onSelected: (selected) {
         if (selected) {
           catalog.setSortBy(sortValue);
@@ -1358,7 +1575,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Simplified Pagination Navigator: `<` `1` `2` `...` (clickable & editable custom page input) `lastPage` `>`
+  /// Pagination navigator displaying first/last pages, neighbors around the current
+  /// page, and inline editable `'...'` slots.
   Widget _buildSimplifiedPagination(
     CatalogManager catalog,
     ThemeData theme,
@@ -1366,112 +1584,85 @@ class _HomeScreenState extends State<HomeScreen> {
   ) {
     final total = catalog.totalPages;
     final current = catalog.currentPage;
-    final isMiddlePage = current > 2 && current < total;
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        // Previous Button
-        IconButton.outlined(
-          icon: const Icon(Icons.chevron_left, size: 20),
-          tooltip: 'Previous Page',
-          onPressed: catalog.hasPreviousPage
-              ? () {
-                  catalog.previousPage();
+    final List<Object> tokens = [];
+    if (total <= 5) {
+      for (var i = 1; i <= total; i++) {
+        tokens.add(i);
+      }
+    } else {
+      tokens.add(1);
+      final start = (current - 1).clamp(2, total - 1);
+      final end = (current + 1).clamp(2, total - 1);
+
+      if (start > 3) {
+        tokens.add('left');
+      } else if (start == 3) {
+        tokens.add(2);
+      }
+
+      for (var p = start; p <= end; p++) {
+        tokens.add(p);
+      }
+
+      if (end < total - 2) {
+        tokens.add('right');
+      } else if (end == total - 2) {
+        tokens.add(total - 1);
+      }
+      tokens.add(total);
+    }
+
+    return Center(
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 6,
+        runSpacing: 6,
+        children: [
+          IconButton.outlined(
+            icon: const Icon(Icons.chevron_left, size: 20),
+            tooltip: 'Previous Page',
+            onPressed: catalog.hasPreviousPage
+                ? () {
+                    catalog.previousPage();
+                    _scrollToTop();
+                  }
+                : null,
+          ),
+          for (final token in tokens)
+            if (token is int)
+              _buildPagePill(
+                label: '$token',
+                isCurrent: current == token,
+                colorScheme: colorScheme,
+                onTap: () {
+                  catalog.goToPage(token);
                   _scrollToTop();
-                }
-              : null,
-        ),
-        const SizedBox(width: 6),
-
-        // Page 1
-        _buildPagePill(
-          label: '1',
-          isCurrent: current == 1,
-          colorScheme: colorScheme,
-          onTap: () {
-            catalog.goToPage(1);
-            _scrollToTop();
-          },
-        ),
-
-        // Page 2 (if at least 2 pages)
-        if (total >= 2) ...[
-          const SizedBox(width: 6),
-          _buildPagePill(
-            label: '2',
-            isCurrent: current == 2,
-            colorScheme: colorScheme,
-            onTap: () {
-              catalog.goToPage(2);
-              _scrollToTop();
-            },
-          ),
-        ],
-
-        // Editable '...' Pill (serves as custom page navigator)
-        if (total > 3) ...[
-          const SizedBox(width: 6),
-          InkWell(
-            onTap: () => _showCustomPageInputDialog(context, catalog),
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              height: 36,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: isMiddlePage
-                    ? AppTheme.pogoTealPrimary
-                    : colorScheme.surface,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: isMiddlePage
-                      ? AppTheme.pogoTealPrimary
-                      : colorScheme.outlineVariant,
-                  width: 1.2,
-                ),
-              ),
-              child: Center(
-                child: Text(
-                  isMiddlePage ? '$current • ...' : '...',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w900,
-                    color: isMiddlePage ? Colors.white : colorScheme.onSurface,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-
-        // Last Page (if total >= 3)
-        if (total >= 3) ...[
-          const SizedBox(width: 6),
-          _buildPagePill(
-            label: '$total',
-            isCurrent: current == total,
-            colorScheme: colorScheme,
-            onTap: () {
-              catalog.goToPage(total);
-              _scrollToTop();
-            },
-          ),
-        ],
-
-        const SizedBox(width: 6),
-
-        // Next Button
-        IconButton.outlined(
-          icon: const Icon(Icons.chevron_right, size: 20),
-          tooltip: 'Next Page',
-          onPressed: catalog.hasNextPage
-              ? () {
-                  catalog.nextPage();
+                },
+              )
+            else
+              _InlineEllipsisPageInput(
+                key: ValueKey<String>('ellipsis-$token'),
+                totalPages: total,
+                colorScheme: colorScheme,
+                onSubmitPage: (page) {
+                  catalog.goToPage(page);
                   _scrollToTop();
-                }
-              : null,
-        ),
-      ],
+                },
+              ),
+          IconButton.outlined(
+            icon: const Icon(Icons.chevron_right, size: 20),
+            tooltip: 'Next Page',
+            onPressed: catalog.hasNextPage
+                ? () {
+                    catalog.nextPage();
+                    _scrollToTop();
+                  }
+                : null,
+          ),
+        ],
+      ),
     );
   }
 
@@ -1484,15 +1675,17 @@ class _HomeScreenState extends State<HomeScreen> {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
         width: 36,
         height: 36,
         decoration: BoxDecoration(
-          color: isCurrent ? AppTheme.pogoTealPrimary : colorScheme.surface,
+          color: isCurrent ? colorScheme.primary : colorScheme.surface,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: isCurrent
-                ? AppTheme.pogoTealPrimary
+                ? colorScheme.primary
                 : colorScheme.outlineVariant,
             width: 1.2,
           ),
@@ -1503,7 +1696,7 @@ class _HomeScreenState extends State<HomeScreen> {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w800,
-              color: isCurrent ? Colors.white : colorScheme.onSurface,
+              color: isCurrent ? colorScheme.onPrimary : colorScheme.onSurface,
             ),
           ),
         ),
@@ -1520,58 +1713,145 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
   }
+}
 
-  void _showCustomPageInputDialog(
-    BuildContext context,
-    CatalogManager catalog,
-  ) {
-    final pageController = TextEditingController(
-      text: '${catalog.currentPage}',
-    );
-    showDialog(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        title: const Text('Go to Page'),
-        content: TextField(
-          controller: pageController,
-          autofocus: true,
-          keyboardType: TextInputType.number,
-          decoration: InputDecoration(
-            labelText: 'Enter page number (1 – ${catalog.totalPages})',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
+/// Inline editable `'...'` pagination control allowing direct page-number entry.
+class _InlineEllipsisPageInput extends StatefulWidget {
+  final int totalPages;
+  final ColorScheme colorScheme;
+  final ValueChanged<int> onSubmitPage;
+
+  const _InlineEllipsisPageInput({
+    super.key,
+    required this.totalPages,
+    required this.colorScheme,
+    required this.onSubmitPage,
+  });
+
+  @override
+  State<_InlineEllipsisPageInput> createState() =>
+      _InlineEllipsisPageInputState();
+}
+
+class _InlineEllipsisPageInputState extends State<_InlineEllipsisPageInput> {
+  bool _isEditing = false;
+  late final TextEditingController _controller;
+  late final FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+    _focusNode = FocusNode();
+    _focusNode.addListener(_handleFocusChange);
+  }
+
+  @override
+  void dispose() {
+    _focusNode.removeListener(_handleFocusChange);
+    _focusNode.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handleFocusChange() {
+    if (!_focusNode.hasFocus && _isEditing) {
+      _commitAndClose();
+    }
+  }
+
+  void _startEditing() {
+    _controller.clear();
+    setState(() => _isEditing = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _isEditing) {
+        _focusNode.requestFocus();
+      }
+    });
+  }
+
+  void _commitAndClose() {
+    final parsed = int.tryParse(_controller.text.trim());
+    if (mounted) {
+      setState(() {
+        _isEditing = false;
+        _controller.clear();
+      });
+    }
+    if (parsed != null && parsed >= 1 && parsed <= widget.totalPages) {
+      widget.onSubmitPage(parsed);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isEditing) {
+      return Container(
+        width: 52,
+        height: 36,
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        decoration: BoxDecoration(
+          color: widget.colorScheme.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: widget.colorScheme.primary,
+            width: 1.6,
+          ),
+        ),
+        child: Center(
+          child: TextField(
+            controller: _controller,
+            focusNode: _focusNode,
+            textAlign: TextAlign.center,
+            keyboardType: TextInputType.number,
+            textInputAction: TextInputAction.go,
+            maxLength: widget.totalPages.toString().length,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: widget.colorScheme.onSurface,
+            ),
+            decoration: const InputDecoration(
+              counterText: '',
+              filled: false,
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              isDense: true,
+              contentPadding: EdgeInsets.zero,
+              hintText: '#',
+            ),
+            onSubmitted: (_) => _commitAndClose(),
+          ),
+        ),
+      );
+    }
+
+    return InkWell(
+      onTap: _startEditing,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: widget.colorScheme.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: widget.colorScheme.outlineVariant,
+            width: 1.2,
+          ),
+        ),
+        child: Center(
+          child: Text(
+            '...',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+              color: widget.colorScheme.onSurface,
             ),
           ),
-          onSubmitted: (val) {
-            final parsed = int.tryParse(val.trim());
-            if (parsed != null &&
-                parsed >= 1 &&
-                parsed <= catalog.totalPages) {
-              Navigator.of(dialogCtx).pop();
-              catalog.goToPage(parsed);
-              _scrollToTop();
-            }
-          },
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogCtx).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final parsed = int.tryParse(pageController.text.trim());
-              if (parsed != null &&
-                  parsed >= 1 &&
-                  parsed <= catalog.totalPages) {
-                Navigator.of(dialogCtx).pop();
-                catalog.goToPage(parsed);
-                _scrollToTop();
-              }
-            },
-            child: const Text('Go'),
-          ),
-        ],
       ),
     );
   }
